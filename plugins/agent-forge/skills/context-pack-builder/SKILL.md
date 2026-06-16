@@ -38,6 +38,7 @@ This skill runs a bundled helper script (`match_flows.py`) via shell. Because th
 
 ### Step 4: Synthesize & Generate
 - Use the `./assets/context-pack-template.md` to structure the output.
+- In **Relevant Flows**, link each selected flow as a markdown link to `.context/flows/<name>.md` so consumers can read flow detail at full fidelity from the source. Synthesize only; do not copy flow content into the pack.
 - Identify likely working areas (packages/classes) based on flow entry points.
 - Explicitly capture any gaps or ambiguities in the "Assumptions / Gaps" section.
 

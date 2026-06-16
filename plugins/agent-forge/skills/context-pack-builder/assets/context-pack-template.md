@@ -4,20 +4,8 @@
 [Brief description of the user story and its core objective]
 
 ## Relevant Flows
-[List of flows matched from .context/flows/, with a 1-sentence justification for each]
-- `flow-name.md`: [Justification]
-
-## Entry Points
-[Specific entry points (API endpoints, CLI commands, Event listeners) identified from the flows]
-
-## Core Path
-[The primary execution path relevant to this story]
-
-## Data Touchpoints
-[Relevant database tables, caches, or external state mentioned in the flows]
-
-## Integrations
-[Downstream services or external APIs involved]
+[List of flows matched from .context/flows/, each as a markdown LINK with a 1-sentence justification. Consumers follow these links into the flow files for Entry Points, Core Path, Data Touchpoints, Integrations, and Tests]
+- [flow-name](.context/flows/flow-name.md): [Justification]
 
 ## Scope
 [List of packages or modules that are likely to be touched]
@@ -27,9 +15,6 @@
 
 ## Testing Patterns
 [Summary of the relevant testing patterns and conventions from .context/testing-patterns.md that should be applied to this story.]
-
-## Tests
-[Existing test suites or specific test cases mentioned in the flows that should be run]
 
 ## Assumptions / Gaps
 [List any missing information, ambiguous mappings, or areas requiring further discovery]

@@ -20,11 +20,11 @@ Acts as the **QA Lead** to ensure high-quality, regression-free development. It 
 Read the following artifacts from `.aforge/specs/[STORY-ID]/`:
 1. `blueprint.md`: The planned implementation tasks.
 2. `assumptions.md`: The technical decisions (especially error-handling choices).
-3. `context-pack.md`: To understand existing test patterns and flows.
+3. `context-pack.md`: For Testing Patterns and the **Relevant Flows** links. Follow those links into `.context/flows/*` for flow detail (Entry Points, Core Path, Data Touchpoints, Integrations, Tests).
 
 ### Step 2: Analysis & Dependency Mapping
 - Analyze each task in `blueprint.md`.
-- Identify the data touchpoints and integrations that require verification.
+- Identify the data touchpoints and integrations that require verification by reading the **Data Touchpoints** and **Integrations** sections of the flow files linked under Relevant Flows in `context-pack.md`.
 - Determine which existing test suites are impacted and where new suites are needed.
 
 ### Step 3: Design the Test Matrix
@@ -35,7 +35,7 @@ Read the following artifacts from `.aforge/specs/[STORY-ID]/`:
 - Follow the strategies in `./references/qa-best-practices.md`.
 
 ### Step 4: Define Regression Targets
-- Based on `context-pack.md`, identify which business flows might be indirectly impacted.
+- Identify which business flows might be indirectly impacted by reading the flow files linked under **Relevant Flows** in `context-pack.md`.
 - Explicitly list these as regression checks in the test plan.
 
 ### Step 5: Persist the Test Plan

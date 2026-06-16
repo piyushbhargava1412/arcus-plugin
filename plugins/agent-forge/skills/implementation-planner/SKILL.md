@@ -19,11 +19,11 @@ Acts as the **Tech Lead** to bridge the gap between requirements and execution. 
 ### Step 1: Input Analysis
 Gather and read the following requirements artifacts located in `.aforge/specs/[STORY-ID]/`:
 1. `story.md`: The original User Story / Requirements.
-2. `context-pack.md`: The repository subset relevant to the story.
+2. `context-pack.md`: The repository subset relevant to the story. Follow its **Relevant Flows** links into `.context/flows/*` for flow detail (Entry Points, Core Path, Data Touchpoints, Integrations, Tests).
 3. `assumptions.md`: The technical decisions and grounded choices.
 
 ### Step 2: Design the Approach
-- Map out the **Impacted Files**. Identify which existing files need modification and which new files are required.
+- Map out the **Impacted Files**. Identify which existing files need modification and which new files are required, drawing on the Entry Points, Core Path, and Scope sections of the flow files linked under Relevant Flows in `context-pack.md`.
 - Identify the core design patterns to be applied (e.g., matching existing repository patterns).
 - Synthesize the "How" – explain the logic flow from entry point to data persistence.
 

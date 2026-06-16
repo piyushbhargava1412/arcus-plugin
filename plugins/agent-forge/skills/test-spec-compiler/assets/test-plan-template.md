@@ -23,7 +23,7 @@
 [Scenarios for timeouts, 4xx/5xx responses, mapped to Task IDs.]
 
 ### 4. Regression / Integration
-[Existing flows from context-pack.md that must remain green.]
+[Existing flows that must remain green — from the flows linked in context-pack.md's Relevant Flows section.]
 
 ## Test Implementation Assets
 - **Test Framework**: [e.g. JUnit 5 / Mockito]
