@@ -17,6 +17,9 @@ Create or refresh:
 ## Constraints
 
 - Base all outputs on actual repository evidence only — no assumptions or inference.
+- Ingest **all non-ignored relevant evidence** — not just source code, but infrastructure, scripts,
+  CI/CD workflows, tests, documentation, interface specs (OpenAPI/AsyncAPI/proto/GraphQL), and
+  deployment manifests. Honor root + nested `.gitignore` and any `.contextignore`/`.aforge-ignore`.
 - Follow the templates exactly. Do not generate free-form content.
 - Include the `context-meta` block with `verification-commit` and `generated-at` in both files.
 - Do not write any files outside `.context/`.

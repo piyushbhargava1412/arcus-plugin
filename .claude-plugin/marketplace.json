@@ -9,7 +9,7 @@
     {
       "name": "agent-forge",
       "source": "./plugins/agent-forge",
-      "description": "Spec → Code + Pull Request pipeline plus a one-time repository context builder. Bundles two orchestrator meta-skills (afk-skill-router, context-builder-orchestrator) and their supporting sub-skills, helper scripts, and a session bootstrap hook.",
+      "description": "Spec → Code + Pull Request pipeline plus a one-shot repository agentifier. Bundles two orchestrator meta-skills (afk-skill-router, repo-agentifier) and their supporting sub-skills, helper scripts, and a session bootstrap hook.",
       "author": {
         "name": "Krill"
       },

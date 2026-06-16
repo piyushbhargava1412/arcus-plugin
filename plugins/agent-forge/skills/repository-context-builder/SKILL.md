@@ -2,7 +2,7 @@
 name: repository-context-builder
 description: Build or refresh baseline repository context by analyzing structure and generating repo_scope and repo_map artifacts. Use when user says "build shared repository context", "update the context", or "refresh the context" or "sync the repo context".
 metadata:
-   version: "1.0.0"
+   version: "1.1.0"
    team: krill
    type:
       - agents
@@ -27,8 +27,13 @@ Build or refresh baseline repository context by analyzing repository structure a
 
 ### Step 2: Discovery & Analysis
 1. **Apply Ignore Rules**:
-   - Honor `.gitignore` if present.
+   - Honor `.gitignore` if present, including **nested** `.gitignore` files in subdirectories.
+   - Honor an optional repository-level context-ignore file if present: `.contextignore`
+     (preferred) or `.aforge-ignore` (alias). Treat its entries with the same glob semantics as
+     `.gitignore`.
    - Exclude build output, generated sources, vendor, cache, and IDE folders (e.g., `build/`, `target/`, `node_modules/`, `.gradle/`, `dist/`, `__pycache__/`, `.idea/`).
+   - **Scan everything else that is not ignored** — the goal is full repository coverage of all
+     relevant artifacts, not just source code.
 
 2. **Traverse All Non-Ignored Areas** — explicitly scan each of the following:
 
@@ -75,6 +80,25 @@ Build or refresh baseline repository context by analyzing repository structure a
    - Architecture Decision Records: `docs/decisions/`, `docs/adr/`, `adr/`, any `*.md` containing the ADR title pattern (e.g., `0001-*.md`)
    - `CHANGELOG.md`, `CONTRIBUTING.md`, `ARCHITECTURE.md`
 
+   **Interface Contracts & Specs**
+   - OpenAPI / Swagger: `openapi.{yml,yaml,json}`, `swagger.{yml,yaml,json}`, `**/openapi/**`, `**/api/**/*.{yml,yaml}`
+   - AsyncAPI: `asyncapi.{yml,yaml,json}`
+   - Protocol Buffers / gRPC: `**/*.proto`
+   - GraphQL: `**/*.graphql`, `**/*.gql`, `schema.graphql`
+   - Avro / JSON Schema: `**/*.avsc`, `**/*.schema.json`
+
+   **Deployment Manifests**
+   - Kubernetes: `**/*.yaml` / `**/*.yml` containing `kind:` + `apiVersion:`, `k8s/`, `manifests/`, `deploy/`
+   - Helm: `Chart.yaml`, `values.yaml`, `templates/` under a chart directory
+   - Kustomize: `kustomization.{yml,yaml}`, `overlays/`, `base/`
+   - Serverless: `serverless.yml`, `sam-template.{yml,yaml}`, `template.{yml,yaml}` (SAM/CloudFormation)
+
+   **Anything Else Relevant (catch-all)**
+   - Any other non-ignored file materially relevant to building, running, configuring, deploying,
+     testing, securing, or documenting the system (e.g., `.editorconfig`, lint/format configs,
+     feature flags, `.env.example`, license/compliance files). When in doubt and the file is not
+     ignored, include it as evidence.
+
 3. **Identify Key Elements**:
    - Primary tech stack, all detected languages, frameworks, and IaC tools.
    - Dependency managers detected and their versions (from manifest files).
@@ -116,7 +140,7 @@ Generate or update the following artifacts following the specifications in `./re
 ## Validation Gates
 
 - [ ] Repository root resolved.
-- [ ] Ignore rules applied (no build/vendor folders scanned).
+- [ ] Ignore rules applied (root + nested `.gitignore`, optional `.contextignore`/`.aforge-ignore`; no build/vendor folders scanned).
 - [ ] Both `repo_scope.md` and `repo_map.md` are created or updated.
 - [ ] `context-meta` block is present in both files with a valid commit or `unknown`.
 - [ ] All source code languages detected (Java, TS, Python, Go, IaC, etc.).
@@ -125,4 +149,6 @@ Generate or update the following artifacts following the specifications in `./re
 - [ ] Scripts (`*.sh`, `Makefile`, etc.) surfaces catalogued.
 - [ ] All test layers identified (unit, integration, functional, acceptance, performance, shell-script).
 - [ ] Documentation (`README*`, `docs/`, ADRs) surfaced in `repo_map.md`.
+- [ ] Interface contracts & specs (OpenAPI/AsyncAPI/proto/GraphQL) surfaced where present.
+- [ ] Deployment manifests (k8s/Helm/Kustomize/Serverless) surfaced where present.
 - [ ] No speculative flows or business logic inferred.

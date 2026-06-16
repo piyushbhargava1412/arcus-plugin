@@ -7,7 +7,7 @@ Agent Forge turns a written user story into a reviewed, test-backed pull request
 **Away From Keyboard (AFK)**. It bundles two orchestrator meta-skills and their supporting
 sub-skills, helper scripts, and a session bootstrap hook into a single versioned plugin.
 
-- **`context-builder-orchestrator`** — generates a one-time repository context snapshot.
+- **`repo-agentifier`** — scans the repo to build the `.context/` snapshot, then generates `AGENTS.md` + `CLAUDE.md` to make it agent-ready.
 - **`afk-skill-router`** — orchestrates the full Spec → Code → Pull Request pipeline.
 
 This repository is also the **plugin marketplace** (`krill-afk`): one repo serves Copilot CLI,
@@ -199,8 +199,9 @@ Before running stories, generate the shared context snapshot. In any installed t
 generate context
 ```
 
-This invokes `context-builder-orchestrator`, which produces the `.context/` snapshot
-(`repo_scope.md`, `repo_map.md`, `flows/*.md`, `testing-patterns.md`). Refresh it after major
+This invokes `repo-agentifier`, which produces the `.context/` snapshot
+(`repo_scope.md`, `repo_map.md`, `flows/*.md`, `testing-patterns.md`) plus an `AGENTS.md`
+navigation index and a `CLAUDE.md` that imports it. Refresh it after major
 repository restructuring.
 
 ### 2. Run the AFK pipeline (per story)
