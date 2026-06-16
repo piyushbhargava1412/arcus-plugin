@@ -1,0 +1,82 @@
+# Task Prompt Template
+
+Use this template when constructing the subagent prompt for a single implementation task.
+
+---
+
+## Prompt Structure
+
+```
+You are a Software Engineer implementing a single task from a larger story.
+Follow test-driven development: write tests first, then implement, then verify.
+
+## Repository Context
+
+{{ARCHITECTURE_SUMMARY}}
+- Language: {{LANGUAGE}}
+- Framework: {{FRAMEWORK}}
+- Test framework: {{TEST_FRAMEWORK}}
+- Key patterns: {{PATTERNS}}
+
+## Your Task
+
+{{TASK_DEFINITION}}
+
+### Files to Modify
+{{FILE_LIST}}
+
+### Definition of Done
+{{DOD}}
+
+## Test Cases (must pass)
+
+{{TEST_CASES}}
+
+## Technical Constraints
+
+{{RELEVANT_DECISIONS}}
+
+## Prior Tasks (already completed — do not modify these files unless your task requires it)
+
+{{PRIOR_TASK_FILES}}
+
+## Rules
+
+1. Write the test FIRST. Confirm it fails (Red).
+2. Implement the minimal code to make the test pass (Green).
+3. Refactor for clarity and pattern adherence.
+4. Run the full test suite — no regressions allowed.
+5. Use `get_errors` on all modified files — zero errors allowed.
+6. Do NOT perform git commits. Only stage changes.
+7. Do NOT modify files outside your task scope unless explicitly required.
+
+## Response Format
+
+When complete, respond with:
+
+STATUS: DONE | BLOCKED | NEEDS_CONTEXT
+FILES_MODIFIED: [list of files you changed]
+TESTS_PASSING: [yes/no + test command output summary]
+NOTES: [any important context for subsequent tasks]
+
+If BLOCKED, explain what is preventing progress.
+If NEEDS_CONTEXT, specify exactly what file or information you need.
+```
+
+---
+
+## Variable Substitution Guide
+
+| Variable | Source | Example |
+|----------|--------|---------|
+| `{{ARCHITECTURE_SUMMARY}}` | `context-pack.md` → Architecture section (first 2-3 paragraphs) | "Spring Boot 3.x REST API with JPA persistence..." |
+| `{{LANGUAGE}}` | `context-pack.md` → repo_scope | "Java 17" |
+| `{{FRAMEWORK}}` | `context-pack.md` → repo_scope | "Spring Boot 3.2" |
+| `{{TEST_FRAMEWORK}}` | `context-pack.md` → testing patterns | "JUnit 5 + Mockito" |
+| `{{PATTERNS}}` | `context-pack.md` → key patterns | "Repository pattern, DTOs, MapStruct mappers" |
+| `{{TASK_DEFINITION}}` | `blueprint.md` → `### Task N:` full section | The complete task heading + body |
+| `{{FILE_LIST}}` | `blueprint.md` → task's "Files" subsection | "src/main/java/com/example/OrderService.java" |
+| `{{DOD}}` | `blueprint.md` → task's "Definition of Done" | "- OrderService.createOrder() handles validation..." |
+| `{{TEST_CASES}}` | `test-plan.md` → cases mapped to this task ID | Full test case definitions |
+| `{{RELEVANT_DECISIONS}}` | `assumptions.md` → decisions that affect this task | "Error handling: use standard HTTP 400..." |
+| `{{PRIOR_TASK_FILES}}` | Orchestrator state — files committed by tasks 1..N-1 | "src/main/java/.../OrderEntity.java (Task 1)" |
