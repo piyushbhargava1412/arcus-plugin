@@ -39,8 +39,14 @@ For fast-tracked decisions, write: **Decision**: [choice] — *Fast-tracked: [1-
 | High | Repo has clear precedent, choice is obvious | (none needed) |
 | Medium | Repo has partial precedent, reasonable inference | (none needed) |
 | Low | No repo precedent, purely judgement-based | ⚠️ LOW CONFIDENCE |
+| Zero-option | No precedent AND no safe default can be formed | `zero-option` (escalate) |
 
 Flag low-confidence decisions so downstream stages (implementation, review) know to handle them carefully.
+
+`zero-option` is an **escalation signal**, not a decision: it means no viable option could be
+generated. Still record the safest placeholder in `assumptions.md`, but list the item in the
+`NEEDS_INPUT` block so the orchestrator can ask the user. A `zero-option` blocker is treated as a
+hard blocker by the orchestrator regardless of interactive mode.
 
 ## Common Ambiguity Categories
 

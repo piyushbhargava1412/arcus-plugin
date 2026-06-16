@@ -5,9 +5,9 @@ description: >
   options grounded in repository patterns and selecting the best choice autonomously.
   Trigger on "finalize spec", "resolve ambiguities", or "ground the story".
 metadata:
-  version: "2.0.0"
-  team: krill
-  type:
+   version: "2.1.0"
+   team: krill
+   type:
     - agents
     - tech-lead
 ---
@@ -60,6 +60,11 @@ Each option MUST be grounded in evidence from `context-pack.md` — reference sp
 
 **Fast-track rule**: If the repository has an obvious, consistent pattern for a given ambiguity, fast-track the decision (skip the options table). See decision-heuristics.md for when this applies.
 
+**Zero-option case**: If you genuinely cannot construct even one viable resolution for an ambiguity
+(no repo precedent AND no reasonable default — resolving it would require fabricating business
+intent), do NOT invent one. Mark the ambiguity as `zero-option` and carry it into the escalation
+list (see Step 7). This is distinct from low-confidence, where a safe option does exist.
+
 ### Step 3: Decision Selection
 
 For each ambiguity, select the best option using the priority order defined in `./references/decision-heuristics.md`.
@@ -86,9 +91,40 @@ Fix any issues inline. Do not skip this step.
 
 Write the decisions to `.aforge/specs/[STORY-ID]/assumptions.md` using the template at `./assets/assumptions-template.md`.
 
+### Step 7: Emit Escalation Signal (return message)
+
+After writing the file, your return message to the orchestrator MUST end with a machine-readable
+escalation block so the orchestrator can decide whether to involve the user. List every ambiguity
+that is either `zero-option` or `⚠️ LOW CONFIDENCE` (omit fast-tracked / high / medium decisions):
+
+```
+NEEDS_INPUT:
+- id: <ambiguity number from Step 1>
+  reason: zero-option | low-confidence
+  gap: <one-line description of what is unresolved>
+  options: <"A: ...; B: ..." — or "none" for zero-option>
+  tentative: <the option you selected autonomously — or "none" for zero-option>
+  why: <one line: why confidence is low / why no option could be formed>
+```
+
+If there are no such ambiguities, emit exactly:
+
+```
+NEEDS_INPUT: none
+```
+
+This block is informational. You still resolve every ambiguity autonomously in `assumptions.md`
+(zero-option items get the safest available placeholder, flagged `⚠️ LOW CONFIDENCE`). The
+orchestrator — not this skill — decides whether to pause and ask the user.
+
 ## Constraints
 
-- **NO user interaction**: Do not ask questions. If an ambiguity is truly unresolvable (e.g., fundamental business logic with no repo precedent), select the safest option and flag it with `⚠️ LOW CONFIDENCE` in the rationale.
+- **No direct user interaction**: This skill runs as a one-shot subagent and cannot talk to the
+  user. Never block waiting for input. Always resolve every ambiguity autonomously: if an ambiguity
+  is truly unresolvable (fundamental business logic with no repo precedent), select the safest
+  available option and flag it `⚠️ LOW CONFIDENCE`, or mark it `zero-option` if no option can be
+  formed. Surface all such cases via the Step 7 `NEEDS_INPUT` block so the orchestrator can decide
+  whether to ask the user.
 - **Maximum 15 ambiguities**: If more than 15 gaps are found, the story is likely too large. Note this in the output and proceed with the top 15 by severity.
 - **Time-bound**: Do not spend excessive reasoning on trivial ambiguities. Use the fast-track rule from the decision heuristics.
 

@@ -6,7 +6,7 @@ description: >
   orchestrates the full pipeline (Init → Architect → TestGen → Code → Closure) without
   human intervention.
 metadata:
-  version: "2.0.0"
+  version: "2.1.0"
   team: krill
   type:
     - orchestrator
@@ -24,11 +24,20 @@ Activate this orchestration pipeline when the user's message matches ANY of:
 - "run afk on ..."
 - "forge ..."
 
-When activated, follow the **Execution Pipeline** below. Do NOT ask clarifying questions. Execute autonomously.
+When activated, follow the **Execution Pipeline** below. Execute autonomously by default. The only
+point that may pause for the user is the Stage 1 **Escalation Gate** (see Stage 1), and only per its
+rules.
+
+**Interactive mode flag**: Set `INTERACTIVE = true` if the user's message contains "interactive",
+"guided", "ask me", or "--interactive". Otherwise `INTERACTIVE = false` (default). An explicit unattended
+phrase ("afk", "don't ask me", "--afk") forces `INTERACTIVE = false`.
 
 ## Key Principles
 
-- **No Human Gates**: Execute all stages autonomously. Never ask questions. Resolve ambiguities using existing skills.
+- **Minimal Human Gates**: Execute all stages autonomously by default. The only interruption point
+  is the Stage 1 **Escalation Gate**: a `zero-option` blocker always asks the user; a
+  `low-confidence` item asks only when `INTERACTIVE = true`. All other ambiguities are resolved
+  autonomously by the sub-skills.
 - **Stdout Discipline**: Your chat output is limited to milestone lines only.
 - **Deterministic Ops via Scripts**: Use helper scripts for git operations, never reason about branch names or commit messages yourself.
 - **Subagent Isolation**: Each reasoning-heavy stage dispatches a fresh subagent with scoped context. This prevents token accumulation across stages. You (the orchestrator) stay lean — dispatch, read response, update state.
@@ -46,6 +55,10 @@ Your chat response MUST contain ONLY these milestone lines (maximum):
 ```
 
 **FORBIDDEN in chat**: Narrative, explanations, "Let me...", "Now I'll...", "Perfect!", step-by-step commentary.
+
+**Exception**: When the Stage 1 Escalation Gate fires, you MAY emit a single clarification block
+(headed `[Architect] Needs input: <N> question(s)`) listing the blocking ambiguities and wait for
+the user's answers. This is the only permitted interactive output.
 
 ## Helper Scripts
 
@@ -91,6 +104,18 @@ first that exists: `.aforge/bin/` (preferred, staged by the plugin) → `$AFORGE
    - **Description**: "Architect: spec-finalizer"
    - **Model**: Resolve complexity `heavy` via the `agent-forge:model-strategy` skill
    - Verify output file exists after subagent returns.
+   - **If `.aforge/specs/<STORY_ID>/clarifications.md` already exists** (resumed run): inject it as an
+     additional input to spec-finalizer so prior answers are reused and the gate does not re-ask.
+   - **Escalation Gate** — parse the `NEEDS_INPUT` block from the subagent's return message:
+     - If `NEEDS_INPUT: none`, proceed to step 3.
+     - Build the **askable set**: every `zero-option` item (always), plus every `low-confidence`
+       item **only if `INTERACTIVE = true`**. If the askable set is empty, proceed to step 3.
+     - Otherwise **pause and ask once**: emit `[Architect] Needs input: <N> question(s)` followed by
+       the askable items (each: gap, generated options, and the agent's tentative pick). Wait for the
+       user's answers.
+     - Persist the answers to `.aforge/specs/<STORY_ID>/clarifications.md`.
+     - **Re-dispatch spec-finalizer once**, injecting `clarifications.md` as authoritative input
+       (user answers override the tentative picks). Regenerate `assumptions.md`.
    - Run `.aforge/bin/checkpoint.sh complete <STORY_ID> spec_finalizer`.
 3. **Create implementation plan** — Dispatch a subagent:
    - **Prompt**: "Read and follow the `agent-forge:implementation-planner` skill. Story ID: `<STORY_ID>`. Produce `.aforge/specs/<STORY_ID>/blueprint.md`."
@@ -143,6 +168,8 @@ If `session-checkpoint.json` has stages already marked `true`, skip them:
 - Resume from that stage. The stage keys in order are:
   `init` → `context_pack` → `spec_finalizer` → `blueprint` → `test_plan` → `task_1`..`task_N` → `pr`
 - Read the existing artifacts (blueprint.md, test-plan.md, etc.) to understand context from prior stages.
+- If `.aforge/specs/<STORY_ID>/clarifications.md` exists, reuse it when re-running spec-finalizer — do
+  NOT re-ask the user questions that were already answered.
 - For task resumption: if `task_2` is `false` but `task_1` is `true`, start from Task 2 in the blueprint.
 
 ## Error Handling

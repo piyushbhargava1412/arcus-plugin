@@ -24,6 +24,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   deployment manifests (k8s/Helm/Kustomize/Serverless), plus a catch-all for any
   other relevant non-ignored file. Ignore handling now honors nested `.gitignore`
   files and an optional `.contextignore` / `.aforge-ignore`.
+- **Dual-mode Architect stage** in `afk-skill-router` (version `2.1.0`): autonomous
+  by default, but Stage 1 can now pause to ask the user. `spec-finalizer`
+  (version `2.1.0`) emits a `NEEDS_INPUT` escalation block distinguishing
+  `zero-option` blockers (always escalated) from `low-confidence` items (escalated
+  only in interactive mode, opt-in via "interactive"/"ask me"). User answers persist
+  to `clarifications.md` and are reused on resume.
 
 ## [0.1.0] - 2025-06-09
 
