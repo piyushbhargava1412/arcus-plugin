@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
+  "name": "krill-afk",
+  "owner": {
+    "name": "Krill"
+  },
+  "description": "Agent Forge Kit (AFK) — Marketplace for Spec Driven Development tools and skills compatible with GitHub Copilot, Claude Code, and VS Code.",
+  "plugins": [
+    {
+      "name": "agent-forge",
+      "source": "./plugins/agent-forge",
+      "description": "Spec → Code + Pull Request pipeline plus a one-time repository context builder. Bundles two orchestrator meta-skills (afk-skill-router, context-builder-orchestrator) and their supporting sub-skills, helper scripts, and a session bootstrap hook.",
+      "author": {
+        "name": "Krill"
+      },
+      "homepage": "https://github.com/piyushbhargava1412/agent-forge-plugin",
+      "repository": "https://github.com/piyushbhargava1412/agent-forge-plugin",
+      "license": "MIT",
+      "category": "productivity",
+      "keywords": [
+        "afk",
+        "agent-forge",
+        "spec-driven-development",
+        "sdd",
+        "spec-to-code",
+        "sdlc",
+        "agentic-ai",
+        "tdd"
+      ]
+    }
+  ]
+}

@@ -8,6 +8,7 @@ set -e
 
 # Detect the source directory of the forge framework
 FORGE_DIR=$(cd "$(dirname "$0")/.." && pwd)
+PLUGIN_DIR="$FORGE_DIR/plugins/agent-forge"
 
 if [ -z "$1" ]; then
     echo "[ERROR] Missing target repository path."
@@ -31,7 +32,7 @@ mkdir -p "$TARGET_REPO/.aforge/specs"
 
 # 2. Sync Skills
 echo "📦 Syncing declarative skills..."
-cp -R "$FORGE_DIR/skills/"* "$TARGET_REPO/.github/skills/"
+cp -R "$PLUGIN_DIR/skills/"* "$TARGET_REPO/.github/skills/"
 
 # 2a. Create .claude/skills as a symlink to .github/skills (supports Claude harness)
 echo "🔗 Linking .github/skills -> .claude/skills..."
@@ -43,8 +44,8 @@ echo "   Symlink created: .github/skills -> .claude/skills"
 echo "⚙️ Installing helper scripts (.github/scripts/)..."
 HELPER_SCRIPTS="extract_story_id.sh branch.sh commit.sh pr.sh checkpoint.sh"
 for script in $HELPER_SCRIPTS; do
-    if [ -f "$FORGE_DIR/scripts/$script" ]; then
-        cp "$FORGE_DIR/scripts/$script" "$TARGET_REPO/.github/scripts/$script"
+    if [ -f "$PLUGIN_DIR/scripts/$script" ]; then
+        cp "$PLUGIN_DIR/scripts/$script" "$TARGET_REPO/.github/scripts/$script"
         chmod +x "$TARGET_REPO/.github/scripts/$script"
         echo "   Installed $script"
     else
