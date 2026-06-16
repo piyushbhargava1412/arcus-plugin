@@ -22,5 +22,5 @@ Consult the `Testing Patterns` and `Relevant Flows` sections of the `context-pac
 - **Test Structures**: Use existing test classes identified in the pack as templates for new tests.
 
 ## 4. Automation Focus
-The test plan must be **executable**. Do not include "Manual verification" steps. Every test case must be map-able to a script or test file that the `atomic-task-runner` can run automatically.
+The test plan must be **executable**. Do not include "Manual verification" steps. Every test case must be map-able to a script or test file that the `subagent-task-dispatcher` can run automatically.
 

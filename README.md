@@ -134,16 +134,29 @@ plugin manager UI) refreshes it everywhere.
 
 ### Claude Code / Copilot CLI
 
-```sh
-# inside a session — manage/disable/uninstall individual plugins:
-/plugin
+The fastest way is the direct command:
 
-# or remove the whole marketplace (this also uninstalls its plugins):
-claude plugin marketplace remove krill-afk
+```sh
+/plugin uninstall agent-forge@krill-afk
 ```
 
-Removing the marketplace from its last remaining scope uninstalls any plugins installed from
-it and clears the cache. To keep the plugin but refresh it, use `marketplace update` instead.
+Or via the UI: run `/plugin`, go to the **Installed** tab, and press **Enter** on
+`agent-forge` to open its detail view — enable / disable / **uninstall** live there. (The
+list view itself only shows disable, so you have to open the plugin to fully remove it.) Run
+`/reload-plugins` afterward to apply the change without restarting.
+
+To remove the whole marketplace (this also uninstalls every plugin installed from it):
+
+```sh
+/plugin marketplace remove krill-afk
+```
+
+CLI equivalents work outside a session too:
+
+```sh
+claude plugin uninstall agent-forge@krill-afk
+claude plugin marketplace remove krill-afk
+```
 
 ### Workspace cleanup
 

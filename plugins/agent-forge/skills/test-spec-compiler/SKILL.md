@@ -29,7 +29,7 @@ Read the following artifacts from `.aforge/specs/[STORY-ID]/`:
 
 ### Step 3: Design the Test Matrix
 - Categorize tests into **Functional**, **Edge Case**, and **Error Handling**.
-- **Crucial**: Map every test case to a specific **Task ID** from the `blueprint.md`. This allows the `atomic-task-runner` to know exactly which tests to implement in each iteration.
+- **Crucial**: Map every test case to a specific **Task ID** from the `blueprint.md`. This allows the `subagent-task-dispatcher` to know exactly which tests to implement in each iteration.
 - **Complexity Classification**: For each test case, assess its difficulty and assign a `complexity` level (`heavy`, `medium`, or `light`). Use the guardrail heuristics in the `agent-forge:model-strategy` skill (Classification Guardrails → Test Complexity section). Do NOT use model names — only difficulty levels.
 - **Alignment**: Ensure all test designs align with the **Testing Patterns** identified in the `context-pack.md`.
 - Follow the strategies in `./references/qa-best-practices.md`.

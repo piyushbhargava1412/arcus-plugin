@@ -31,7 +31,7 @@
 - **Mocking Strategy**: [e.g. Mock external Payment API]
 
 ---
-*Next Step: Invoke `atomic-task-runner` to begin iterative development.*
+*Next Step: Invoke `subagent-task-dispatcher` to begin iterative development.*
 
 
 
