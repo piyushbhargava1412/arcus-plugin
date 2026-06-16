@@ -52,8 +52,7 @@ Your chat response MUST contain ONLY these milestone lines (maximum):
 Call these via shell for deterministic operations. The session bootstrap hook stages them into
 the active workspace at `.aforge/bin/`. Resolve the script directory in this order and use the
 first that exists: `.aforge/bin/` (preferred, staged by the plugin) → `$AFORGE_HOME/scripts/`
-(read `AFORGE_HOME` from `.aforge/env`) → `.github/scripts/` (legacy vendored install). The table
-below uses the preferred `.aforge/bin/` path.
+(read `AFORGE_HOME` from `.aforge/env`). The table below uses the preferred `.aforge/bin/` path.
 
 | Script | Usage | Purpose |
 |--------|-------|---------|

@@ -22,7 +22,9 @@ Claude Code, and VS Code from the same unified plugin format.
   - [Claude Code](#claude-code)
   - [VS Code](#vs-code)
   - [IntelliJ / JetBrains](#intellij--jetbrains)
-  - [Legacy vendored install (air-gapped)](#legacy-vendored-install-air-gapped)
+- [Updating](#updating)
+- [Uninstalling](#uninstalling)
+- [Local development](#local-development)
 - [Usage](#usage)
 - [What gets produced](#what-gets-produced)
 - [How it works](#how-it-works)
@@ -87,17 +89,90 @@ IDE:
   available in every JetBrains project.
 - Or use the **Claude Code JetBrains plugin**, which shares the same plugin installation.
 
-### Legacy vendored install (air-gapped)
+---
 
-When you cannot use a marketplace (offline / vendored workflow), copy the skills and helper
-scripts directly into a target repository:
+## Updating
+
+Installed plugins are a **copied snapshot** in each tool's cache — they do not live-track
+this repo. Pulling the latest is a two-step, user-initiated action: refresh the marketplace
+catalog, then update the plugin. Changes take effect in the **next session** (the
+`SessionStart` hook re-stages `.aforge/bin/` fresh each time).
+
+### Claude Code
 
 ```sh
-./scripts/install.sh /path/to/target-repo
+# inside a session:
+/plugin marketplace update krill-afk     # refresh the catalog from GitHub
+/plugin update agent-forge               # re-copy the latest into the cache
+
+# or non-interactively:
+claude plugin marketplace update krill-afk
 ```
 
-This stages skills into `.github/skills/`, helper scripts into `.github/scripts/`, links
-`.claude/skills → .github/skills`, and creates the `.aforge/` workspace.
+### GitHub Copilot CLI
+
+```sh
+# inside a session:
+/plugin marketplace update krill-afk
+/plugin update agent-forge
+```
+
+### VS Code
+
+VS Code shares the Claude/Copilot plugin cache, so updating through either CLI (or the
+plugin manager UI) refreshes it everywhere.
+
+> **Version bumping is what triggers an update.** A tool compares the cached version against
+> the source's `version` in [plugins/agent-forge/.claude-plugin/plugin.json](plugins/agent-forge/.claude-plugin/plugin.json). If that field is unchanged, the
+> update is treated as a no-op and the cached copy is kept. On every release: bump
+> `version`, add a `CHANGELOG.md` entry, commit, and tag. (Do not also set `version` in the
+> marketplace entry — `plugin.json` wins silently and a stale duplicate can mask it.)
+
+---
+
+## Uninstalling
+
+### Claude Code / Copilot CLI
+
+```sh
+# inside a session — manage/disable/uninstall individual plugins:
+/plugin
+
+# or remove the whole marketplace (this also uninstalls its plugins):
+claude plugin marketplace remove krill-afk
+```
+
+Removing the marketplace from its last remaining scope uninstalls any plugins installed from
+it and clears the cache. To keep the plugin but refresh it, use `marketplace update` instead.
+
+### Workspace cleanup
+
+The plugin stages a per-repo `.aforge/` workspace (helper scripts, specs, checkpoints) in each
+repository you ran it in. It is git-ignored and safe to delete:
+
+```sh
+rm -rf .aforge
+```
+
+---
+
+## Local development
+
+When iterating on skills, the copy-to-cache model is slow (every change needs a publish +
+re-pull). For local dev, load the plugin **directly from your working tree** instead — no
+marketplace, no install, no cache copy:
+
+```sh
+claude --plugin-dir ./plugins/agent-forge
+```
+
+- Edits to `SKILL.md` files and scripts are picked up with `/reload-plugins` — no restart.
+- If a plugin loaded via `--plugin-dir` shares a name with an installed one, the **local copy
+  takes precedence** for that session, so you can test changes without uninstalling first.
+- `claude plugin validate ./plugins/agent-forge` checks the manifest, skills, and
+  `hooks/hooks.json` before you publish.
+
+Only bump the version and push when you're ready to cut a release that installed users will pull.
 
 ---
 
@@ -193,7 +268,6 @@ plugins/agent-forge/
   hooks/hooks.json                       # SessionStart bootstrap hook
   scripts/                               # Helper scripts + bootstrap.sh
   skills/                                # All orchestrator + sub-skills
-scripts/install.sh                       # Legacy vendored installer (fallback)
 CHANGELOG.md
 LICENSE
 ```

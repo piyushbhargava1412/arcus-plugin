@@ -29,7 +29,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `AFORGE_HOME` via `.aforge/env`.
 - Cross-tool install support for GitHub Copilot CLI, Claude Code, and VS Code; plus
   IntelliJ/JetBrains usage via the Claude Code/CLI terminal path.
-- Legacy vendored installer (`scripts/install.sh`) retained as an air-gapped fallback.
 
 ### Changed
 
