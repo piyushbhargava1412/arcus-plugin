@@ -1,16 +1,18 @@
-# Agent Forge
+# ARCUS
 
-> **Agent Forge Kit (AFK)** — a Spec → Code → Pull Request agentic SDLC factory, delivered as
-> an installable agent-skills **plugin** for GitHub Copilot, Claude Code, and VS Code.
+> **ARCUS (Any Repository Can Use Spec-driven development)** — a Spec → Code → Pull Request agentic
+> SDLC factory, delivered as an installable agent-skills **plugin** for GitHub Copilot, Claude Code,
+> and VS Code.
 
-Agent Forge turns a written user story into a reviewed, test-backed pull request, largely
-**Away From Keyboard (AFK)**. It bundles two orchestrator meta-skills and their supporting
-sub-skills, helper scripts, and a session bootstrap hook into a single versioned plugin.
+ARCUS turns a written user story into a reviewed, test-backed pull request through human-gated
+SDLC stages, with an opt-in fully-autonomous **Away From Keyboard (AFK)** mode. It bundles two
+orchestrator meta-skills and their supporting sub-skills, helper scripts, and a session bootstrap
+hook into a single versioned plugin.
 
 - **`repo-agentifier`** — scans the repo to build the `.context/` snapshot, then generates `AGENTS.md` + `CLAUDE.md` to make it agent-ready.
-- **`afk-skill-router`** — orchestrates the Spec → Code → Pull Request pipeline as human-gated stages (with an opt-in fully-autonomous `--afk` mode).
+- **`arcus-controller`** — orchestrates the Spec → Code → Pull Request pipeline as human-gated stages (with an opt-in fully-autonomous `--afk` mode).
 
-This repository is also the **plugin marketplace** (`krill-afk`): one repo serves Copilot CLI,
+This repository is also the **plugin marketplace** (`arcus`): one repo serves Copilot CLI,
 Claude Code, and VS Code from the same unified plugin format.
 
 ---
@@ -49,19 +51,19 @@ All three primary tools share the same plugin format. Pick your tool below.
 ```sh
 copilot
 # inside the session:
-/plugin marketplace add piyushbhargava1412/agent-forge-plugin
-/plugin install agent-forge@krill-afk
+/plugin marketplace add piyushbhargava1412/arcus-plugin
+/plugin install arcus-plugin@arcus
 ```
 
-Installed plugins live under `~/.copilot/installed-plugins/krill-afk/agent-forge/`.
+Installed plugins live under `~/.copilot/installed-plugins/arcus/arcus-plugin/`.
 
 ### Claude Code
 
 ```sh
 claude
 # inside the session:
-/plugin marketplace add piyushbhargava1412/agent-forge-plugin
-/plugin install agent-forge@krill-afk
+/plugin marketplace add piyushbhargava1412/arcus-plugin
+/plugin install arcus-plugin@arcus
 ```
 
 ### VS Code
@@ -70,18 +72,18 @@ Add the marketplace to your settings (`settings.json`):
 
 ```jsonc
 {
-  "chat.plugins.marketplaces": ["piyushbhargava1412/agent-forge-plugin"]
+  "chat.plugins.marketplaces": ["piyushbhargava1412/arcus-plugin"]
 }
 ```
 
-Then open the Command Palette → **Chat: Install Plugin** and choose `agent-forge`.
+Then open the Command Palette → **Chat: Install Plugin** and choose `arcus-plugin`.
 Alternatively, run **Chat: Install Plugin From Source** and paste the repository URL
-`https://github.com/piyushbhargava1412/agent-forge-plugin`. VS Code also auto-discovers
+`https://github.com/piyushbhargava1412/arcus-plugin`. VS Code also auto-discovers
 plugins already installed through the Copilot CLI.
 
 ### IntelliJ / JetBrains
 
-JetBrains IDEs do not load agent skills natively, but you can use Agent Forge from within the
+JetBrains IDEs do not load agent skills natively, but you can use ARCUS from within the
 IDE:
 
 - Open the IDE's integrated terminal and run **Claude Code** or **Copilot CLI** there — both
@@ -96,25 +98,25 @@ IDE:
 Installed plugins are a **copied snapshot** in each tool's cache — they do not live-track
 this repo. Pulling the latest is a two-step, user-initiated action: refresh the marketplace
 catalog, then update the plugin. Changes take effect in the **next session** (the
-`SessionStart` hook re-stages `.aforge/bin/` fresh each time).
+`SessionStart` hook re-stages `.arcus/bin/` fresh each time).
 
 ### Claude Code
 
 ```sh
 # inside a session:
-/plugin marketplace update krill-afk     # refresh the catalog from GitHub
-/plugin update agent-forge               # re-copy the latest into the cache
+/plugin marketplace update arcus     # refresh the catalog from GitHub
+/plugin update arcus-plugin          # re-copy the latest into the cache
 
 # or non-interactively:
-claude plugin marketplace update krill-afk
+claude plugin marketplace update arcus
 ```
 
 ### GitHub Copilot CLI
 
 ```sh
 # inside a session:
-/plugin marketplace update krill-afk
-/plugin update agent-forge
+/plugin marketplace update arcus
+/plugin update arcus-plugin
 ```
 
 ### VS Code
@@ -123,7 +125,7 @@ VS Code shares the Claude/Copilot plugin cache, so updating through either CLI (
 plugin manager UI) refreshes it everywhere.
 
 > **Version bumping is what triggers an update.** A tool compares the cached version against
-> the source's `version` in [plugins/agent-forge/.claude-plugin/plugin.json](plugins/agent-forge/.claude-plugin/plugin.json). If that field is unchanged, the
+> the source's `version` in [plugins/arcus/.claude-plugin/plugin.json](plugins/arcus/.claude-plugin/plugin.json). If that field is unchanged, the
 > update is treated as a no-op and the cached copy is kept. On every release: bump
 > `version`, add a `CHANGELOG.md` entry, commit, and tag. (Do not also set `version` in the
 > marketplace entry — `plugin.json` wins silently and a stale duplicate can mask it.)
@@ -137,34 +139,34 @@ plugin manager UI) refreshes it everywhere.
 The fastest way is the direct command:
 
 ```sh
-/plugin uninstall agent-forge@krill-afk
+/plugin uninstall arcus-plugin@arcus
 ```
 
 Or via the UI: run `/plugin`, go to the **Installed** tab, and press **Enter** on
-`agent-forge` to open its detail view — enable / disable / **uninstall** live there. (The
+`arcus-plugin` to open its detail view — enable / disable / **uninstall** live there. (The
 list view itself only shows disable, so you have to open the plugin to fully remove it.) Run
 `/reload-plugins` afterward to apply the change without restarting.
 
 To remove the whole marketplace (this also uninstalls every plugin installed from it):
 
 ```sh
-/plugin marketplace remove krill-afk
+/plugin marketplace remove arcus
 ```
 
 CLI equivalents work outside a session too:
 
 ```sh
-claude plugin uninstall agent-forge@krill-afk
-claude plugin marketplace remove krill-afk
+claude plugin uninstall arcus-plugin@arcus
+claude plugin marketplace remove arcus
 ```
 
 ### Workspace cleanup
 
-The plugin stages a per-repo `.aforge/` workspace (helper scripts, specs, checkpoints) in each
+The plugin stages a per-repo `.arcus/` workspace (helper scripts, specs, checkpoints) in each
 repository you ran it in. It is git-ignored and safe to delete:
 
 ```sh
-rm -rf .aforge
+rm -rf .arcus
 ```
 
 ---
@@ -176,13 +178,13 @@ re-pull). For local dev, load the plugin **directly from your working tree** ins
 marketplace, no install, no cache copy:
 
 ```sh
-claude --plugin-dir ./plugins/agent-forge
+claude --plugin-dir ./plugins/arcus
 ```
 
 - Edits to `SKILL.md` files and scripts are picked up with `/reload-plugins` — no restart.
 - If a plugin loaded via `--plugin-dir` shares a name with an installed one, the **local copy
   takes precedence** for that session, so you can test changes without uninstalling first.
-- `claude plugin validate ./plugins/agent-forge` checks the manifest, skills, and
+- `claude plugin validate ./plugins/arcus` checks the manifest, skills, and
   `hooks/hooks.json` before you publish.
 
 Only bump the version and push when you're ready to cut a release that installed users will pull.
@@ -244,7 +246,7 @@ claude --dangerously-skip-permissions "forge path/to/story.md"
 
 ## What gets produced
 
-Each story gets a working area under `.aforge/specs/[STORY-ID]/` in the target repo:
+Each story gets a working area under `.arcus/specs/[STORY-ID]/` in the target repo:
 
 | Artifact                | Purpose                                              |
 | ----------------------- | ---------------------------------------------------- |
@@ -258,7 +260,7 @@ Each story gets a working area under `.aforge/specs/[STORY-ID]/` in the target r
 | `review.md`             | Holistic code-review report + verdict                |
 | `PR_DESCRIPTION.md`     | Final PR body                                        |
 
-Treat `.aforge/` as ephemeral working data — safe to inspect, commit, or discard.
+Treat `.arcus/` as ephemeral working data — safe to inspect, commit, or discard.
 
 ---
 
@@ -266,19 +268,19 @@ Treat `.aforge/` as ephemeral working data — safe to inspect, commit, or disca
 
 On the first agent session after install, a **`SessionStart` hook** runs
 `scripts/bootstrap.sh`, which stages the deterministic helper scripts (branch, commit, PR,
-checkpoint, story-id extraction) into the workspace at `.aforge/bin/` and records `AFORGE_HOME`
-in `.aforge/env`. Skills then call these scripts from `.aforge/bin/`.
+checkpoint, story-id extraction) into the workspace at `.arcus/bin/` and records `ARCUS_HOME`
+in `.arcus/env`. Skills then call these scripts from `.arcus/bin/`.
 
 Because plugins are copied into a cache directory on install, all skills reference their own
 bundled resources with **relative paths** (`./assets/...`, `./references/...`) and reference
-other skills **by name** (`agent-forge:<skill>`), so they remain portable regardless of the
+other skills **by name** (`arcus:<skill>`), so they remain portable regardless of the
 install location.
 
 ---
 
 ## Versioning & releases
 
-- The plugin version lives in `plugins/agent-forge/.claude-plugin/plugin.json` (`version`)
+- The plugin version lives in `plugins/arcus/.claude-plugin/plugin.json` (`version`)
   and follows [Semantic Versioning](https://semver.org/).
 - Changes are recorded in [CHANGELOG.md](CHANGELOG.md)
   ([Keep a Changelog](https://keepachangelog.com/) format).
@@ -287,15 +289,15 @@ Release flow:
 
 1. Bump `version` in `plugin.json` and update `CHANGELOG.md`.
 2. Tag the commit: `git tag v0.1.0 && git push --tags`.
-3. Consumers run `/plugin marketplace update krill-afk` to pull the new version.
+3. Consumers run `/plugin marketplace update arcus` to pull the new version.
 
 ---
 
 ## Repository layout
 
 ```text
-.claude-plugin/marketplace.json          # Marketplace catalog (krill-afk)
-plugins/agent-forge/
+.claude-plugin/marketplace.json          # Marketplace catalog (arcus)
+plugins/arcus/
   .claude-plugin/plugin.json             # Plugin manifest (version authority)
   hooks/hooks.json                       # SessionStart bootstrap hook
   scripts/                               # Helper scripts + bootstrap.sh

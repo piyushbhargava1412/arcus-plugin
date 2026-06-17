@@ -1,15 +1,26 @@
 # Changelog
 
-All notable changes to the **agent-forge** plugin are documented in this file.
+All notable changes to the **ARCUS** plugin are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-06-17
+
 ### Changed
 
-- **`afk-skill-router` (version `3.0.0`) is now a human-gated, state-driven orchestrator.** The
+- **Rebranded the plugin from `agent-forge` to ARCUS (Any Repository Can Use Spec-driven
+  development).** The marketplace is named `arcus` and the plugin is published as `arcus-plugin`; the orchestrator
+  meta-skill `afk-skill-router` is renamed `arcus-controller`. The per-repo workspace moved from
+  `.aforge/` to `.arcus/` (with `ARCUS_HOME` / `.arcus/env`), the ignore file from `.aforge-ignore`
+  to `.arcus-ignore`, and the story branch prefix from `agent-forge/<id>` to `arcus/<id>`. Install
+  with `/plugin install arcus-plugin@arcus`. The **AFK (Away From Keyboard)** autonomous mode, its
+  triggers (`--afk`, `run afk on …`), and the `[AFK]` milestone markers are unchanged. Existing
+  `.aforge/` workspaces and `agent-forge/*` branches do not auto-migrate; in-flight stories restart
+  cleanly under the new paths.
+- **`arcus-controller` (version `3.0.0`) is now a human-gated, state-driven orchestrator.** The
   pipeline (Init → Brainstorm → Test Plan → Implementation → Code Review → Closure) runs one stage
   at a time and pauses at a handoff gate between stages; reply `yes` to proceed or `no` to pause and
   resume later (across sessions). Each stage is independently invocable
@@ -88,5 +99,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `agent-forge:<skill>` name form, and executed helper scripts resolve through
   `.aforge/bin/` (falling back to `AFORGE_HOME`).
 
-[Unreleased]: https://github.com/piyushbhargava1412/agent-forge-plugin/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/piyushbhargava1412/agent-forge-plugin/releases/tag/v0.1.0
+[Unreleased]: https://github.com/piyushbhargava1412/arcus-plugin/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/piyushbhargava1412/arcus-plugin/compare/v0.2.0...v0.4.0
+[0.2.0]: https://github.com/piyushbhargava1412/arcus-plugin/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/piyushbhargava1412/arcus-plugin/releases/tag/v0.1.0

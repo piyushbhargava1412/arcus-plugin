@@ -1,25 +1,24 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
-  "name": "krill-afk",
+  "name": "arcus",
   "owner": {
     "name": "Krill"
   },
-  "description": "Agent Forge Kit (AFK) — Marketplace for Spec Driven Development tools and skills compatible with GitHub Copilot, Claude Code, and VS Code.",
+  "description": "ARCUS (Any Repository Can Use Spec-driven development) — Marketplace for Spec Driven Development tools and skills compatible with GitHub Copilot, Claude Code, and VS Code.",
   "plugins": [
     {
-      "name": "agent-forge",
-      "source": "./plugins/agent-forge",
-      "description": "Spec → Code + Pull Request pipeline plus a one-shot repository agentifier. Bundles two orchestrator meta-skills (afk-skill-router, repo-agentifier) and their supporting sub-skills, helper scripts, and a session bootstrap hook.",
+      "name": "arcus-plugin",
+      "source": "./plugins/arcus",
+      "description": "Spec → Code + Pull Request pipeline plus a one-shot repository agentifier. Bundles two orchestrator meta-skills (arcus-controller, repo-agentifier) and their supporting sub-skills, helper scripts, and a session bootstrap hook.",
       "author": {
         "name": "Krill"
       },
-      "homepage": "https://github.com/piyushbhargava1412/agent-forge-plugin",
-      "repository": "https://github.com/piyushbhargava1412/agent-forge-plugin",
+      "homepage": "https://github.com/piyushbhargava1412/arcus-plugin",
+      "repository": "https://github.com/piyushbhargava1412/arcus-plugin",
       "license": "MIT",
       "category": "productivity",
       "keywords": [
-        "afk",
-        "agent-forge",
+        "arcus",
         "spec-driven-development",
         "sdd",
         "spec-to-code",
