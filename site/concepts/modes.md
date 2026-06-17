@@ -1,0 +1,1 @@
+# Gated vs AFK Mode
