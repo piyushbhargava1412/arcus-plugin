@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-06-17
+
+### Added
+
+- **`arcus-guide` skill (version `1.0.0`)** — Comprehensive help and onboarding assistant for ARCUS.
+  Provides context-aware guidance through progressive disclosure with 8 curated content modules:
+  welcome screen, getting started guide, command reference, pipeline explanation, mode selection
+  guide, artifacts guide, troubleshooting, and FAQ. Activates on natural language triggers like
+  "what is arcus?", "how do I use arcus?", "arcus help", "where am I?", "show me commands",
+  "explain the pipeline", "gated or afk?", "explain artifacts", and "troubleshooting". Features
+  intelligent context checking (setup status, pipeline position, active stories) to provide
+  situation-specific help. Read-only utility that doesn't modify state or interfere with workflows.
+
 ## [0.4.0] - 2026-06-17
 
 ### Changed
