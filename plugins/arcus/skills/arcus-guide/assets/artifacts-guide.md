@@ -220,7 +220,7 @@ ARCUS creates two main directory structures:
 
 ### `session-checkpoint.json`
 
-**Created by:** `branch-initializer` (Stage 0)
+**Created by:** `arcus-controller` (Stage 0)
 
 **Purpose:** Track pipeline state for resumability across sessions
 
@@ -257,7 +257,7 @@ ARCUS creates two main directory structures:
 
 ### `specs/[STORY-ID]/story.md`
 
-**Created by:** `branch-initializer` (Stage 0)
+**Created by:** `arcus-controller` (Stage 0)
 
 **Purpose:** Canonical copy of original story for reference
 

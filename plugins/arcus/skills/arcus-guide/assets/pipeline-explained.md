@@ -38,7 +38,7 @@ graph LR
 - Initializes `session-checkpoint.json` (pipeline state tracker)
 
 **Skills invoked:**
-- `branch-initializer`
+- `arcus-controller` (deterministic Stage 0 via helper scripts)
 
 **Artifacts created:**
 - `.arcus/specs/[STORY-ID]/story.md` (copy of original)

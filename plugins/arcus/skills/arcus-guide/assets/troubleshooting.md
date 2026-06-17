@@ -271,7 +271,7 @@ build shared repository context
 ```
 implement story.md
 ```
-This triggers `branch-initializer` which creates `.arcus/`.
+This triggers Stage 0 in `arcus-controller`, which creates `.arcus/`.
 
 **2. Check .gitignore:**
 ```bash
