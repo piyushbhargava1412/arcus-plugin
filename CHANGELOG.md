@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **`afk-skill-router` (version `3.0.0`) is now a human-gated, state-driven orchestrator.** The
+  pipeline (Init → Brainstorm → Test Plan → Implementation → Code Review → Closure) runs one stage
+  at a time and pauses at a handoff gate between stages; reply `yes` to proceed or `no` to pause and
+  resume later (across sessions). Each stage is independently invocable
+  (`brainstorm`/`generate tests`/`implement`/`review`/`fix`/`close <STORY>`). The original
+  fully-autonomous behaviour is preserved as an opt-in **`--afk` mode** that auto-confirms all gates.
+- **Stage 1 Brainstorm** now runs the `spec-finalizer` dialogue in the main thread: it asks the user
+  the highest-impact open questions one at a time (gated mode) instead of only escalating blockers.
+  `spec-finalizer` (version `2.2.0`) gained explicit **dialogue** vs **one-shot** modes.
+- `session-checkpoint.json` upgraded to **schema v2**: each stage carries a status enum
+  (`pending`/`in_progress`/`awaiting_handoff`/`complete`/`needs_rework`) plus `mode` and
+  `review_round`. `checkpoint.sh` adds `set-status`, `reopen`, and `set-mode` actions and migrates
+  legacy boolean checkpoints automatically.
+- Per-task `spec-compliance-reviewer` and `code-quality-reviewer` gained a **holistic mode** and a
+  unified `critical`/`warning`/`suggestion` severity taxonomy.
+
+### Added
+
+- **New Code Review stage** between Implementation and Closure. A `code-reviewer` coordinator reviews
+  the full branch diff, fanning out to new `security-reviewer` and `performance-reviewer` specialists
+  and reusing the spec-compliance and code-quality reviewers holistically. It deduplicates, filters
+  noise, judges severity, and writes `review.md` with an `approved` / `changes_requested` verdict.
+  On `changes_requested`, findings loop back into Implementation as fix-tasks (bounded to 3 rounds).
+- TDD enforcement in the implementer prompt now requires explicit RED → GREEN → REFACTOR evidence.
+- `checkpoint.sh` test harness at `scripts/tests/checkpoint.test.sh`.
+
 ## [0.2.0] - 2026-06-16
 
 ### Changed

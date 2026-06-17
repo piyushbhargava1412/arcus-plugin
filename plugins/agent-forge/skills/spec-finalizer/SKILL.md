@@ -5,7 +5,7 @@ description: >
   options grounded in repository patterns and selecting the best choice autonomously.
   Trigger on "finalize spec", "resolve ambiguities", or "ground the story".
 metadata:
-   version: "2.1.0"
+   version: "2.2.0"
    team: krill
    type:
     - agents
@@ -18,6 +18,19 @@ metadata:
 
 Acts as a Senior Tech Lead performing a completeness audit on a user story. Identifies every gap, generates 2-3 resolution options grounded in repository patterns, selects the best option with documented rationale, and verifies internal consistency before handing off to implementation planning.
 
+## Execution Modes
+
+This skill runs in one of two modes. The caller (the `agent-forge:afk-skill-router`) decides which:
+
+| Mode | Context | Behaviour |
+|------|---------|-----------|
+| **dialogue** (gated) | Runs in the **main thread** | Auto-resolve what you confidently can, then **ask the user** the highest-impact open questions **one at a time**, folding each answer in before asking the next. Persist answers to `clarifications.md`. |
+| **one-shot** (afk / subagent) | Runs as an isolated subagent | Never block for input. Auto-resolve every ambiguity (safest option, flagged `⚠️ LOW CONFIDENCE` where weak), and surface unresolved items via the Step 7 `NEEDS_INPUT` block. |
+
+In **both** modes you must still produce a complete `assumptions.md`. In dialogue mode, the user's
+answers are authoritative and override your tentative picks. If `clarifications.md` already exists,
+reuse it and do NOT re-ask questions already answered.
+
 ## Inputs
 
 - `.aforge/specs/[STORY-ID]/story.md` — The user story
@@ -26,7 +39,10 @@ Acts as a Senior Tech Lead performing a completeness audit on a user story. Iden
 
 ## Output
 
-- `.aforge/specs/[STORY-ID]/assumptions.md` — Structured decisions document
+This skill produces **exactly** the following — nothing else:
+
+- `.aforge/specs/[STORY-ID]/assumptions.md` — Structured decisions document (always)
+- `.aforge/specs/[STORY-ID]/clarifications.md` — Recorded user answers (**dialogue mode only**)
 
 ## Workflow
 
@@ -70,6 +86,13 @@ list (see Step 7). This is distinct from low-confidence, where a safe option doe
 For each ambiguity, select the best option using the priority order defined in `./references/decision-heuristics.md`.
 
 Document the selected option and the rationale (1 sentence). Flag low-confidence decisions with ⚠️.
+
+**Dialogue mode only — confirm with the user:** After autonomous selection, identify the items that
+are `zero-option` or `⚠️ LOW CONFIDENCE`. Ask the user about these **one at a time**, presenting the
+gap, the generated options, and your tentative pick. Incorporate each answer before asking the next.
+Stop once the remaining ambiguities can be resolved confidently. Record every answer to
+`.aforge/specs/[STORY-ID]/clarifications.md`. Do not ask about fast-tracked or high/medium-confidence
+decisions — resolve those silently.
 
 ### Step 4: Boundary Definition
 
@@ -119,12 +142,12 @@ orchestrator — not this skill — decides whether to pause and ask the user.
 
 ## Constraints
 
-- **No direct user interaction**: This skill runs as a one-shot subagent and cannot talk to the
-  user. Never block waiting for input. Always resolve every ambiguity autonomously: if an ambiguity
-  is truly unresolvable (fundamental business logic with no repo precedent), select the safest
-  available option and flag it `⚠️ LOW CONFIDENCE`, or mark it `zero-option` if no option can be
-  formed. Surface all such cases via the Step 7 `NEEDS_INPUT` block so the orchestrator can decide
-  whether to ask the user.
+- **User interaction is mode-dependent**: In **one-shot** mode you cannot talk to the user — never
+  block for input; resolve every ambiguity autonomously and surface weak items via the Step 7
+  `NEEDS_INPUT` block. In **dialogue** mode you may ask the user directly (one question at a time)
+  about `zero-option` / `⚠️ LOW CONFIDENCE` items only. Either way, `assumptions.md` must end up fully
+  resolved: where no answer is available, select the safest option and flag it `⚠️ LOW CONFIDENCE`,
+  or mark it `zero-option` if no option can be formed.
 - **Maximum 15 ambiguities**: If more than 15 gaps are found, the story is likely too large. Note this in the output and proceed with the top 15 by severity.
 - **Time-bound**: Do not spend excessive reasoning on trivial ambiguities. Use the fast-track rule from the decision heuristics.
 

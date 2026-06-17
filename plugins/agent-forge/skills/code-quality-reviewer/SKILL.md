@@ -18,6 +18,28 @@ metadata:
 
 Reviews implementation code for quality concerns — pattern fidelity, clean structure, maintainability, and adherence to repository conventions. Only dispatched AFTER spec compliance review passes.
 
+## Modes
+
+| Mode | Caller | Scope | Output |
+|------|--------|-------|--------|
+| **per-task** (default) | `subagent-task-dispatcher` | Files changed by one task | Binary `VERDICT: PASS \| FAIL` |
+| **holistic** | `code-reviewer` coordinator | The whole branch diff | Severity-tagged findings (canonical taxonomy below) |
+
+In **holistic** mode, do not emit a binary verdict. Return findings using the canonical severity
+taxonomy and let the coordinator judge:
+
+- **critical** — will cause bugs, security issues, or breaks existing functionality
+- **warning** — violates established repo patterns or creates real maintenance burden
+- **suggestion** — minor inconsistency or style nit, non-blocking
+
+Holistic output format:
+```
+SUMMARY: <one line>
+FINDINGS:
+- [critical] <issue> — <file:line>
+- [warning] <issue> — <file:line>
+```
+
 ## Inputs (provided by orchestrator in prompt)
 
 - List of files modified by the implementer

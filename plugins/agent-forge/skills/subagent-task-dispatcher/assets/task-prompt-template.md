@@ -40,15 +40,17 @@ Follow test-driven development: write tests first, then implement, then verify.
 
 {{PRIOR_TASK_FILES}}
 
-## Rules
+## Rules (Test-Driven Development — strictly enforced)
 
-1. Write the test FIRST. Confirm it fails (Red).
-2. Implement the minimal code to make the test pass (Green).
-3. Refactor for clarity and pattern adherence.
+1. **RED**: Write the test FIRST and run it. Confirm it FAILS for the right reason. Capture the failure output.
+2. **GREEN**: Implement the minimal code to make the test pass. Run it and confirm it now passes.
+3. **REFACTOR**: Improve clarity and pattern adherence with tests staying green.
 4. Run the full test suite — no regressions allowed.
 5. Use `get_errors` on all modified files — zero errors allowed.
 6. Do NOT perform git commits. Only stage changes.
 7. Do NOT modify files outside your task scope unless explicitly required.
+
+Do not skip the RED step. If you write implementation before a failing test, start over.
 
 ## Response Format
 
@@ -56,12 +58,19 @@ When complete, respond with:
 
 STATUS: DONE | BLOCKED | NEEDS_CONTEXT
 FILES_MODIFIED: [list of files you changed]
+TDD_EVIDENCE: [RED: failing test name + reason | GREEN: now passing | REFACTOR: what changed or "none"]
 TESTS_PASSING: [yes/no + test command output summary]
 NOTES: [any important context for subsequent tasks]
 
 If BLOCKED, explain what is preventing progress.
 If NEEDS_CONTEXT, specify exactly what file or information you need.
 ```
+
+## Fix-Task Variant (code-review loopback)
+
+When this task originates from a code-review finding (a fix-task), the `{{TASK_DEFINITION}}` is the
+finding and its required remediation, and `{{DOD}}` is "the finding no longer applies". Still follow
+TDD: add or adjust a test that would have caught the issue (RED), then fix it (GREEN).
 
 ---
 

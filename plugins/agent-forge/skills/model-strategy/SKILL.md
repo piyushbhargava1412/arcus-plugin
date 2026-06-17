@@ -71,6 +71,9 @@ Fixed complexity for orchestrator-level stages (does not vary per story):
 | test-spec-compiler       | medium     | Pattern-following matrix generation          |
 | spec-compliance-reviewer | medium     | Checklist verification against spec          |
 | code-quality-reviewer    | medium     | Pattern matching against conventions         |
+| code-reviewer            | heavy      | Holistic review coordination, dedupe + judge |
+| security-reviewer        | medium     | Vulnerability detection in changed code      |
+| performance-reviewer     | medium     | Hot-path / resource regression detection     |
 | pull-request-builder     | light      | Template fill + summary                      |
 | repository-context-builder | heavy   | Full repo scan, multi-area coordination      |
 | flow-and-scope-discovery | heavy      | Code path tracing across multiple layers     |

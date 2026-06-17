@@ -20,6 +20,28 @@ Verifies that an implementation matches its specification — nothing more, noth
 
 **Critical principle: Do not trust the implementer's claims. Verify by reading code.**
 
+## Modes
+
+| Mode | Caller | Scope | Output |
+|------|--------|-------|--------|
+| **per-task** (default) | `subagent-task-dispatcher` | One `### Task N:` DoD | Binary `VERDICT: PASS \| FAIL` |
+| **holistic** | `code-reviewer` coordinator | The whole branch diff vs. the full blueprint + assumptions | Severity-tagged findings (canonical taxonomy below) |
+
+In **holistic** mode, do not emit a binary verdict. Instead return findings using the canonical
+severity taxonomy and let the coordinator judge:
+
+- **critical** — a DoD requirement is unmet in a way that breaks the story, or behaviour is wrong
+- **warning** — a partial/incorrect implementation, or unrequested `[EXTRA]` scope creep
+- **suggestion** — a minor traceability gap worth noting, non-blocking
+
+Holistic output format:
+```
+SUMMARY: <one line>
+FINDINGS:
+- [critical] <unmet/incorrect requirement> — <file:line or "not found">
+- [warning] <partial or extra work> — <file:line>
+```
+
 ## Inputs (provided by orchestrator in prompt)
 
 - Task requirements (full `### Task N:` section from blueprint.md)

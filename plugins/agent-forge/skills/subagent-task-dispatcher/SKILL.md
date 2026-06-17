@@ -21,7 +21,7 @@ Defines the protocol for the orchestrator to dispatch individual implementation 
 
 ## When to Use
 
-The orchestrator (afk-skill-router) invokes this protocol during **Stage 3: Code** when it needs to execute tasks from the blueprint sequentially via subagents.
+The orchestrator (afk-skill-router) invokes this protocol during **Stage 3: Implementation** when it needs to execute tasks from the blueprint sequentially via subagents.
 
 ## Dispatch Protocol
 
@@ -69,10 +69,11 @@ The subagent returns one of three statuses:
 ### Step 5: Verify & Commit
 
 After a `DONE` response:
-1. Run the test suite to confirm tests actually pass
-2. Use `get_errors` on modified files to check for lint/compile issues
-3. If verification passes: proceed to Step 6 (Review)
-4. If verification fails: re-dispatch implementer subagent with error output as additional context (max 2 retries)
+1. Confirm the `TDD_EVIDENCE` line shows a RED step (a test that failed first) followed by GREEN. If the implementer skipped the failing-test step, re-dispatch requiring proper TDD.
+2. Run the test suite to confirm tests actually pass
+3. Use `get_errors` on modified files to check for lint/compile issues
+4. If verification passes: proceed to Step 6 (Review)
+5. If verification fails: re-dispatch implementer subagent with error output as additional context (max 2 retries)
 
 ### Step 6: Review (Two-Pass)
 

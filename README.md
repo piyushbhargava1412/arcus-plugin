@@ -8,7 +8,7 @@ Agent Forge turns a written user story into a reviewed, test-backed pull request
 sub-skills, helper scripts, and a session bootstrap hook into a single versioned plugin.
 
 - **`repo-agentifier`** — scans the repo to build the `.context/` snapshot, then generates `AGENTS.md` + `CLAUDE.md` to make it agent-ready.
-- **`afk-skill-router`** — orchestrates the full Spec → Code → Pull Request pipeline.
+- **`afk-skill-router`** — orchestrates the Spec → Code → Pull Request pipeline as human-gated stages (with an opt-in fully-autonomous `--afk` mode).
 
 This repository is also the **plugin marketplace** (`krill-afk`): one repo serves Copilot CLI,
 Claude Code, and VS Code from the same unified plugin format.
@@ -204,22 +204,38 @@ This invokes `repo-agentifier`, which produces the `.context/` snapshot
 navigation index and a `CLAUDE.md` that imports it. Refresh it after major
 repository restructuring.
 
-### 2. Run the AFK pipeline (per story)
+### 2. Run the pipeline (per story)
 
-Point the router at a story file:
+Point the router at a story file. By default the pipeline is **human-gated**: it runs one stage at
+a time and pauses at a handoff between stages so you can review and reply `yes` to proceed (or `no`
+to pause and resume later). Each stage is also independently invocable.
 
 ```sh
-# Interactive
 copilot                                   # or: claude
-> implement path/to/story.md
-
-# Fully unattended
-copilot -p "implement path/to/story.md" --yolo
-claude --dangerously-skip-permissions "implement path/to/story.md"
+> implement path/to/story.md             # gated: stops at each handoff for your "yes"
 ```
 
-`afk-skill-router` then runs the full pipeline (Init → Architect → TestGen → Code → Closure)
-autonomously and opens a pull request on completion.
+The gated stages are:
+
+1. **Init** (deterministic) — branch + workspace scaffold.
+2. **Brainstorm** (human-in-the-loop) — collaborative dialogue → `assumptions.md` + `blueprint.md`. *Gate.*
+3. **Test Plan** (automated) — `test-plan.md`. Runs on your `yes`, then pauses before implementation.
+4. **Implementation** (automated, TDD per task) — committed code. *Gate.*
+5. **Code Review** (automated) — holistic review of the branch diff → `review.md` + verdict. *Decision gate:* approve, or loop findings back into Implementation as fix-tasks.
+6. **Closure** (manual trigger) — opens the pull request.
+
+Per-stage / continuation phrases: `brainstorm <STORY>`, `generate tests <STORY>`,
+`implement <STORY>`, `review <STORY>`, `fix <STORY>`, `close <STORY>`, and `yes` / `no` at any gate.
+
+#### Fully unattended (AFK) mode
+
+The original Away-From-Keyboard behaviour is preserved as an opt-in: add `--afk` (or say
+"forge …" / "run afk on …"). All handoff gates auto-confirm and the run proceeds end-to-end.
+
+```sh
+copilot -p "implement path/to/story.md --afk" --yolo
+claude --dangerously-skip-permissions "forge path/to/story.md"
+```
 
 > PR creation uses `gh pr create`. Ensure `gh` is installed and authenticated
 > (`gh auth login`, or `GITHUB_TOKEN` / `GH_TOKEN` set) if you want automatic PRs.
@@ -232,12 +248,14 @@ Each story gets a working area under `.aforge/specs/[STORY-ID]/` in the target r
 
 | Artifact                | Purpose                                              |
 | ----------------------- | ---------------------------------------------------- |
-| `session-checkpoint.md` | Resumable execution checkpoints                      |
+| `session-checkpoint.json` | Resumable per-stage execution state (status enum)  |
 | `story.md`              | Canonical copy of the input story                    |
 | `context-pack.md`       | Compact, token-efficient context bundle              |
+| `clarifications.md`     | Answers captured during the Brainstorm dialogue      |
 | `assumptions.md`        | Explicit assumptions used to resolve ambiguity       |
 | `blueprint.md`          | Implementation plan and task list                    |
 | `test-plan.md`          | Generated verification matrix and test cases         |
+| `review.md`             | Holistic code-review report + verdict                |
 | `PR_DESCRIPTION.md`     | Final PR body                                        |
 
 Treat `.aforge/` as ephemeral working data — safe to inspect, commit, or discard.
