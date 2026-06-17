@@ -167,7 +167,7 @@ See **Modes Explained** for detailed decision framework.
 
 **A:**
 1. **Init** — Branch creation, workspace setup
-2. **Brainstorm** — Resolve ambiguities → `assumptions.md`
+2. **Brainstorm** — Resolve ambiguities and finalize plan → `assumptions.md` + `blueprint.md`
 3. **Test Plan** — Design test matrix → `test-plan.md`
 4. **Code** — Implement tasks → committed code
 5. **Review** — Holistic quality check → `review.md`

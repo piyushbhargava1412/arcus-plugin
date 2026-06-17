@@ -8,7 +8,7 @@ Understanding ARCUS's 6-stage SDLC workflow
 
 ```mermaid
 graph LR
-    Init[0️⃣ Init<br/>Branch & Workspace] -->|GATE 0| Brainstorm[1️⃣ Brainstorm<br/>Resolve Ambiguities]
+    Init[0️⃣ Init<br/>Branch & Workspace] --> Brainstorm[1️⃣ Brainstorm<br/>Resolve Ambiguities]
     Brainstorm -->|GATE A| TestPlan[2️⃣ Test Plan<br/>Design Test Matrix]
     TestPlan -->|GATE B| Code[3️⃣ Code<br/>Implement & Verify]
     Code -->|GATE C| Review[4️⃣ Review<br/>Holistic Quality Check]
@@ -45,7 +45,7 @@ graph LR
 - `.arcus/session-checkpoint.json` (state tracking)
 - Git branch `arcus/[STORY-ID]`
 
-**Handoff Gate 0:** Implicit in gated mode (setup complete)
+**Handoff:** No handoff gate. Stage 0 flows directly into Stage 1.
 
 **What to check:**
 - Branch created successfully
@@ -67,17 +67,20 @@ graph LR
 - **AFK mode:** Auto-resolves ambiguities (one-shot)
 - Documents assumptions and constraints
 - Optionally builds story-specific context pack
+- Creates implementation plan (`blueprint.md`) before implementation begins
 
 **Skills invoked:**
 - `spec-finalizer` (dialogue mode or one-shot)
 - `context-pack-builder` (optional, for story-specific context)
+- `implementation-planner` (creates `blueprint.md`)
 
 **Artifacts created:**
 - `assumptions.md` — Technical decisions, constraints, error handling
 - `clarifications.md` — User answers (gated mode only)
 - `context-pack.md` — Story-specific context (optional)
+- `blueprint.md` — Implementation plan with atomic tasks
 
-**Handoff Gate A:** "Assumptions documented, ready for planning?"
+**Handoff Gate A:** "Assumptions and implementation plan documented, ready for test planning?"
 
 **What to check:**
 - Assumptions align with your intent
@@ -129,7 +132,6 @@ graph LR
 **Purpose:** Implement the story with continuous verification
 
 **What happens:**
-- Generates implementation blueprint (atomic tasks)
 - Dispatches each task to isolated subagent
 - Each task includes:
   - Implementation
@@ -140,13 +142,11 @@ graph LR
 - Runs tests after each task
 
 **Skills invoked:**
-- `implementation-planner` (generates blueprint)
 - `subagent-task-dispatcher` (orchestrates task execution)
 - `spec-compliance-reviewer` (per-task mode)
 - `code-quality-reviewer` (per-task mode)
 
 **Artifacts created:**
-- `blueprint.md` — Implementation plan with atomic tasks
 - Code changes (committed to branch)
 - Tests (committed alongside code)
 
@@ -160,7 +160,7 @@ graph LR
 
 **Duration:** 15-60 minutes (depends on complexity)
 
-**💡 Tip:** You can edit `blueprint.md` at Gate B if you disagree with the task breakdown.
+**💡 Tip:** You can edit `blueprint.md` at Gate A or Gate B before implementation begins.
 
 ---
 
@@ -273,7 +273,7 @@ If Stage 4 returns `changes_requested`:
 | Stage | Entry Command | Exit Condition | Duration |
 |-------|---------------|----------------|----------|
 | 0: Init | `implement story.md` | Workspace ready | < 1 min |
-| 1: Brainstorm | Auto or `brainstorm story` | `assumptions.md` complete | 5-15 min |
+| 1: Brainstorm | Auto or `brainstorm story` | `assumptions.md` + `blueprint.md` complete | 5-15 min |
 | 2: Test Plan | Auto or `generate tests story` | `test-plan.md` complete | 5-10 min |
 | 3: Code | Auto or `code story` | All tasks done, tests pass | 15-60 min |
 | 4: Review | Auto or `review story` | Verdict: approved/changes | 5-15 min |

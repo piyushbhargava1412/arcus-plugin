@@ -24,7 +24,7 @@ This is a one-time setup per repository, re-run only after major restructuring o
 
 ### `arcus-controller`
 
-Orchestrates the Spec → Code → Pull Request pipeline as a sequence of human-gated stages. Each stage produces artifacts and pauses at handoff gates for your review and approval. You can:
+Orchestrates the Spec → Code → Pull Request pipeline as a sequence of human-gated stages. Stages produce artifacts, and the pipeline pauses at handoff gates between major stages for your review and approval. You can:
 
 - Run in **gated mode** (default) — Review and approve at each stage with "yes" to proceed
 - Run in **AFK mode** (opt-in) — Fully autonomous end-to-end execution with `--afk` flag

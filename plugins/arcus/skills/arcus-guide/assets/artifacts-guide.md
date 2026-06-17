@@ -330,7 +330,7 @@ ARCUS creates two main directory structures:
 
 ### `specs/[STORY-ID]/blueprint.md`
 
-**Created by:** `implementation-planner` (Stage 3)
+**Created by:** `implementation-planner` (Stage 1)
 
 **Purpose:** Break story into atomic tasks with Definition of Done
 
@@ -504,9 +504,9 @@ graph LR
 ```mermaid
 graph LR
     A[Run: implement story.md] --> B[Stage 0: workspace created]
-    B --> C[Stage 1: assumptions.md]
+    B --> C[Stage 1: assumptions.md + blueprint.md]
     C --> D[Stage 2: test-plan.md]
-    D --> E[Stage 3: blueprint.md + code]
+    D --> E[Stage 3: code + tests]
     E --> F[Stage 4: review.md]
     F -->|approved| G[Stage 5: PR_DESCRIPTION.md]
     F -->|changes_requested| E

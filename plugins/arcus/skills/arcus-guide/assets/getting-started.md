@@ -103,7 +103,7 @@ forge path/to/story.md
 **What happens:** ARCUS runs a 6-stage SDLC pipeline:
 
 1. **Init** — Creates branch `arcus/[STORY-ID]`, scaffolds workspace
-2. **Brainstorm** — Resolves ambiguities → `assumptions.md`
+2. **Brainstorm** — Resolves ambiguities and creates implementation plan → `assumptions.md` + `blueprint.md`
 3. **Test Plan** — Designs test matrix → `test-plan.md`
 4. **Code** — Implements tasks → committed code
 5. **Review** — Holistic quality check → `review.md`

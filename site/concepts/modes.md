@@ -11,8 +11,8 @@ Choosing between Gated and AFK modes
 | **Control** | Pauses at each handoff gate | Runs all 6 stages back-to-back |
 | **User Role** | Review artifacts, say "yes" to proceed | Hands-off until PR ready |
 | **Best For** | Novel domains, high-risk changes, learning | Familiar codebases, simple features |
-| **Intervention Points** | 5 handoff gates (after each stage) | Milestone-only output |
-| **Session Resumability** | Yes, can pause and resume across days | No, single uninterrupted session |
+| **Intervention Points** | 4 handoff gates (GATE A-D) | Milestone-only output |
+| **Session Resumability** | Yes, can pause and resume across days | Resume-capable via checkpoint; intended to run uninterrupted |
 | **Spec Finalization** | Interactive dialogue (asks questions one-by-one) | One-shot auto-resolution |
 | **Output Verbosity** | Full progress updates at each gate | Compact, final artifacts only |
 | **When to Use** | Default for safety and learning | When you're confident in the spec |
@@ -28,25 +28,25 @@ Choosing between Gated and AFK modes
 
 Follow this decision tree:
 
-1. **Is this your first story in this repo?**
-   - Yes → Use **Gated Mode**
-   - No → Continue to step 2
+```mermaid
+graph TD
+    A[Should I use AFK mode?] --> B{First story in this repo?}
+    B -->|Yes| C[Use Gated Mode]
+    B -->|No| D{Spec complete and unambiguous?}
+    D -->|No| C
+    D -->|Yes| E{High confidence in story?}
+    E -->|No| C
+    E -->|Yes| F{Want to learn ARCUS workflows?}
+    F -->|Yes| C
+    F -->|No| G{Are you ok with LLMs taking over full control for this story?}
+    G -->|No| C
+    G -->|Yes| H[AFK Mode is appropriate]
 
-2. **Is the spec complete and unambiguous?**
-   - No → Use **Gated Mode**
-   - Yes → Continue to step 3
+    C --> I[Use Gated Mode]
 
-3. **Do you have high confidence in the story?**
-   - No → Use **Gated Mode**
-   - Yes → Continue to step 4
-
-4. **Do you want to learn ARCUS workflows?**
-   - Yes → Use **Gated Mode**
-   - No → Continue to step 5
-
-5. **Are you available for 30-90 min uninterrupted?**
-   - No → Use **Gated Mode**
-   - Yes → **AFK Mode is appropriate**
+    style H fill:#e1ffe8
+    style I fill:#fff4e1
+```
 
 **When in doubt:** Use **Gated Mode** (default, safe)
 
@@ -91,9 +91,6 @@ ARCUS knows your patterns, you trust its decisions
 **Simple feature or bug fix**  
 Straightforward changes with low risk
 
-**Can dedicate 30-90 minutes uninterrupted**  
-You're available for the full session without context switching
-
 **Trust ARCUS to handle ambiguities automatically**  
 Spec finalizer's one-shot mode makes good default choices
 
@@ -121,9 +118,8 @@ No flags needed - gated is the default.
 
 **What happens:**
 - ARCUS runs Stage 0 (Init)
-- Pauses at **GATE 0** (implicit)
-- Shows you what was created
-- Asks: "Ready to proceed to Stage 1 (Brainstorm)?"
+- Flows directly into Stage 1 (no Stage 0 handoff gate)
+- First explicit handoff is **GATE A** after Brainstorm
 - You say: `yes` or `no`
 
 ### AFK Mode (Opt-In)

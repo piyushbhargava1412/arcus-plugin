@@ -11,8 +11,8 @@ Choosing between Gated and AFK modes
 | **Control** | Pauses at each handoff gate | Runs all 6 stages back-to-back |
 | **User Role** | Review artifacts, say "yes" to proceed | Hands-off until PR ready |
 | **Best For** | Novel domains, high-risk changes, learning | Familiar codebases, simple features |
-| **Intervention Points** | 5 handoff gates (after each stage) | Milestone-only output |
-| **Session Resumability** | Yes, can pause and resume across days | No, single uninterrupted session |
+| **Intervention Points** | 4 handoff gates (GATE A-D) | Milestone-only output |
+| **Session Resumability** | Yes, can pause and resume across days | Resume-capable via checkpoint; intended to run uninterrupted |
 | **Spec Finalization** | Interactive dialogue (asks questions one-by-one) | One-shot auto-resolution |
 | **Output Verbosity** | Full progress updates at each gate | Compact, final artifacts only |
 | **When to Use** | Default for safety and learning | When you're confident in the spec |
@@ -117,9 +117,8 @@ No flags needed — gated is the default.
 
 **What happens:**
 - ARCUS runs Stage 0 (Init)
-- Pauses at **GATE 0** (implicit)
-- Shows you what was created
-- Asks: "Ready to proceed to Stage 1 (Brainstorm)?"
+- Flows directly into Stage 1 (no Stage 0 handoff gate)
+- First explicit handoff is **GATE A** after Brainstorm
 - You say: `yes` or `no`
 
 ### AFK Mode (Opt-In)

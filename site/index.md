@@ -18,7 +18,7 @@ hero:
 
 features:
   - title: Spec-driven pipeline
-    details: Orchestrates a Spec → Code → Pull Request flow through human-gated SDLC stages (Init, Brainstorm, Test Plan, Implementation, Code Review, Closure). Each stage pauses at a handoff gate for your review before proceeding to the next.
+    details: Orchestrates a Spec → Code → Pull Request flow through human-gated SDLC stages (Init, Brainstorm, Test Plan, Implementation, Code Review, Closure). The pipeline pauses at handoff gates between major stages for your review before proceeding.
   - title: "Repo agentifier (`.context/` + AGENTS.md)"
     details: Scans your repository to build the `.context/` snapshot with repo scope, map, flows, and testing patterns, then generates `AGENTS.md` and `CLAUDE.md` to make it agent-ready.
   - title: Human-gated with AFK opt-in
