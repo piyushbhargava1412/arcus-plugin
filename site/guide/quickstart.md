@@ -11,7 +11,7 @@ Add the ARCUS plugin marketplace and install the plugin:
 /plugin install arcus-plugin@arcus
 ```
 
-This works identically in GitHub Copilot CLI and Claude Code. For VS Code, add the marketplace to your `settings.json` or use the Command Palette to install from source.
+These commands work the same in GitHub Copilot CLI and Claude Code. For VS Code, add the marketplace to your `settings.json` (`chat.plugins.marketplaces`) and run **Chat: Install Plugin** from the Command Palette.
 
 ## 1. Build Repository Context (Once Per Repo)
 
