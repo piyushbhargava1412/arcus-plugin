@@ -1,7 +1,7 @@
 # Implementation Blueprint: [STORY-ID] - [STORY-TITLE]
 
 ## Technical Approach
-[High-level overview of HOW the story will be implemented, referencing specific patterns or components identified in the context-pack and assumptions.]
+[High-level overview of HOW the story will be implemented, referencing specific patterns or components identified in the context-pack and the chosen approach in plan.md.]
 
 ## Impacted Files
 [A list of files that will be created or modified]

@@ -32,5 +32,5 @@ Every task's DoD MUST include:
 1. Functional correctness (the logic works).
 2. Test coverage (unit or integration).
 3. Adherence to repository patterns (matching `context-pack.md`).
-4. Proper error handling (as defined in `.arcus/specs/[STORY-ID]/assumptions.md`).
+4. Proper error handling (as defined in `.arcus/specs/[STORY-ID]/plan.md`).
 
