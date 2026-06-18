@@ -24,12 +24,13 @@ This skill runs in one of two modes. The caller (the `arcus:arcus-controller`) d
 
 | Mode | Context | Behaviour |
 |------|---------|-----------|
-| **dialogue** (gated) | Runs in the **main thread** | Auto-resolve what you confidently can, then **ask the user** the highest-impact open questions **one at a time**, folding each answer in before asking the next. Persist answers to `clarifications.md`. |
-| **one-shot** (afk / subagent) | Runs as an isolated subagent | Never block for input. Auto-resolve every ambiguity (safest option, flagged `⚠️ LOW CONFIDENCE` where weak), and surface unresolved items via the Step 7 `NEEDS_INPUT` block. |
+| **dialogue** (gated) | Runs in the **main thread** | Auto-resolve what you confidently can, then **ask the user** the highest-impact open questions **one at a time**, folding each answer in before asking the next. Record answers in the `## Dialogue Answers` section of `plan.md`. |
+| **one-shot** (afk / subagent) | Runs as an isolated subagent | Never block for input. Auto-resolve every ambiguity (safest option, flagged `⚠️ LOW CONFIDENCE` where weak), and surface unresolved items via the Step 7 `NEEDS_INPUT` block. Skip / leave empty the `## Dialogue Answers` section. |
 
-In **both** modes you must still produce a complete `assumptions.md`. In dialogue mode, the user's
-answers are authoritative and override your tentative picks. If `clarifications.md` already exists,
-reuse it and do NOT re-ask questions already answered.
+In **both** modes you must still produce a complete `plan.md` (spec-finalizer's owned sections —
+see Output). In dialogue mode, the user's answers are authoritative and override your tentative
+picks. If `plan.md` already has a populated `## Dialogue Answers` section, reuse it and do NOT
+re-ask questions already answered.
 
 ## Inputs
 
@@ -41,8 +42,23 @@ reuse it and do NOT re-ask questions already answered.
 
 This skill produces **exactly** the following — nothing else:
 
-- `.arcus/specs/[STORY-ID]/assumptions.md` — Structured decisions document (always)
-- `.arcus/specs/[STORY-ID]/clarifications.md` — Recorded user answers (**dialogue mode only**)
+- `.arcus/specs/[STORY-ID]/plan.md` — A single **shared** deliberation record. spec-finalizer
+  writes ONLY its owned sections into it (always): `# Plan: [STORY-ID]` title, `## Context Grounding`,
+  `## Resolved Ambiguities`, `## Dialogue Answers` (**dialogue mode only**), `## Implementation Boundary`,
+  and `## Guardrail Check`.
+
+### Shared plan.md — Section Ownership Contract
+
+`plan.md` is a single file shared with `implementation-planner`, which runs **after** this skill and
+**appends** its own design sections (`## Approach Evaluation`, `## Chosen Approach & Reasoning`,
+`## Design / Impacted Files`, `## Design Dialogue Answers`) to the SAME file. To avoid clobbering:
+
+- spec-finalizer runs first, so it **creates** `plan.md` (with the `# Plan: [STORY-ID]` title) if it
+  is absent.
+- If `plan.md` already exists, **append/merge** — replace only the sections spec-finalizer owns (listed
+  above) in place and leave any `implementation-planner` design sections untouched. Never overwrite the
+  whole file.
+- spec-finalizer must only ever write or replace its OWN sections.
 
 ## Workflow
 
@@ -89,10 +105,27 @@ Document the selected option and the rationale (1 sentence). Flag low-confidence
 
 **Dialogue mode only — confirm with the user:** After autonomous selection, identify the items that
 are `zero-option` or `⚠️ LOW CONFIDENCE`. Ask the user about these **one at a time**, presenting the
-gap, the generated options, and your tentative pick. Incorporate each answer before asking the next.
-Stop once the remaining ambiguities can be resolved confidently. Record every answer to
-`.arcus/specs/[STORY-ID]/clarifications.md`. Do not ask about fast-tracked or high/medium-confidence
+gap and the generated options. Incorporate each answer before asking the next. Stop once the remaining
+ambiguities can be resolved confidently. Do not ask about fast-tracked or high/medium-confidence
 decisions — resolve those silently.
+
+**HARD REQUIREMENT — every gated question presents YOUR own recommendation.** When you ask the user
+about a `zero-option` / `⚠️ LOW CONFIDENCE` item, the question MUST present its options with **exactly
+one** option explicitly marked **Recommended** plus a **one-line rationale** for why it is recommended,
+AND an explicit custom-answer option (e.g. "or provide your own"). This is mandatory for every gated
+question — no exceptions. Example shape:
+
+```
+Q: <the gap, phrased as a question>
+  A — <option A> (Recommended) — <one-line rationale for why A is recommended>
+  B — <option B>
+  C — <option C>
+  Or provide your own answer.
+```
+
+Record each chosen answer (whether the recommended option or the user's custom answer) into the
+`## Dialogue Answers` section of `.arcus/specs/[STORY-ID]/plan.md`. The user's answer is authoritative
+and overrides your recommendation.
 
 ### Step 4: Boundary Definition
 
@@ -112,7 +145,12 @@ Fix any issues inline. Do not skip this step.
 
 ### Step 6: Write Output
 
-Write the decisions to `.arcus/specs/[STORY-ID]/assumptions.md` using the template at `./assets/assumptions-template.md`.
+Write the decisions to `.arcus/specs/[STORY-ID]/plan.md` using the template at
+`./assets/plan-template.md`. Respect the **section ownership contract** (see Output): create `plan.md`
+if it does not exist; if it already exists, replace only spec-finalizer's owned sections in place and
+leave any `implementation-planner` design sections intact — never overwrite the whole file. In dialogue
+mode, fill the `## Dialogue Answers` section from the recorded Q&A; in one-shot mode, leave it empty or
+omit it.
 
 ### Step 7: Emit Escalation Signal (return message)
 
@@ -136,7 +174,7 @@ If there are no such ambiguities, emit exactly:
 NEEDS_INPUT: none
 ```
 
-This block is informational. You still resolve every ambiguity autonomously in `assumptions.md`
+This block is informational. You still resolve every ambiguity autonomously in `plan.md`
 (zero-option items get the safest available placeholder, flagged `⚠️ LOW CONFIDENCE`). The
 orchestrator — not this skill — decides whether to pause and ask the user.
 
@@ -145,7 +183,7 @@ orchestrator — not this skill — decides whether to pause and ask the user.
 - **User interaction is mode-dependent**: In **one-shot** mode you cannot talk to the user — never
   block for input; resolve every ambiguity autonomously and surface weak items via the Step 7
   `NEEDS_INPUT` block. In **dialogue** mode you may ask the user directly (one question at a time)
-  about `zero-option` / `⚠️ LOW CONFIDENCE` items only. Either way, `assumptions.md` must end up fully
+  about `zero-option` / `⚠️ LOW CONFIDENCE` items only. Either way, `plan.md` must end up fully
   resolved: where no answer is available, select the safest option and flag it `⚠️ LOW CONFIDENCE`,
   or mark it `zero-option` if no option can be formed.
 - **Maximum 15 ambiguities**: If more than 15 gaps are found, the story is likely too large. Note this in the output and proceed with the top 15 by severity.
@@ -161,5 +199,5 @@ orchestrator — not this skill — decides whether to pause and ask the user.
 
 ## Resources
 
-- **Assumptions Template**: `./assets/assumptions-template.md`
+- **Plan Template**: `./assets/plan-template.md`
 - **Decision Heuristics**: `./references/decision-heuristics.md`
