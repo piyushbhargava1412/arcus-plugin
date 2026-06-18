@@ -201,6 +201,10 @@ You can resume anytime with `"yes"`.
 
 **A:** ARCUS automatically loops back to Stage 3 (Code) with fix-tasks generated from review findings. This loop is **bounded to 3 rounds maximum**. If still failing after 3 rounds, manual intervention is required.
 
+Stage 4 runs as a **two-tier gate**, so a failure means one of two things:
+- **Tier 1 (deterministic gate)** — the repo's real tooling failed (typecheck, full test suite, build/startup, or secret scan). These are objective and stop the semantic review immediately. Fix the concrete breakage.
+- **Tier 2 (semantic review)** — specialist reviewers flagged genuine design/spec/security/perf concerns. These are judgment calls you can address or override.
+
 ---
 
 ## Artifacts & Files
@@ -338,8 +342,9 @@ ARCUS adapts to your patterns rather than enforcing its own.
 **A:** 
 1. Run tests manually (check `.context/testing-patterns.md` for commands)
 2. Review test failures
-3. Let holistic review (Stage 4) catch it if it's cross-cutting
-4. Or fix manually and continue
+3. Or fix manually and continue
+
+Don't rely on shipping failing tests past Stage 3 — the Stage 4 deterministic gate **runs the full test suite over the whole branch** and will hard-block on any failure (per-task green ≠ whole-branch green), so unresolved failures bounce the pipeline back.
 
 See **Troubleshooting** for detailed solutions.
 

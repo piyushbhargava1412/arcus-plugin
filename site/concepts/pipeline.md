@@ -221,19 +221,18 @@ In gated mode, ARCUS pauses at each gate and waits for your confirmation. In AFK
           <ul>
             <li>Implementation</li>
             <li>Test writing (following test-plan.md)</li>
-            <li>Per-task compliance review</li>
-            <li>Per-task quality review</li>
+            <li>One lightweight, <strong>advisory</strong> per-task spec-compliance check (does not hard-block; unresolved issues carry forward to Stage 4)</li>
           </ul>
         </li>
         <li>Commits code incrementally (one commit per task)</li>
         <li>Runs tests after each task</li>
       </ul>
+      <p><em>Quality is not reviewed per-task — it is owned holistically by Stage 4 over the whole branch diff, since isolated subagents never see prior tasks' code.</em></p>
     </td>
     <td>
       <ul>
         <li><code>subagent-task-dispatcher</code> (orchestrates task execution)</li>
-        <li><code>spec-compliance-reviewer</code> (per-task mode)</li>
-        <li><code>code-quality-reviewer</code> (per-task mode)</li>
+        <li><code>spec-compliance-reviewer</code> (per-task mode, advisory)</li>
       </ul>
     </td>
     <td>
@@ -262,7 +261,7 @@ In gated mode, ARCUS pauses at each gate and waits for your confirmation. In AFK
 
 <table class="pipeline-stage-table">
   <tr>
-    <th colspan="3">Purpose: Holistic quality check across all changes</th>
+    <th colspan="3">Purpose: The real last gate before a PR — a two-tier review over all changes, with a zero-trust persona (brutal in the hunt, fair in the verdict)</th>
   </tr>
   <tr>
     <th><strong>What happens</strong></th>
@@ -272,11 +271,22 @@ In gated mode, ARCUS pauses at each gate and waits for your confirmation. In AFK
   <tr>
     <td>
       <ul>
-        <li>Reviews <strong>full branch diff</strong> (not individual tasks)</li>
-        <li>Runs multiple review perspectives:
+        <li>Reviews the <strong>full branch diff</strong> (not individual tasks)</li>
+        <li><strong>Tier 1 — Deterministic Gate (runs the repo's real tooling, fails fast):</strong> executes the actual commands CI would run over the integrated branch — never simulated by reading the diff. Resolved from CI workflows first, then <code>.context/</code> tables.
+          <ul>
+            <li>Typecheck / compile</li>
+            <li>Full test suite (per-task green ≠ whole-branch green)</li>
+            <li>Build + startup smoke</li>
+            <li>Secret scan</li>
+            <li>Lint &amp; format (auto-fixed and committed where a fix mode exists)</li>
+            <li>Static analysis (feeds the semantic tier)</li>
+          </ul>
+          Any hard block (typecheck / tests / build / secret) skips the semantic fan-out and returns <code>changes_requested</code> immediately. Unresolvable commands are recorded as <code>skipped: not configured</code>.
+        </li>
+        <li><strong>Tier 2 — Semantic Review (only if the gate passes):</strong> fans out to specialists for judgment-grade concerns no tool can answer:
           <ul>
             <li><strong>Spec compliance</strong> (holistic): Does it meet all requirements?</li>
-            <li><strong>Code quality</strong> (holistic): Clean structure, maintainability?</li>
+            <li><strong>Code quality</strong> (holistic): Clean structure, maintainability, cognitive complexity, test proportionality?</li>
             <li><strong>Security</strong>: Any exploitable vulnerabilities?</li>
             <li><strong>Performance</strong>: Any concrete regressions?</li>
           </ul>
@@ -295,7 +305,7 @@ In gated mode, ARCUS pauses at each gate and waits for your confirmation. In AFK
     </td>
     <td>
       <ul>
-        <li><code>code-reviewer</code> (coordinator)</li>
+        <li><code>code-reviewer</code> (coordinator + deterministic gate)</li>
         <li><code>spec-compliance-reviewer</code> (holistic mode)</li>
         <li><code>code-quality-reviewer</code> (holistic mode)</li>
         <li><code>security-reviewer</code></li>
@@ -304,7 +314,7 @@ In gated mode, ARCUS pauses at each gate and waits for your confirmation. In AFK
     </td>
     <td>
       <ul>
-        <li><code>review.md</code> - Consolidated findings with verdict</li>
+        <li><code>review.md</code> - Deterministic gate results + consolidated semantic findings with verdict</li>
       </ul>
     </td>
   </tr>
@@ -415,7 +425,7 @@ Each story produces a working area under `.arcus/specs/[STORY-ID]/` with the fol
 | `assumptions.md` | Explicit assumptions used to resolve ambiguity |
 | `blueprint.md` | Implementation plan and task list |
 | `test-plan.md` | Generated verification matrix and test cases |
-| `review.md` | Holistic code-review report + verdict |
+| `review.md` | Deterministic gate results + holistic code-review findings + verdict |
 | `PR_DESCRIPTION.md` | Final PR body |
 
 Treat `.arcus/` as ephemeral working data - safe to inspect, commit, or discard.

@@ -417,8 +417,9 @@ ARCUS creates two main directory structures:
 **Safe to edit:** ❌ No (regenerated each review round)
 
 **Contains:**
+- **Deterministic gate results** — pass/fail/skipped per check (typecheck, full test suite, build + startup, secret scan, lint, format, static analysis), each with the command that was run
 - Spec compliance issues
-- Code quality issues
+- Code quality issues (incl. cognitive complexity, test proportionality)
 - Security vulnerabilities
 - Performance concerns
 - Severity per finding (critical/warning/suggestion)

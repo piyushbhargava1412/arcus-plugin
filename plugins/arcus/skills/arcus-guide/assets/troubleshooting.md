@@ -102,10 +102,10 @@ npm run test:e2e           # E2E tests
 - Check if expectations are correct
 - Verify test cases are realistic
 
-**3. Let holistic review catch it:**
-- If per-task review missed the issue, proceed to Stage 4
-- Holistic review will catch cross-cutting issues
-- Review loop will address it
+**3. Don't defer to Stage 4 — the gate will block:**
+- Stage 4's deterministic gate runs the **full test suite** over the whole branch before any semantic review
+- A failing test there is a hard block (`critical`) that returns `changes_requested` immediately
+- So fix failures now rather than carrying them forward
 
 **4. Manual fix if critical:**
 - Edit code to fix failing tests
@@ -128,8 +128,13 @@ npm run test:e2e           # E2E tests
 
 **Diagnosis:**
 1. Check `review.md` for persistent critical issues
-2. Check `.arcus/session-checkpoint.json` for `review_round` count
-3. Identify if issues are genuine or false positives
+2. **Identify which tier is blocking** — the report's *Deterministic Gate* table shows which tooling check (typecheck/tests/build/secret) failed, separate from the semantic findings below it
+3. Check `.arcus/session-checkpoint.json` for `review_round` count
+4. Identify if issues are genuine or false positives
+
+**First, split by tier:**
+- **Tier 1 (deterministic gate) failures** are objective — the repo's own tooling failed. These are almost never false positives; the code genuinely doesn't compile, a test fails, the build breaks, or a secret was detected. Fix the concrete breakage; you can't override these by judgment.
+- **Tier 2 (semantic) findings** are judgment calls and *can* be over-strict. The override advice below applies to these.
 
 **Solutions:**
 
