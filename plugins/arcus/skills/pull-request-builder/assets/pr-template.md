@@ -6,7 +6,7 @@
 ## Technical Changes
 - **Feature**: [Key logic added/modified]
 - **Tests**: [Test suites added/modified]
-- **Architecture**: [Patterns applied, referencing assumptions.md]
+- **Architecture**: [Patterns applied, referencing plan.md]
 
 ## Verification Results
 - [ ] All unit tests pass

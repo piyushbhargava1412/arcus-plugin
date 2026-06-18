@@ -19,7 +19,7 @@ Acts as the "Final Gatekeeper" to wrap up the automated development cycle. It ga
 ### Step 1: Evidence Gathering
 Read the following from `.arcus/specs/[STORY-ID]/`:
 1. `story.md`: The original intent.
-2. `assumptions.md`: The tech lead decisions.
+2. `plan.md`: The tech lead decisions.
 3. `blueprint.md`: The plan (to verify all tasks are marked as done).
 4. `test-plan.md`: The verification evidence.
 

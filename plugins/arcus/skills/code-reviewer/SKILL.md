@@ -55,7 +55,7 @@ But keep the two axes separate:
 - `STORY_ID` (provided by the orchestrator)
 - The branch diff against base: `git diff <base_branch>...HEAD` (base from `session-checkpoint.json`)
 - `.arcus/specs/<STORY_ID>/blueprint.md` — what was supposed to be built
-- `.arcus/specs/<STORY_ID>/assumptions.md` — the agreed decisions/scope
+- `.arcus/specs/<STORY_ID>/plan.md` — the agreed decisions/scope
 - `.arcus/specs/<STORY_ID>/test-plan.md` — expected test coverage
 - `.arcus/specs/<STORY_ID>/context-pack.md` — architecture + repo patterns
 - Repo conventions / guidelines (if present in `AGENTS.md` or `CLAUDE.md`)
