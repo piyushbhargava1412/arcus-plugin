@@ -50,3 +50,27 @@ Read the following artifacts from `.arcus/specs/[STORY-ID]/`:
 ## Resources
 - **Test Plan Template**: `./assets/test-plan-template.md`
 - **QA Best Practices**: `./references/qa-best-practices.md`
+
+## Handoff Protocol
+
+On finish, this skill marks its own checkpoint key complete:
+`<BIN>/checkpoint.sh complete <STORY_ID> test_plan` (resolve `<BIN>` as `.arcus/bin/` →
+`$ARCUS_HOME/scripts/`). It then names **only its immediate successor** — Implementation. It does
+**NOT** enumerate the full pipeline; that lives only in the afk `arcus:arcus-controller`.
+
+- **Successor**: Implementation — skill `arcus:implementation-runner`, resume phrase
+  `"implement <STORY_ID>"`.
+- **Same-session continuation**: on a `"yes"` / `"proceed"`, load and follow
+  `arcus:implementation-runner` directly.
+- **Cold resume** (new session): the user types `"implement <STORY_ID>"`, which re-activates
+  Implementation by description-matching + the checkpoint.
+
+Emit exactly this shape:
+
+```
+[Handoff] Test Plan complete → next: Implementation
+Summary: <N test cases>
+Artifacts: .arcus/specs/<STORY_ID>/test-plan.md
+Proceed? Reply "yes" to run Implementation, or "no" to pause.
+Resume later with: "implement <STORY_ID>"
+```

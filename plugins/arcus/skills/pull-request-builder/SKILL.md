@@ -42,3 +42,17 @@ Read the following from `.arcus/specs/[STORY-ID]/`:
 ## Resources
 - **PR Template**: `./assets/pr-template.md`
 
+## Handoff Protocol
+
+On finish, this skill marks its own checkpoint key complete:
+`<BIN>/checkpoint.sh complete <STORY_ID> closure` (resolve `<BIN>` as `.arcus/bin/` →
+`$ARCUS_HOME/scripts/`).
+
+This is the **TERMINAL stage** of the ARCUS pipeline — there is **no successor and no further
+handoff**. Once the pull request is created and `closure` is marked complete, the pipeline is
+**complete**. Do not emit a "proceed?" handoff block; instead emit a terminal completion line:
+
+```
+[Complete] Pipeline complete for <STORY_ID> → PR: <link>
+```
+

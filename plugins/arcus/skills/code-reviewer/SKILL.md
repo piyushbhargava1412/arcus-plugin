@@ -225,3 +225,45 @@ VERDICT: changes_requested
 - **One report, one verdict**: The orchestrator depends on a single parseable `VERDICT:` line.
 - **Loopback awareness**: On a re-review (round > 1), confirm previously-reported critical/warning
   items and gate failures are resolved; only re-emit ones that still apply, plus any new ones.
+
+## Handoff Protocol
+
+On finish, this skill marks its own checkpoint key complete:
+`<BIN>/checkpoint.sh complete <STORY_ID> code_review` (resolve `<BIN>` as `.arcus/bin/` →
+`$ARCUS_HOME/scripts/`). This is a **decision gate** — its successor depends on the `VERDICT`, so it
+names **only its immediate successor on each branch**. It does **NOT** enumerate the full pipeline;
+that lives only in the afk `arcus:arcus-controller`.
+
+- **On `approved`** — successor is Closure: skill `arcus:pull-request-builder`, resume phrase
+  `"create pull request for <STORY_ID>"`.
+- **On `changes_requested`** — loop back to Implementation: skill `arcus:implementation-runner`, resume
+  phrase `"fix <STORY_ID>"`. (The implementation-runner's Loopback Protocol converts the open findings
+  into fix-tasks, then re-reviews.)
+- **Same-session continuation**: on a `"yes"` / `"proceed"`, load and follow the successor for the
+  emitted verdict directly (Closure on `approved`; on `changes_requested`, treat `"fix"` as the
+  proceed reply and load `arcus:implementation-runner`).
+- **Cold resume** (new session): the user types the branch's explicit phrase
+  (`"create pull request for <STORY_ID>"` or `"fix <STORY_ID>"`), which re-activates the successor by
+  description-matching + the checkpoint.
+
+Emit the block matching the verdict.
+
+On `approved`:
+
+```
+[Handoff] Code Review complete (approved) → next: Closure
+Summary: critical 0, warning <W>, suggestion <S>
+Artifacts: .arcus/specs/<STORY_ID>/review.md
+Proceed? Reply "yes" to run Closure, or "no" to pause.
+Resume later with: "create pull request for <STORY_ID>"
+```
+
+On `changes_requested`:
+
+```
+[Handoff] Code Review complete (changes_requested) → next: Implementation (loopback)
+Summary: critical <C>, warning <W>, suggestion <S>
+Artifacts: .arcus/specs/<STORY_ID>/review.md
+Proceed? Reply "fix" to loop findings back into Implementation, or "no" to pause.
+Resume later with: "fix <STORY_ID>"
+```
