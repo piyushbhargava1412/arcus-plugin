@@ -45,7 +45,7 @@
 - [Item 2 — reason for deferral]
 
 ## Guardrail Check
-- [ ] All decisions comply with `.github/copilot-instructions.md`
+- [ ] All decisions comply with `AGENTS.md` or `CLAUDE.md`
 - [ ] All decisions align with patterns in `context-pack.md`
 - [ ] No decision introduces a new dependency without justification
 - [ ] No two decisions contradict each other (internal consistency)

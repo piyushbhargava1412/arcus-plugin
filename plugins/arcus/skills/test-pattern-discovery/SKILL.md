@@ -2,7 +2,7 @@
 name: test-pattern-discovery
 description: Analyze existing tests and persist shared repository testing conventions. Use when user says "how do we write tests?", "discover and persist testing patterns", or "baseline the testing style".
 metadata:
-  version: "1.0.0"
+  version: "1.1.0"
   team: krill
   type:
     - agents
@@ -46,12 +46,15 @@ Identify how tests are authored in the repository and persist shared conventions
    - **Performance tests**: Identify tool (Gatling, k6, JMeter, Locust), scenario structure, threshold/assertion patterns.
    - **Shell script tests**: Identify framework if any (BATS — Bash Automated Testing System), or custom convention; note how setup/teardown and assertions are done (`assert`, `assertEquals`, `diff`, exit-code checks); identify what they test (smoke, acceptance, functional, performance).
 
-4. **Identify Execution Commands**: Determine the specific commands required to run each test type, including:
+4. **Identify Execution Commands**: Populate the **Execution Patterns** table with the command for each
+   test type **and the full suite** (the code-review deterministic gate reads the Full Suite row from
+   here). Sources:
    - Build tool tasks (e.g., `./gradlew test`, `./gradlew integrationTest`, `mvn verify`)
    - Package manager scripts (e.g., `npm test`, `npm run test:e2e`, `pnpm test:acceptance`)
    - Direct runner invocations (e.g., `pytest tests/`, `python -m pytest`)
    - Shell script invocations (e.g., `bash scripts/run_acceptance_tests.sh`, `./test/functional/run.sh`)
    - CI/CD stages from `.github/workflows/` that run test commands — extract the exact `run:` commands
+     (prefer these; CI is authoritative for what gates a PR)
 
 ### Step 3: Persistence
 1. Use the `./assets/testing-patterns.template.md` to generate the baseline.

@@ -2,7 +2,7 @@
 name: repository-context-builder
 description: Build or refresh baseline repository context by analyzing structure and generating repo_scope and repo_map artifacts. Use when user says "build shared repository context", "update the context", or "refresh the context" or "sync the repo context".
 metadata:
-   version: "1.1.0"
+   version: "1.2.0"
    team: krill
    type:
       - agents
@@ -107,6 +107,18 @@ Build or refresh baseline repository context by analyzing repository structure a
    - All test layers present (unit, integration, functional, acceptance, performance, shell-script).
    - CI/CD pipeline structure and test execution stages.
 
+4. **Extract Build & Quality Commands** (feeds the code-review stage's deterministic gate):
+   - For each action — **build, run, lint, lint-autofix, format-check, format-write, typecheck,
+     static analysis** — find the *exact* command the repo uses. (Test commands belong in
+     `testing-patterns.md` → Execution Patterns, not here.)
+   - **Source priority**: prefer the command a **CI/CD workflow** actually runs (CI is the source of
+     truth for what gates a PR), then fall back to the build tool's task definitions
+     (`package.json` scripts, Gradle/Maven goals, `Makefile`/`Taskfile` targets, `pyproject.toml`/`tox`,
+     `go` commands), then config files (e.g. a `.golangci.yml` implies `golangci-lint run`).
+   - Record each command with its evidence source (file path / CI step) in `repo_map.md`'s
+     **Build & Run Commands** table. For any action with no discoverable command, write
+     `Not found — checked: <paths>` rather than guessing.
+
 ### Step 3: Metadata Harvesting
 1. **Git Commit**: Run `git -C <repository_root> rev-parse HEAD`. Use `unknown` if git or commits are unavailable.
 2. **Timestamp**: Capture current ISO timestamp.
@@ -146,6 +158,7 @@ Generate or update the following artifacts following the specifications in `./re
 - [ ] All source code languages detected (Java, TS, Python, Go, IaC, etc.).
 - [ ] All dependency managers detected and listed in `repo_map.md`.
 - [ ] `.github/` workflows and actions scanned; pipeline stages captured.
+- [ ] Build & Run Commands table populated (build / run / lint / lint-autofix / format-check / format-write / typecheck / static-analysis), each with evidence or an explicit `Not found`.
 - [ ] Scripts (`*.sh`, `Makefile`, etc.) surfaces catalogued.
 - [ ] All test layers identified (unit, integration, functional, acceptance, performance, shell-script).
 - [ ] Documentation (`README*`, `docs/`, ADRs) surfaced in `repo_map.md`.

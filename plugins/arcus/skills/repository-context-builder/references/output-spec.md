@@ -30,6 +30,10 @@ Must include:
 - Key Packages / Modules
 - Entry Surface Locations
 - Config Hotspots
+- Build & Run Commands: table of action → exact command → evidence source, covering build, run, lint,
+  lint-autofix, format-check, format-write, typecheck, and static analysis. (Test commands live in
+  `testing-patterns.md` → Execution Patterns.) Prefer the command CI actually runs; mark undiscoverable
+  actions `Not found`. Consumed by the code-review deterministic gate.
 - Integration / Adapter Areas
 - Test Locations: table listing root path by test type — unit, integration, functional, acceptance/BDD, performance/load, shell-script tests
 - Scripts & Automation: `*.sh`, `*.bash`, `Makefile`, `Taskfile`, utility scripts

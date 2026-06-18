@@ -35,7 +35,7 @@ reuse it and do NOT re-ask questions already answered.
 
 - `.arcus/specs/[STORY-ID]/story.md` — The user story
 - `.arcus/specs/[STORY-ID]/context-pack.md` — Repository context (flows, patterns, constraints)
-- `.github/copilot-instructions.md` — Project-wide guardrails (if present)
+- Project-wide guardrails (if present in `AGENTS.md` or `CLAUDE.md`)
 
 ## Output
 

@@ -5,7 +5,7 @@ description: >
   the task's Definition of Done from the blueprint. Returns PASS or structured issue list.
   Used by the orchestrator after each task implementation.
 metadata:
-  version: "2.0.0"
+  version: "2.1.0"
   team: krill
   type:
     - reviewer
@@ -26,6 +26,12 @@ Verifies that an implementation matches its specification — nothing more, noth
 |------|--------|-------|--------|
 | **per-task** (default) | `subagent-task-dispatcher` | One `### Task N:` DoD | Binary `VERDICT: PASS \| FAIL` |
 | **holistic** | `code-reviewer` coordinator | The whole branch diff vs. the full blueprint + assumptions | Severity-tagged findings (canonical taxonomy below) |
+
+The **per-task** pass is an early, advisory correctness check (one retry, then commit-and-carry-forward
+— see the dispatcher's Step 6), focused on catching gamed/missing tests and `[EXTRA]` scope creep while
+the task context is fresh. It is the *only* per-task review: code quality, security, and performance are
+reviewed once, holistically, by the `code-reviewer` stage over the full diff. Stay strictly on
+correctness-vs-spec here; never flag style or quality.
 
 In **holistic** mode, do not emit a binary verdict. Instead return findings using the canonical
 severity taxonomy and let the coordinator judge:

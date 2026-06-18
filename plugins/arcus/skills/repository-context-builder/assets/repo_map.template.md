@@ -78,16 +78,24 @@ confidence: high | medium | low
 
 ## Build & Run Commands
 
-<!-- Discovered from build files, scripts, Makefile, package.json, etc. -->
+<!-- Discovered from build files, scripts, Makefile, package.json, etc.
+     Prefer the exact command a CI workflow runs when one exists. The code-review deterministic gate
+     runs these. For test commands, see testing-patterns.md → Execution Patterns. -->
 
-| Action      | Command                          | Source                          |
-|-------------|----------------------------------|---------------------------------|
-| Build       |                                  | `[file path]`                   |
-| Test        |                                  | `[file path]`                   |
-| Run         |                                  | `[file path]`                   |
-| Lint        |                                  | `[file path]`                   |
+| Action          | Command                          | Source                          |
+|-----------------|----------------------------------|---------------------------------|
+| Build           |                                  | `[file path]`                   |
+| Run             |                                  | `[file path]`                   |
+| Lint            |                                  | `[file path]`                   |
+| Lint (autofix)  |                                  | `[file path]`                   |
+| Format check    |                                  | `[file path]`                   |
+| Format (write)  |                                  | `[file path]`                   |
+| Typecheck       |                                  | `[file path]`                   |
+| Static analysis |                                  | `[file path / CI step]`         |
 
-<!-- If not discoverable: "Not found — checked: [files searched]" -->
+> Test commands: see [testing-patterns.md](testing-patterns.md) → Execution Patterns.
+
+<!-- If not discoverable for a row: "Not found — checked: [files searched]" -->
 
 ## Observability
 
