@@ -4,9 +4,9 @@
 
 ## What is ARCUS?
 
-ARCUS is your AI-powered software development lifecycle factory. It takes a user story written in markdown and runs it through a six-stage pipeline that produces production-ready code, complete with tests and code review, ending with an opened pull request.
+ARCUS is your AI-powered software development lifecycle factory. It takes a user story written in markdown and runs it through a six-stage pipeline (`Scaffold → Brainstorm → Test Plan → Implementation → Code Review → Closure`) that produces production-ready code, complete with tests and code review, ending with an opened pull request.
 
-The system is built around two orchestrator meta-skills:
+The system is built around a repository-agentifier and **two experiences** over the same pipeline:
 
 ### `repo-agentifier`
 
@@ -22,14 +22,27 @@ Prepares your repository for agent-driven development by scanning its structure 
 
 This is a one-time setup per repository, re-run only after major restructuring or tech stack changes.
 
-### `arcus-controller`
+### Gated experience — `solution-architect` + a self-handoff chain
 
-Orchestrates the Spec → Code → Pull Request pipeline as a sequence of human-gated stages. Stages produce artifacts, and the pipeline pauses at handoff gates between major stages for your review and approval. You can:
+The **default, user-driven** experience is a chain of self-handing-off stage skills with **no router
+and no shared pipeline file**. You enter at `arcus:solution-architect` (`solution-architect <STORY>`
+or `plan <STORY>`); each stage skill names only its immediate successor and pauses at a handoff gate.
+You can:
 
-- Run in **gated mode** (default) — Review and approve at each stage with "yes" to proceed
-- Run in **AFK mode** (opt-in) — Fully autonomous end-to-end execution with `--afk` flag
-- Invoke stages individually — Target specific steps like "brainstorm", "implement", or "review"
-- Pause and resume — Your session checkpoint persists across agent sessions
+- Review and approve at each gate with "yes" to proceed
+- Invoke stages individually — `generate test plan for <STORY>`, `implement <STORY>`,
+  `review <STORY>`, `close <STORY>`
+- Pause and resume — your session checkpoint persists across agent sessions; on a cold resume, type
+  the next stage's phrase
+- Answer recommendation-first interviews — every gated question presents one **Recommended** option
+  with a rationale, plus a custom-answer option
+
+### AFK experience — `arcus-controller`
+
+The opt-in **autonomous** experience is the `arcus-controller` meta-skill. It activates only on AFK
+phrases (`afk`, `--afk`, `forge`, `run afk on <STORY>`), runs every stage back-to-back as one-shot
+subagents with milestone-only output, and never stops at a gate. Its body holds the single canonical
+ordered stage list for the pipeline.
 
 ## Who is ARCUS for?
 

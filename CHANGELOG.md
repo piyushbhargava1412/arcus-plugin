@@ -9,6 +9,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Pipeline reworked into two experiences: a gated self-handoff chain and an AFK-only controller
+  (ARC-0002).** The default, user-driven flow is now a **chain of self-handing-off skills** with
+  **no router and no shared pipeline file** — entry is the new **`solution-architect`** skill
+  (`solution-architect <STORY>` / `plan <STORY>`), and each stage skill embeds a **Handoff Protocol**
+  naming only its immediate successor (a same-session `yes` loads it; a cold resume uses the next
+  stage's explicit phrase + the checkpoint). The fully-autonomous path is the **`arcus-controller`**
+  meta-skill (name kept, version `4.0.0`), now **narrowed to AFK-only**: it activates solely on AFK
+  phrases (`afk`, `--afk`, `forge`, `run afk on <STORY>`), runs stages as one-shot subagents with
+  milestone output, and its body holds the **single canonical ordered stage list**.
+- **New ordered pipeline / stage keys:** `scaffold → context_pack → spec_finalizer → blueprint →
+  test_plan → branch → task_1..N → code_review → closure`. The old standalone `init` stage is removed
+  (`scaffold` is the new front), and `branch` is a **new** stage inserted between `test_plan` and the
+  task loop.
+- **Deferred branch creation.** A new **`scaffold.sh`** creates the spec folder, copies `story.md`,
+  and inits the checkpoint recording the *planned* `branch_name` / `base_branch` — but **no git
+  branch**. The branch is created later at the start of Implementation by **`branch.sh`** (driven by
+  the new `implementation-runner` skill), which bumps the name on collision and calls
+  `checkpoint.sh set-branch` if the realized name differs from the plan. A new shared
+  **`scripts/lib/branch_name.sh`** defines the `arcus/<id>-N` naming convention once (sourced by both
+  scripts). `checkpoint.sh` gains a **`set-branch`** action.
+- **Planning deliberation consolidated into a single `plan.md`** (replacing the old split assumptions
+  and clarifications files). The machine-parsed task list stays in `blueprint.md`. No runtime skill or
+  doc reads those former planning files any more.
+- **Recommendation-first gated interviews.** In the gated flow, both `spec-finalizer` and
+  `implementation-planner` present every interview question with exactly one option marked
+  **Recommended** (with a one-line rationale) plus an explicit custom-answer option; the
+  `solution-architect` driver enforces this.
+
+### Added
+
+- **`solution-architect` skill (version `1.0.0`)** — the gated planning driver. Chains
+  scaffold → context-pack → spec-finalizer (dialogue) → implementation-planner (dialogue) in the main
+  thread, then hands off to the Test Plan. Activates on `solution-architect <STORY>` / `plan <STORY>`.
+- **`implementation-runner` skill (version `1.0.0`)** — the single canonical Implementation loop
+  driver, reused by both the gated chain and the AFK controller. Realizes the deferred git branch at
+  entry (`branch.sh`), parses `blueprint.md` tasks, and drives each through the
+  `subagent-task-dispatcher` protocol; owns the Code Review loopback.
+
+> **Note:** `context: fork` adoption is **deferred** to a follow-up — skills are still dispatched
+> imperatively (one skill reads and follows the next by name); ARCUS does **not** use `context: fork`
+> today.
+
 - **Test commands deduplicated to a single source of truth.** `testing-patterns.md` → Execution
   Patterns now solely owns test commands (incl. the Full Suite row the deterministic gate reads);
   `repo_map.md`'s Build & Run table drops its Test row and owns only non-test build/quality commands
@@ -124,7 +166,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (version `2.1.0`) emits a `NEEDS_INPUT` escalation block distinguishing
   `zero-option` blockers (always escalated) from `low-confidence` items (escalated
   only in interactive mode, opt-in via "interactive"/"ask me"). User answers persist
-  to `clarifications.md` and are reused on resume.
+  to a clarifications artifact and are reused on resume.
 
 ## [0.1.0] - 2025-06-09
 

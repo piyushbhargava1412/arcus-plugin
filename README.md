@@ -10,7 +10,11 @@ orchestrator meta-skills and their supporting sub-skills, helper scripts, and a 
 hook into a single versioned plugin.
 
 - **`repo-agentifier`** — scans the repo to build the `.context/` snapshot, then generates `AGENTS.md` + `CLAUDE.md` to make it agent-ready.
-- **`arcus-controller`** — orchestrates the Spec → Code → Pull Request pipeline as human-gated stages (with an opt-in fully-autonomous `--afk` mode).
+- **Gated experience** — the default, user-driven Spec → Code → Pull Request flow: a chain of
+  self-handing-off stage skills (no router, no shared pipeline file) entered at
+  **`solution-architect`**, pausing at each handoff gate.
+- **`arcus-controller`** — the opt-in **AFK-only** autonomous orchestrator; activates on
+  `afk` / `--afk` / `forge` / `run afk on <STORY>` and runs the whole pipeline end-to-end with no gates.
 
 This repository is also the **plugin marketplace** (`arcus`): one repo serves Copilot CLI,
 Claude Code, and VS Code from the same unified plugin format.
@@ -208,31 +212,36 @@ repository restructuring.
 
 ### 2. Run the pipeline (per story)
 
-Point the router at a story file. By default the pipeline is **human-gated**: it runs one stage at
-a time and pauses at a handoff between stages so you can review and reply `yes` to proceed (or `no`
+By default the pipeline is **human-gated** and runs as a **self-handing-off chain of stage skills**
+(no router, no shared pipeline file). Start planning at the solution architect; each stage runs one
+at a time and pauses at a handoff between stages so you can review and reply `yes` to proceed (or `no`
 to pause and resume later). Each stage is also independently invocable.
 
 ```sh
 copilot                                   # or: claude
-> implement path/to/story.md             # gated: stops at each handoff for your "yes"
+> plan path/to/story.md                   # gated entry: solution-architect; stops at each handoff for your "yes"
 ```
 
 The gated stages are:
 
-1. **Init** (deterministic) — branch + workspace scaffold.
-2. **Brainstorm** (human-in-the-loop) — collaborative dialogue → `assumptions.md` + `blueprint.md`. *Gate.*
+1. **Scaffold** (deterministic, `scaffold.sh`) — spec folder + `story.md` + checkpoint with the *planned* branch. **No git branch yet.**
+2. **Brainstorm** (human-in-the-loop) — context pack, then recommendation-first spec-finalizer + implementation-planner dialogues → `plan.md` + `blueprint.md`. *Gate.*
 3. **Test Plan** (automated) — `test-plan.md`. Runs on your `yes`, then pauses before implementation.
-4. **Implementation** (automated, TDD per task) — committed code. *Gate.*
-5. **Code Review** (automated) — holistic review of the branch diff → `review.md` + verdict. *Decision gate:* approve, or loop findings back into Implementation as fix-tasks.
+4. **Implementation** (automated, TDD per task) — the `branch` step creates the git branch first (deferred-branch design), then per-task committed code. *Gate.*
+5. **Code Review** (automated) — two-tier holistic review of the branch diff → `review.md` + verdict. *Decision gate:* approve, or loop findings back into Implementation as fix-tasks.
 6. **Closure** (manual trigger) — opens the pull request.
 
-Per-stage / continuation phrases: `brainstorm <STORY>`, `generate tests <STORY>`,
-`implement <STORY>`, `review <STORY>`, `fix <STORY>`, `close <STORY>`, and `yes` / `no` at any gate.
+Gated entry / per-stage / continuation phrases: `solution-architect <STORY>` or `plan <STORY>`
+(entry), `generate test plan for <STORY>`, `implement <STORY>` / `code <STORY>`, `review <STORY>`,
+`fix <STORY>`, `close <STORY>`, and `yes` / `no` at any gate. The Implementation loop is the shared
+`implementation-runner` skill, reused by both the gated chain and the AFK controller.
 
 #### Fully unattended (AFK) mode
 
-The original Away-From-Keyboard behaviour is preserved as an opt-in: add `--afk` (or say
-"forge …" / "run afk on …"). All handoff gates auto-confirm and the run proceeds end-to-end.
+The Away-From-Keyboard behaviour is the opt-in `arcus-controller` meta-skill: say `forge …` /
+`run afk on …` or add `--afk`. The controller runs every stage back-to-back as one-shot subagents,
+auto-confirms all handoff gates, and emits milestone-only output. (Its body holds the single
+canonical ordered stage list.)
 
 ```sh
 copilot -p "implement path/to/story.md --afk" --yolo
@@ -250,12 +259,11 @@ Each story gets a working area under `.arcus/specs/[STORY-ID]/` in the target re
 
 | Artifact                | Purpose                                              |
 | ----------------------- | ---------------------------------------------------- |
-| `session-checkpoint.json` | Resumable per-stage execution state (status enum)  |
+| `session-checkpoint.json` | Resumable per-stage execution state (ordered stage keys + status enum; planned/realized branch fields) |
 | `story.md`              | Canonical copy of the input story                    |
 | `context-pack.md`       | Compact, token-efficient context bundle              |
-| `clarifications.md`     | Answers captured during the Brainstorm dialogue      |
-| `assumptions.md`        | Explicit assumptions used to resolve ambiguity       |
-| `blueprint.md`          | Implementation plan and task list                    |
+| `plan.md`               | Consolidated planning deliberation (grounded decisions, dialogue answers, design choices) |
+| `blueprint.md`          | Machine-parsed implementation plan and task list     |
 | `test-plan.md`          | Generated verification matrix and test cases         |
 | `review.md`             | Holistic code-review report + verdict                |
 | `PR_DESCRIPTION.md`     | Final PR body                                        |
@@ -267,9 +275,12 @@ Treat `.arcus/` as ephemeral working data — safe to inspect, commit, or discar
 ## How it works
 
 On the first agent session after install, a **`SessionStart` hook** runs
-`scripts/bootstrap.sh`, which stages the deterministic helper scripts (branch, commit, PR,
-checkpoint, story-id extraction) into the workspace at `.arcus/bin/` and records `ARCUS_HOME`
-in `.arcus/env`. Skills then call these scripts from `.arcus/bin/`.
+`scripts/bootstrap.sh`, which stages the deterministic helper scripts (`scaffold.sh`, `branch.sh`,
+`commit.sh`, `pr.sh`, `checkpoint.sh`, `extract_story_id.sh`, and the shared
+`lib/branch_name.sh` naming library) into the workspace at `.arcus/bin/` and records `ARCUS_HOME`
+in `.arcus/env`. Skills then call these scripts from `.arcus/bin/`. Note the **deferred-branch**
+split: `scaffold.sh` only records the *planned* branch in the checkpoint, while `branch.sh` creates
+the git branch later at the start of Implementation.
 
 Because plugins are copied into a cache directory on install, all skills reference their own
 bundled resources with **relative paths** (`./assets/...`, `./references/...`) and reference

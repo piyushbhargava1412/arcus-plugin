@@ -7,7 +7,12 @@ confidence: high
 -->
 
 ## Overview
-Publishes the current story branch and opens a GitHub pull request using story-scoped PR description content.
+Publishes the current story branch and opens a GitHub pull request using story-scoped PR description
+content. The mechanism is unchanged, but `base_branch` is now reliably populated: it is written into
+the checkpoint at **scaffold** time (by `scaffold.sh` via `checkpoint.sh init`) and refreshed by
+`branch.sh` if the branch name was bumped, so `pr.sh` always reads a populated base. This is the
+**terminal `closure` stage** — in the gated experience the `pull-request-builder` skill closes the
+self-handoff chain (it names no successor).
 
 ## Entry Points
 - **Type**: Job
@@ -34,6 +39,8 @@ Publishes the current story branch and opens a GitHub pull request using story-s
 ## Scope
 - `plugins/arcus/scripts/pr.sh`
 - `plugins/arcus/scripts/checkpoint.sh`
+- `plugins/arcus/scripts/scaffold.sh` (populates `base_branch` at init time)
+- `plugins/arcus/skills/pull-request-builder/SKILL.md` (terminal `closure` stage)
 - `plugins/arcus/skills/arcus-controller/SKILL.md`
 
 ## Tests

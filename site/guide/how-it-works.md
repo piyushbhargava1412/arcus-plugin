@@ -7,11 +7,13 @@ ARCUS uses a combination of plugin hooks, helper scripts, and portable skill ref
 On the first agent session after installing the plugin, a **SessionStart hook** automatically runs `scripts/bootstrap.sh`. This script:
 
 1. Stages deterministic helper scripts into the workspace at `.arcus/bin/`:
-   - Branch management (creation, switching)
+   - Workspace scaffold (`scaffold.sh`) — creates the spec folder, copies the story, and inits the checkpoint with the *planned* branch (no git branch yet)
+   - Branch realization (`branch.sh`) — creates the git branch later, at the start of Implementation
    - Commit automation
    - Pull request creation
-   - Checkpoint read/write operations
+   - Checkpoint read/write operations (including the `set-branch` action)
    - Story ID extraction utilities
+   - The shared branch-naming library `lib/branch_name.sh` (defines the `arcus/<id>-N` convention once)
 
 2. Records the `ARCUS_HOME` environment variable in `.arcus/env` for script discovery
 
@@ -36,16 +38,37 @@ Skills reference other ARCUS skills **by name**, not by path:
 
 The agent runtime resolves these names to the appropriate skill within the plugin, maintaining portability across installation locations.
 
+## Two Experiences: Gated Chain vs AFK Controller
+
+ARCUS runs the same pipeline two ways, with two different orchestration shapes:
+
+- **Gated (default, user-driven)** is a **chain of self-handing-off skills** — there is **no router**
+  and **no shared pipeline file**. You enter at `arcus:solution-architect`
+  (`solution-architect <STORY>` / `plan <STORY>`). Each stage skill embeds a **Handoff Protocol** that
+  names only its immediate successor: a same-session `"yes"` loads the next stage, and a cold resume
+  uses the successor's explicit phrase plus the checkpoint to pick up where you left off. The
+  spec-finalizer and implementation-planner dialogues run **in the main thread** so they can interview
+  you directly.
+- **AFK (autonomous)** is the `arcus:arcus-controller` meta-skill. It activates **only** on AFK
+  phrases (`afk`, `--afk`, `forge`, `run afk on <STORY>`), dispatches each stage as a one-shot
+  subagent, and holds the **single canonical ordered stage list** in its own body.
+
+Both reuse the same `arcus:implementation-runner` loop driver for the Implementation stage, the same
+helper scripts, and the same checkpoint stage keys
+(`scaffold → context_pack → spec_finalizer → blueprint → test_plan → branch → task_1..N → code_review → closure`).
+
+> Skills are still dispatched imperatively (one skill reads and follows the next by name). Isolated
+> execution via `context: fork` is a deferred follow-up and is **not** in use today.
+
 ## Workspace Structure
 
 Each story execution creates a working area under `.arcus/specs/[STORY-ID]/` in your repository:
 
-- `session-checkpoint.json` — Resumable per-stage execution state
+- `session-checkpoint.json` — Resumable per-stage execution state (ordered stage keys + the planned/realized branch fields)
 - `story.md` — Canonical copy of the input story
 - `context-pack.md` — Compact, token-efficient context bundle
-- `clarifications.md` — Answers captured during Brainstorm
-- `assumptions.md` — Explicit assumptions used to resolve ambiguity
-- `blueprint.md` — Implementation plan and task list
+- `plan.md` — Consolidated planning deliberation (grounded decisions, dialogue answers, design choices)
+- `blueprint.md` — Machine-parsed implementation plan and task list
 - `test-plan.md` — Generated verification matrix
 - `review.md` — Holistic code-review report
 - `PR_DESCRIPTION.md` — Final pull request body

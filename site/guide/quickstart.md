@@ -44,28 +44,31 @@ This invokes the `repo-agentifier` skill, which:
 
 ## 2. Run the Pipeline (Per Story)
 
-Point ARCUS at a user story file to run the full SDLC pipeline:
+Point ARCUS at a user story file to start planning the SDLC pipeline:
 
 ```
-implement path/to/story.md
+plan path/to/story.md
 ```
 
-Or use alternative triggers:
+Or use the longer entry phrase:
 
 ```
-build path/to/story.md
-forge path/to/story.md
+solution-architect path/to/story.md
 ```
 
-**Default behavior:** ARCUS runs in **gated mode**, pausing at each handoff gate for your review. You respond "yes" to proceed to the next stage or "no" to pause and resume later.
+**Default behavior:** ARCUS runs the **gated** experience — a chain of self-handing-off skills that
+pauses at each handoff gate for your review. The entry point is `arcus:solution-architect`. At each
+gate you respond "yes" to load the next stage, or "no" to pause; on a cold resume you type the next
+stage's explicit phrase (e.g. `generate test plan for <STORY>`, `implement <STORY>`,
+`review <STORY>`, `close <STORY>`).
 
 The pipeline stages are:
 
-1. **Init** — Creates branch `arcus/[STORY-ID]`, scaffolds workspace
-2. **Brainstorm** — Resolves ambiguities → `assumptions.md` + `blueprint.md`
+1. **Scaffold** — Scaffolds the workspace and records the *planned* branch `arcus/[STORY-ID]-N` (no git branch yet)
+2. **Brainstorm** — Builds context, resolves ambiguities → `plan.md` + `blueprint.md`
 3. **Test Plan** — Designs test matrix → `test-plan.md`
-4. **Code** — Implements tasks → committed code
-5. **Review** — Holistic quality check → `review.md` + verdict
+4. **Implementation** — Creates the git branch, then implements tasks → committed code
+5. **Code Review** — Two-tier holistic quality check → `review.md` + verdict
 6. **Closure** — Creates pull request
 
 ### Choosing Your Mode
@@ -83,21 +86,22 @@ The pipeline stages are:
 - Simple features or bug fixes
 - Uninterrupted 30-90 minute sessions
 
-To use AFK mode, add the `--afk` flag:
+To use AFK mode, use an AFK trigger or the `--afk` flag (these activate the `arcus:arcus-controller`):
 
 ```
-implement path/to/story.md --afk
 run afk on path/to/story.md
+forge path/to/story.md
+implement path/to/story.md --afk
 ```
 
-For more details on choosing between modes, see [Mode Concepts](/concepts/modes). For a detailed breakdown of each pipeline stage, see [Pipeline Concepts](/concepts/pipeline).
+For more details on choosing between the two experiences, see [Mode Concepts](/concepts/modes). For a detailed breakdown of each pipeline stage, see [Pipeline Concepts](/concepts/pipeline).
 
 ## Quick Start Checklist
 
 - [ ] Install ARCUS plugin
 - [ ] Run `generate context` to build `.context/` snapshot
 - [ ] Write your first story in `story.md`
-- [ ] Run `implement story.md` in gated mode
+- [ ] Run `plan story.md` to start the gated pipeline at the solution architect
 - [ ] Review artifacts at each gate and respond "yes" to proceed
 - [ ] Verify the opened pull request
 

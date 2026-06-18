@@ -13,6 +13,22 @@ arcus-plugin is a plugin marketplace repository for ARCUS, packaging orchestrato
 supporting skills, deterministic helper scripts, and documentation for a Spec -> Code -> Pull
 Request workflow across Copilot CLI, Claude Code, and VS Code.
 
+The Spec -> Code -> Pull Request pipeline runs as two experiences over one ordered set of checkpoint
+stage keys (`scaffold -> context_pack -> spec_finalizer -> blueprint -> test_plan -> branch ->
+task_1..N -> code_review -> closure`):
+
+- **Gated (default, user-driven):** a chain of self-handing-off stage skills — no router, no shared
+  pipeline file. Entry is the `solution-architect` skill; each stage names only its immediate
+  successor. The `implementation-runner` skill drives the Implementation loop.
+- **AFK (autonomous):** the `arcus-controller` meta-skill (AFK-only); its body holds the single
+  canonical ordered stage list.
+
+Branch creation is deferred: `scaffold.sh` records the *planned* branch (no git branch), and
+`branch.sh` creates it at the start of Implementation (calling `checkpoint.sh set-branch` on a
+collision bump). Planning deliberation lives in a single `plan.md` (replacing the former separate
+assumptions and clarifications files). Skills are still dispatched imperatively — `context: fork`
+is not in use.
+
 - Technical map: [.context/repo_map.md](.context/repo_map.md)
 - Business scope: [.context/repo_scope.md](.context/repo_scope.md)
 

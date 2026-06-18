@@ -7,7 +7,11 @@ confidence: high
 -->
 
 ## Overview
-Creates conventional commits for story work while excluding generated `.arcus` artifacts from commit payloads.
+Creates conventional commits for story work while excluding generated `.arcus` artifacts from commit
+payloads. During Implementation, the **per-task commits are driven by the `implementation-runner`
+skill** (the single canonical loop driver): for each `### Task N:` it invokes the
+`subagent-task-dispatcher` protocol, which calls `commit.sh` once per task. The script mechanism
+itself is unchanged.
 
 ## Entry Points
 - **Type**: Job
@@ -33,6 +37,8 @@ Creates conventional commits for story work while excluding generated `.arcus` a
 
 ## Scope
 - `plugins/arcus/scripts/commit.sh`
+- `plugins/arcus/skills/implementation-runner/SKILL.md` (drives the per-task commit loop)
+- `plugins/arcus/skills/subagent-task-dispatcher/SKILL.md` (calls `commit.sh` per task)
 - `plugins/arcus/skills/arcus-controller/SKILL.md`
 
 ## Tests

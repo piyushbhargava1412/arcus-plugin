@@ -1,6 +1,6 @@
 # The ARCUS Pipeline
 
-Understanding ARCUS's 6-stage SDLC workflow
+Understanding ARCUS's full Spec → Code → Pull Request stage map
 
 <style>
 .pipeline-stage-table th,
@@ -11,96 +11,121 @@ Understanding ARCUS's 6-stage SDLC workflow
 
 ---
 
+::: tip Where the canonical list lives
+This page is the **single human-readable enumeration** of the ARCUS pipeline. The machine-canonical
+ordered stage list lives in the body of the AFK `arcus-controller` skill — there is intentionally
+**no** shared `skills/_shared/pipeline.md`. In the gated experience there is no central pipeline
+file at all: each stage skill knows only its own checkpoint key(s) and names only its immediate
+successor (see [Modes](/concepts/modes)).
+:::
+
 ## The Pipeline at a Glance
 
-ARCUS transforms a written user story into a reviewed, test-backed pull request through six sequential stages:
+ARCUS transforms a written user story into a reviewed, test-backed pull request through a sequence of
+stages, tracked in the session checkpoint by these ordered **stage keys**:
 
-1. **Stage 0: Init** - Branch & Workspace
-2. **Stage 1: Brainstorm** - Resolve Ambiguities & Finalize Plan (GATE A)
-3. **Stage 2: Test Plan** - Design Test Matrix (GATE B)
-4. **Stage 3: Implementation** - Implement & Verify (GATE C)
-5. **Stage 4: Code Review** - Holistic Quality Check (GATE D)
-6. **Stage 5: Closure** - Create Pull Request
+```
+scaffold → context_pack → spec_finalizer → blueprint → test_plan → branch → task_1..N → code_review → closure
+```
+
+Grouped into the human-facing phases:
+
+1. **Scaffold** — Workspace + planned branch (no git branch yet)
+2. **Brainstorm** — Context pack, spec finalization, implementation plan (GATE A)
+3. **Test Plan** — Design the verification matrix (GATE B)
+4. **Implementation** — Create the branch, then implement & verify each task (GATE C)
+5. **Code Review** — Two-tier holistic gate over the whole branch diff (GATE D)
+6. **Closure** — Create the pull request
 
 ```mermaid
 flowchart LR
-  S0["Stage 0: Init"] --> S1["Stage 1: Brainstorm"]
-  S1 -->|"GATE A"| S2["Stage 2: Test Plan"]
-  S2 -->|"GATE B"| S3["Stage 3: Implementation"]
-  S3 -->|"GATE C"| S4["Stage 4: Code Review"]
-  S4 -->|"GATE D: approved"| S5["Stage 5: Closure"]
+  S0["Scaffold<br/><code>scaffold</code>"] --> S1["Brainstorm<br/><code>context_pack · spec_finalizer · blueprint</code>"]
+  S1 -->|"GATE A"| S2["Test Plan<br/><code>test_plan</code>"]
+  S2 -->|"GATE B"| S3["Implementation<br/><code>branch · task_1..N</code>"]
+  S3 -->|"GATE C"| S4["Code Review<br/><code>code_review</code>"]
+  S4 -->|"GATE D: approved"| S5["Closure<br/><code>closure</code>"]
   S4 -. "changes_requested (max 3 rounds)" .-> S3
 ```
 
-Stages produce specific artifacts, and the pipeline pauses at handoff gates between stages (in gated mode). Stage 0 flows directly into Stage 1 without a handoff gate. The Code Review stage (Stage 4) can loop back to Implementation up to 3 times if changes are requested.
+Stages produce specific artifacts. In the **gated** experience the pipeline pauses at each handoff
+gate, where the just-finished stage skill names only its immediate successor; you reply "yes" (same
+session) or use the successor's explicit resume phrase (cold resume). Scaffold flows directly into
+Brainstorm without a gate. The Code Review stage can loop back to Implementation up to 3 times if
+changes are requested.
+
+The **branch is created late**: `scaffold` records only the *planned* `branch_name` / `base_branch`
+in the checkpoint; the actual git branch is realized at the *start* of Implementation by the
+`branch` stage. See [Deferred Branch Creation](#deferred-branch-creation) below.
 
 ## What The Gates Mean
 
-Gates are explicit pause points where you review outputs before the pipeline moves to the next stage.
+Gates are explicit pause points where you review outputs before the pipeline moves to the next stage
+(gated experience only).
 
 | Gate | Between Stages | Meaning |
 |------|----------------|---------|
-| Gate A | Brainstorm -> Test Plan | Assumptions and planning artifacts are ready for test design. |
-| Gate B | Test Plan -> Implementation | Test strategy is approved; implementation can begin. |
-| Gate C | Implementation -> Code Review | Code and tests are complete; ready for holistic review. |
-| Gate D | Code Review -> Closure (or loopback) | Review decision point: approve for PR, or send fixes back to Implementation. |
+| Gate A | Brainstorm → Test Plan | Plan and blueprint are ready for test design. |
+| Gate B | Test Plan → Implementation | Test strategy is approved; the branch can be created and implementation can begin. |
+| Gate C | Implementation → Code Review | Code and tests are complete; ready for holistic review. |
+| Gate D | Code Review → Closure (or loopback) | Review decision point: approve for PR, or send fixes back to Implementation. |
 
-In gated mode, ARCUS pauses at each gate and waits for your confirmation. In AFK mode, gates are auto-confirmed.
+In the gated experience, ARCUS pauses at each gate and waits for your confirmation. In AFK, the
+`arcus-controller` auto-confirms every gate and runs end-to-end.
 
 ---
 
 ## Stage Breakdown
 
-### Stage 0: Init
+### Scaffold
 
 <table class="pipeline-stage-table">
   <tr>
-    <th colspan="3">Purpose: Set up workspace and prepare for development</th>
+    <th colspan="3">Purpose: Set up the workspace and record the planned branch — without creating a git branch</th>
   </tr>
   <tr>
     <th><strong>What happens</strong></th>
-    <th><strong>Skills involved</strong></th>
+    <th><strong>Skills / scripts involved</strong></th>
     <th><strong>Artifacts created</strong></th>
   </tr>
   <tr>
     <td>
       <ul>
-        <li>Creates feature branch: <code>arcus/[STORY-ID]</code></li>
         <li>Scaffolds <code>.arcus/specs/[STORY-ID]/</code> directory</li>
-        <li>Copies story file to workspace</li>
-        <li>Initializes <code>session-checkpoint.json</code> (pipeline state tracker)</li>
+        <li>Copies story file to the workspace</li>
+        <li>Initializes <code>session-checkpoint.json</code> recording the <strong>planned</strong> <code>branch_name</code> / <code>base_branch</code></li>
+        <li><strong>No git branch is created</strong> — branch creation is deferred to the <code>branch</code> stage at the start of Implementation</li>
       </ul>
     </td>
     <td>
       <ul>
-        <li><code>arcus-controller</code> (deterministic Stage 0 via helper scripts)</li>
+        <li><code>scaffold.sh</code> (deterministic script)</li>
+        <li>Branch naming via <code>scripts/lib/branch_name.sh</code></li>
+        <li>Driven by <code>solution-architect</code> (gated) or <code>arcus-controller</code> (afk)</li>
       </ul>
     </td>
     <td>
       <ul>
         <li><code>.arcus/specs/[STORY-ID]/story.md</code> (copy of original)</li>
-        <li><code>.arcus/session-checkpoint.json</code> (state tracking)</li>
-        <li>Git branch <code>arcus/[STORY-ID]</code></li>
+        <li><code>.arcus/session-checkpoint.json</code> (planned branch fields, no branch)</li>
       </ul>
     </td>
   </tr>
   <tr>
-    <td colspan="3"><strong>Handoff:</strong> No handoff gate. Stage 0 flows directly into Stage 1.</td>
+    <td colspan="3"><strong>Handoff:</strong> No handoff gate. Scaffold flows directly into Brainstorm.</td>
   </tr>
 </table>
 
 **What to check:**
-- Branch created successfully
 - Story copied correctly to workspace
-- Ready to proceed
+- Planned branch name looks right (`arcus/[STORY-ID]-N`)
 
 ---
 
-### Stage 1: Brainstorm
+### Brainstorm
 
 <table class="pipeline-stage-table">
   <tr>
-    <th colspan="3">Purpose: Resolve ambiguities and document technical decisions</th>
+    <th colspan="3">Purpose: Build context, resolve ambiguities, and produce a task-level plan</th>
   </tr>
   <tr>
     <th><strong>What happens</strong></th>
@@ -110,47 +135,45 @@ In gated mode, ARCUS pauses at each gate and waits for your confirmation. In AFK
   <tr>
     <td>
       <ul>
-        <li>Analyzes story for completeness</li>
-        <li>Identifies ambiguous requirements</li>
-        <li><strong>Gated mode:</strong> Asks clarifying questions one-by-one (dialogue)</li>
-        <li><strong>AFK mode:</strong> Auto-resolves ambiguities (one-shot)</li>
-        <li>Documents assumptions and constraints</li>
-        <li>Optionally builds story-specific context pack</li>
-        <li>Creates implementation plan (<code>blueprint.md</code>) before implementation begins</li>
+        <li>Builds a story-specific context pack (stage key <code>context_pack</code>)</li>
+        <li>Analyzes the story for completeness and resolves ambiguity (stage key <code>spec_finalizer</code>)</li>
+        <li><strong>Gated:</strong> spec-finalizer and implementation-planner run as <strong>dialogues in the main thread</strong>; every interview question presents exactly one <strong>Recommended</strong> option + one-line rationale + a custom-answer option</li>
+        <li><strong>AFK:</strong> both run one-shot inside subagents, auto-resolving every ambiguity / auto-selecting the highest-scoring approach</li>
+        <li>Produces the implementation plan and task list (stage key <code>blueprint</code>)</li>
       </ul>
     </td>
     <td>
       <ul>
-        <li><code>spec-finalizer</code> (dialogue mode or one-shot)</li>
-        <li><code>context-pack-builder</code> (optional, for story-specific context)</li>
-        <li><code>implementation-planner</code> (creates <code>blueprint.md</code>)</li>
+        <li><code>context-pack-builder</code></li>
+        <li><code>spec-finalizer</code> (dialogue in gated, one-shot in afk)</li>
+        <li><code>implementation-planner</code> (dialogue in gated, one-shot in afk)</li>
+        <li>Driven by <code>solution-architect</code> (gated) or <code>arcus-controller</code> (afk)</li>
       </ul>
     </td>
     <td>
       <ul>
-        <li><code>assumptions.md</code> - Technical decisions, constraints, error handling</li>
-        <li><code>clarifications.md</code> - User answers (gated mode only)</li>
-        <li><code>context-pack.md</code> - Story-specific context (optional)</li>
-        <li><code>blueprint.md</code> - Implementation plan with atomic tasks</li>
+        <li><code>context-pack.md</code> — Story-specific context bundle</li>
+        <li><code>plan.md</code> — <strong>Single</strong> planning deliberation record (grounded decisions, dialogue answers, design choices) — consolidates what used to be split across two files</li>
+        <li><code>blueprint.md</code> — Machine-parsed implementation plan with atomic <code>### Task N:</code> headings</li>
       </ul>
     </td>
   </tr>
   <tr>
-    <td colspan="3"><strong>Handoff Gate A:</strong> "Assumptions and implementation plan documented, ready for test planning?"</td>
+    <td colspan="3"><strong>Handoff Gate A:</strong> "Planning complete → next: Test Plan." Resume phrase: <code>generate test plan for &lt;STORY-ID&gt;</code>.</td>
   </tr>
 </table>
 
 **What to check:**
-- Assumptions align with your intent
-- No missing technical constraints
-- Error handling approach makes sense
-- Architecture decisions are correct
+- Decisions in `plan.md` align with your intent
+- No missing technical constraints; error handling makes sense
+- Blueprint tasks are atomic and correctly ordered
 
-**Tip:** This is your chance to course-correct before implementation. Review assumptions carefully.
+**Tip:** This is your chance to course-correct before implementation. Review `plan.md` and
+`blueprint.md` carefully.
 
 ---
 
-### Stage 2: Test Plan
+### Test Plan
 
 <table class="pipeline-stage-table">
   <tr>
@@ -164,7 +187,7 @@ In gated mode, ARCUS pauses at each gate and waits for your confirmation. In AFK
   <tr>
     <td>
       <ul>
-        <li>Reviews blueprint and assumptions</li>
+        <li>Reviews <code>blueprint.md</code> and the decisions in <code>plan.md</code></li>
         <li>Designs test cases across three categories:
           <ul>
             <li><strong>Functional:</strong> Happy path verification</li>
@@ -178,35 +201,34 @@ In gated mode, ARCUS pauses at each gate and waits for your confirmation. In AFK
     </td>
     <td>
       <ul>
-        <li><code>test-spec-compiler</code></li>
+        <li><code>test-spec-compiler</code> (stage key <code>test_plan</code>)</li>
       </ul>
     </td>
     <td>
       <ul>
-        <li><code>test-plan.md</code> - Test matrix with functional/edge/error categories</li>
+        <li><code>test-plan.md</code> — Test matrix with functional/edge/error categories</li>
       </ul>
     </td>
   </tr>
   <tr>
-    <td colspan="3"><strong>Handoff Gate B:</strong> "Test plan complete, ready to implement?"</td>
+    <td colspan="3"><strong>Handoff Gate B:</strong> "Test plan complete → next: Implementation." Resume phrase: <code>implement &lt;STORY-ID&gt;</code>.</td>
   </tr>
 </table>
 
 **What to check:**
 - Test coverage feels comprehensive
-- Edge cases captured
-- Error scenarios realistic
+- Edge cases captured; error scenarios realistic
 - Test structure follows repo patterns
 
 **Tip:** Add missing test cases to `test-plan.md` before proceeding. This is TDD in action.
 
 ---
 
-### Stage 3: Implementation
+### Implementation
 
 <table class="pipeline-stage-table">
   <tr>
-    <th colspan="3">Purpose: Implement the story with continuous verification</th>
+    <th colspan="3">Purpose: Create the branch, then implement the story with continuous verification</th>
   </tr>
   <tr>
     <th><strong>What happens</strong></th>
@@ -216,48 +238,50 @@ In gated mode, ARCUS pauses at each gate and waits for your confirmation. In AFK
   <tr>
     <td>
       <ul>
-        <li>Dispatches each task to isolated subagent</li>
-        <li>Each task includes:
+        <li><strong>Branch stage (<code>branch</code>):</strong> realizes the git branch that was only <em>planned</em> at scaffold — <code>branch.sh</code> creates <code>arcus/[STORY-ID]-N</code> from the base, bumps the index on collision, and calls <code>checkpoint.sh set-branch</code> if the realized name differs from the plan</li>
+        <li>Parses <code>### Task N:</code> headings from <code>blueprint.md</code> (stage keys <code>task_1</code>..<code>task_N</code>)</li>
+        <li>Dispatches each task to an isolated subagent. Each task includes:
           <ul>
             <li>Implementation</li>
-            <li>Test writing (following test-plan.md)</li>
-            <li>One lightweight, <strong>advisory</strong> per-task spec-compliance check (does not hard-block; unresolved issues carry forward to Stage 4)</li>
+            <li>Test writing (following <code>test-plan.md</code>)</li>
+            <li>One lightweight, <strong>advisory</strong> per-task spec-compliance check (does not hard-block; unresolved issues carry forward to Code Review)</li>
           </ul>
         </li>
-        <li>Commits code incrementally (one commit per task)</li>
-        <li>Runs tests after each task</li>
+        <li>Commits code incrementally (one commit per task via <code>commit.sh</code>)</li>
       </ul>
-      <p><em>Quality is not reviewed per-task — it is owned holistically by Stage 4 over the whole branch diff, since isolated subagents never see prior tasks' code.</em></p>
+      <p><em>Quality is not reviewed per-task — it is owned holistically by Code Review over the whole branch diff, since isolated subagents never see prior tasks' code.</em></p>
     </td>
     <td>
       <ul>
-        <li><code>subagent-task-dispatcher</code> (orchestrates task execution)</li>
+        <li><code>implementation-runner</code> (the single canonical loop driver — owns the branch step + task loop; reused by gated and afk)</li>
+        <li><code>branch.sh</code> (deferred branch realization)</li>
+        <li><code>subagent-task-dispatcher</code> (per-task execution)</li>
         <li><code>spec-compliance-reviewer</code> (per-task mode, advisory)</li>
       </ul>
     </td>
     <td>
       <ul>
+        <li>Git branch <code>arcus/[STORY-ID]-N</code> (created here, not at scaffold)</li>
         <li>Code changes (committed to branch)</li>
         <li>Tests (committed alongside code)</li>
       </ul>
     </td>
   </tr>
   <tr>
-    <td colspan="3"><strong>Handoff Gate C:</strong> "All tasks complete, tests passing, ready for holistic review?"</td>
+    <td colspan="3"><strong>Handoff Gate C:</strong> "Implementation complete → next: Code Review." Resume phrase: <code>review &lt;STORY-ID&gt;</code>.</td>
   </tr>
 </table>
 
 **What to check:**
 - All tests pass locally
-- Implementation feels complete
-- No obvious gaps or missing features
+- Implementation feels complete; no obvious gaps
 - Commits are clean and atomic
 
 **Tip:** You can edit `blueprint.md` at Gate A or Gate B before implementation begins.
 
 ---
 
-### Stage 4: Code Review
+### Code Review
 
 <table class="pipeline-stage-table">
   <tr>
@@ -305,7 +329,7 @@ In gated mode, ARCUS pauses at each gate and waits for your confirmation. In AFK
     </td>
     <td>
       <ul>
-        <li><code>code-reviewer</code> (coordinator + deterministic gate)</li>
+        <li><code>code-reviewer</code> (coordinator + deterministic gate; stage key <code>code_review</code>)</li>
         <li><code>spec-compliance-reviewer</code> (holistic mode)</li>
         <li><code>code-quality-reviewer</code> (holistic mode)</li>
         <li><code>security-reviewer</code></li>
@@ -319,21 +343,19 @@ In gated mode, ARCUS pauses at each gate and waits for your confirmation. In AFK
     </td>
   </tr>
   <tr>
-    <td colspan="3"><strong>Handoff Gate D:</strong> If approved: "Review passed, ready to create PR?" | If changes_requested: "Issues found, fix and re-review? (Auto-loops up to 3 rounds)"</td>
+    <td colspan="3"><strong>Handoff Gate D:</strong> If approved: "Review passed → next: Closure" (resume phrase <code>close &lt;STORY-ID&gt;</code>) | If changes_requested: "Issues found, fix and re-review? (Auto-loops up to 3 rounds)"</td>
   </tr>
 </table>
 
 **What to check:**
-- Review findings are accurate
-- Severity levels appropriate
-- No false positives
-- Critical issues are genuine blockers
+- Review findings are accurate; severity levels appropriate
+- No false positives; critical issues are genuine blockers
 
 **Tip:** If you disagree with findings, you can proceed anyway (override verdict).
 
 ---
 
-### Stage 5: Closure
+### Closure
 
 <table class="pipeline-stage-table">
   <tr>
@@ -352,18 +374,19 @@ In gated mode, ARCUS pauses at each gate and waits for your confirmation. In AFK
         <li>Synthesizes PR description from:
           <ul>
             <li>Original story</li>
-            <li>Assumptions</li>
+            <li>Decisions in <code>plan.md</code></li>
             <li>Blueprint</li>
             <li>Test results</li>
             <li>Review findings</li>
           </ul>
         </li>
-        <li>Creates pull request (if <code>gh</code> CLI configured)</li>
+        <li>Pushes the branch and creates the pull request via <code>pr.sh</code> (<code>gh pr create</code>); the <code>base_branch</code> read by <code>pr.sh</code> has been populated in the checkpoint since scaffold time</li>
       </ul>
     </td>
     <td>
       <ul>
-        <li><code>pull-request-builder</code></li>
+        <li><code>pull-request-builder</code> (terminal stage; stage key <code>closure</code>)</li>
+        <li><code>pr.sh</code></li>
       </ul>
     </td>
     <td>
@@ -373,7 +396,7 @@ In gated mode, ARCUS pauses at each gate and waits for your confirmation. In AFK
     </td>
   </tr>
   <tr>
-    <td colspan="3"><strong>Handoff Gate:</strong> Terminal stage - PR created or ready for manual creation</td>
+    <td colspan="3"><strong>Handoff Gate:</strong> Terminal stage — closes the gated chain. PR created or ready for manual creation.</td>
   </tr>
 </table>
 
@@ -384,31 +407,48 @@ In gated mode, ARCUS pauses at each gate and waits for your confirmation. In AFK
 
 ---
 
+## Deferred Branch Creation
+
+ARCUS creates the git branch **late** — at the start of Implementation, not during Scaffold:
+
+1. **Scaffold** (`scaffold.sh`) creates the spec folder, copies `story.md`, and initializes the
+   checkpoint recording the **planned** `branch_name` and `base_branch`. **No git branch exists yet.**
+2. The branch naming convention `arcus/<STORY-ID>-N` is defined once in the shared
+   `scripts/lib/branch_name.sh` library (sourced by both `scaffold.sh` and `branch.sh`).
+3. **Implementation** begins with the `branch` stage: `branch.sh` (driven by the
+   `implementation-runner` skill) reads the planned name, **re-checks for collisions** created since
+   scaffold (bumping the index if needed), creates and checks out the branch, and calls
+   `checkpoint.sh set-branch` if the realized name differs from the plan.
+
+This keeps planning entirely on the base branch and only branches once there is actual code to commit.
+
+---
+
 ## Review Loopback Mechanism
 
-If Stage 4 returns `changes_requested`:
+If Code Review returns `changes_requested`:
 
-1. **Fix-tasks generated** from review findings
-2. **Loop back to Stage 3** (Implementation)
-3. **Subagents address issues** following fix-tasks
-4. **Return to Stage 4** for re-review
+1. **Fix-tasks generated** from review findings (appended to `blueprint.md`)
+2. **Loop back to Implementation** (re-enters `implementation-runner`)
+3. **Subagents address issues** following the fix-tasks
+4. **Return to Code Review** for re-review
 5. **Bounded to 3 rounds maximum** to prevent infinite loops
-6. **Manual intervention** required if 3rd round still fails
+6. **Manual intervention** required if the 3rd round still fails
 
-**Why bounded?** Prevents loops on subjective or unclear issues. After 3 rounds, human judgment needed.
+**Why bounded?** Prevents loops on subjective or unclear issues. After 3 rounds, human judgment is needed.
 
 ---
 
 ## Quick Stage Reference
 
-| Stage | Entry Command | Exit Condition |
-|-------|---------------|----------------|
-| 0: Init | `implement story.md` | Workspace ready |
-| 1: Brainstorm | Auto or `brainstorm story` | `assumptions.md` and `blueprint.md` complete |
-| 2: Test Plan | Auto or `generate tests story` | `test-plan.md` complete |
-| 3: Implementation | Auto or `code story` | All tasks done, tests pass |
-| 4: Code Review | Auto or `review story` | Verdict: approved/changes |
-| 5: Closure | Auto or `close story` | PR created |
+| Phase | Stage key(s) | Gated entry / resume phrase | Exit condition |
+|-------|--------------|-----------------------------|----------------|
+| Scaffold | `scaffold` | `solution-architect <STORY>` / `plan <STORY>` | Workspace + planned branch ready |
+| Brainstorm | `context_pack`, `spec_finalizer`, `blueprint` | (continues from scaffold) | `plan.md` and `blueprint.md` complete |
+| Test Plan | `test_plan` | `generate test plan for <STORY>` | `test-plan.md` complete |
+| Implementation | `branch`, `task_1..N` | `implement <STORY>` / `code <STORY>` | Branch created, all tasks done, tests pass |
+| Code Review | `code_review` | `review <STORY>` | Verdict: approved / changes_requested |
+| Closure | `closure` | `close <STORY>` | PR created |
 
 ---
 
@@ -418,12 +458,11 @@ Each story produces a working area under `.arcus/specs/[STORY-ID]/` with the fol
 
 | Artifact | Purpose |
 |----------|---------|
-| `session-checkpoint.json` | Resumable per-stage execution state (status enum) |
+| `session-checkpoint.json` | Resumable per-stage execution state (ordered stage keys + status enum), including the planned/realized `branch_name` and `base_branch` |
 | `story.md` | Canonical copy of the input story |
 | `context-pack.md` | Compact, token-efficient context bundle |
-| `clarifications.md` | Answers captured during the Brainstorm dialogue |
-| `assumptions.md` | Explicit assumptions used to resolve ambiguity |
-| `blueprint.md` | Implementation plan and task list |
+| `plan.md` | Consolidated planning deliberation: grounded decisions, dialogue answers, and design choices (written by spec-finalizer + implementation-planner) |
+| `blueprint.md` | Machine-parsed implementation plan and task list |
 | `test-plan.md` | Generated verification matrix and test cases |
 | `review.md` | Deterministic gate results + holistic code-review findings + verdict |
 | `PR_DESCRIPTION.md` | Final PR body |

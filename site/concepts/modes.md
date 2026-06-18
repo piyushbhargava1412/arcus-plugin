@@ -1,19 +1,40 @@
-# Gated vs AFK Mode
+# Gated vs AFK Experiences
 
-Choosing between Gated and AFK modes
+Choosing between the Gated and AFK experiences
+
+---
+
+## Two Experiences, One Pipeline
+
+ARCUS runs the same [stage pipeline](/concepts/pipeline) two different ways:
+
+- **Gated (default, user-driven)** is a **chain of self-handing-off skills**. There is **no router**
+  and **no shared pipeline file**. You enter at `arcus:solution-architect` (say
+  `solution-architect <STORY>` or `plan <STORY>`). Each stage skill embeds a small **Handoff
+  Protocol** that names **only its immediate successor**. In the same session a `"yes"` loads the
+  next stage directly; on a cold resume you type the next stage's explicit phrase and the checkpoint
+  picks up where you left off.
+- **AFK (autonomous)** is the `arcus:arcus-controller` meta-skill. It activates **only** on AFK
+  phrases (`afk`, `--afk`, `forge`, `run afk on <STORY>`), runs every stage back-to-back as one-shot
+  subagents with milestone-only output, and holds the **single canonical ordered stage list** in its
+  body. It never stops at a gate and never conducts an interview.
+
+Both experiences share the same checkpoint stage keys, the same helper scripts, and the same
+`implementation-runner` loop driver — they differ only in who drives the chain and whether it pauses.
 
 ---
 
 ## Side-by-Side Comparison
 
-| Aspect | Gated Mode (Default) | AFK Mode (Autonomous) |
+| Aspect | Gated (Default) | AFK (Autonomous) |
 |--------|---------------------|----------------------|
-| **Control** | Pauses at each handoff gate | Runs all 6 stages back-to-back |
+| **Driver** | Self-handoff chain of stage skills; entry `arcus:solution-architect` | `arcus:arcus-controller` meta-skill |
+| **Control** | Pauses at each handoff gate | Runs all stages back-to-back |
 | **User Role** | Review artifacts, say "yes" to proceed | Hands-off until PR ready |
 | **Best For** | Novel domains, high-risk changes, learning | Familiar codebases, simple features |
 | **Intervention Points** | 4 handoff gates (GATE A-D) | Milestone-only output |
 | **Session Resumability** | Yes, can pause and resume across days | Resume-capable via checkpoint; intended to run uninterrupted |
-| **Spec Finalization** | Interactive dialogue (asks questions one-by-one) | One-shot auto-resolution |
+| **Spec Finalization** | Interactive dialogue in the main thread (one recommended option per question) | One-shot auto-resolution in a subagent |
 | **Output Verbosity** | Full progress updates at each gate | Compact, final artifacts only |
 | **When to Use** | Default for safety and learning | When you're confident in the spec |
 | **Typical Duration** | 30-90 min active time (spread over hours/days) | 30-90 min uninterrupted |
@@ -102,38 +123,40 @@ AFK mode is faster (no handoff pauses)
 
 ---
 
-## How to Trigger Each Mode
+## How to Trigger Each Experience
 
-### Gated Mode (Default)
+### Gated (Default)
 
-Just use the standard command:
+Start planning at the solution architect:
 
 ```
-implement story.md
-build story.md
-forge story.md
+solution-architect story.md
+plan story.md
 ```
 
-No flags needed - gated is the default.
+No flags needed — gated is the default. (Note: `forge` and `run afk on …` are **AFK** triggers, not
+gated ones.)
 
 **What happens:**
-- ARCUS runs Stage 0 (Init)
-- Flows directly into Stage 1 (no Stage 0 handoff gate)
+- `arcus:solution-architect` runs Scaffold then Brainstorm in the main thread
+- Scaffold flows directly into Brainstorm (no scaffold handoff gate)
 - First explicit handoff is **GATE A** after Brainstorm
-- You say: `yes` or `no`
+- At each gate you say `yes` (same session → loads the next stage) or `no` (pause)
+- On a cold resume, type the next stage's phrase — `generate test plan for <STORY>`,
+  `implement <STORY>`, `review <STORY>`, `close <STORY>`
 
-### AFK Mode (Opt-In)
+### AFK (Opt-In)
 
-Add `--afk` flag or use AFK-specific triggers:
+Use an AFK-specific trigger or the `--afk` flag:
 
 ```
 run afk on story.md
+forge story.md
 implement story.md --afk
-build story.md --afk
 ```
 
 **What happens:**
-- ARCUS runs all 6 stages back-to-back
+- `arcus:arcus-controller` runs every stage back-to-back
 - No pauses (all gates auto-confirm)
 - Milestone output only (less verbose)
 - Returns when PR is ready
@@ -151,12 +174,12 @@ build story.md --afk
 **Why:**
 - ARCUS needs to learn your patterns
 - You need to verify it understood your conventions
-- Review assumptions and blueprint before code is written
+- Review the plan and blueprint before code is written
 - Catch misalignments early
 
 **Command:**
 ```
-implement story.md
+plan story.md
 ```
 
 ---
@@ -196,7 +219,7 @@ run afk on bug-fix-story.md
 
 **Command:**
 ```
-implement auth-feature-story.md
+plan auth-feature-story.md
 ```
 
 ---
@@ -261,7 +284,7 @@ No, AFK runs to completion without pauses.
 
 ## Mode Selection Checklist
 
-Before running `implement story.md`, ask yourself:
+Before starting a story (`plan story.md` for gated, `run afk on story.md` for AFK), ask yourself:
 
 **Gated Mode if ANY of these are true:**
 - First 1-3 stories in this repo

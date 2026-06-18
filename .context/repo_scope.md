@@ -12,23 +12,26 @@ It provides orchestrator skills, supporting skills, and deterministic helper scr
 
 ## Core Responsibilities
 - Package the `arcus-plugin` marketplace artifact and plugin manifest.
-- Define orchestration behavior in skill specifications (`SKILL.md`) for SDLC stages and repository agentification.
-- Provide deterministic shell helpers for branching, checkpoint state, commits, PR creation, and story ID extraction.
+- Define orchestration behavior in skill specifications (`SKILL.md`) for the SDLC pipeline and repository agentification. The pipeline runs as two experiences over one ordered set of stage keys: a **gated** self-handoff chain (entry `solution-architect`; no router, no shared pipeline file) and an **AFK-only** `arcus-controller`; the `implementation-runner` skill is the shared Implementation loop.
+- Provide deterministic shell helpers for workspace scaffolding (`scaffold.sh`, **deferred branch** — no git branch at scaffold), branch realization (`branch.sh` + shared `lib/branch_name.sh`), checkpoint state (`checkpoint.sh`, incl. `set-branch`), commits, PR creation, and story ID extraction.
+- Consolidate planning deliberation into a single `plan.md` artifact (replacing the former separate assumptions and clarifications files); keep the machine-parsed task list in `blueprint.md`.
 - Publish and maintain end-user documentation through a VitePress site under `site/`.
 
 ## Major Implementation Areas
 | Area | Scope | Evidence |
 |---|---|---|
 | Marketplace + plugin metadata | Marketplace catalog and plugin manifest metadata/versioning | `.claude-plugin/marketplace.json`, `plugins/arcus/.claude-plugin/plugin.json` |
-| Skill catalog | Orchestrators and specialist skills in markdown specs | `plugins/arcus/skills/*/SKILL.md` |
-| Hook + script runtime | Session bootstrap hook and deterministic bash utilities | `plugins/arcus/hooks/hooks.json`, `plugins/arcus/scripts/*.sh` |
+| Skill catalog | Orchestrators (gated `solution-architect` entry + self-handoff chain, AFK-only `arcus-controller`, shared `implementation-runner` loop) and specialist skills in markdown specs | `plugins/arcus/skills/*/SKILL.md` |
+| Hook + script runtime | Session bootstrap hook and deterministic bash utilities (incl. `scaffold.sh`, `branch.sh`, and the shared `lib/branch_name.sh`) | `plugins/arcus/hooks/hooks.json`, `plugins/arcus/scripts/*.sh`, `plugins/arcus/scripts/lib/branch_name.sh` |
 | Script test coverage | Shell-based checkpoint test harness | `plugins/arcus/scripts/tests/checkpoint.test.sh` |
 | Documentation site | VitePress docs content and config | `site/.vitepress/config.ts`, `site/guide/*.md`, `site/concepts/*.md` |
 
 ## Key Entry Surfaces
 | Surface | Type | Path |
 |---|---|---|
-| `arcus-controller` | Orchestrator skill entry (pipeline driver) | `plugins/arcus/skills/arcus-controller/SKILL.md` |
+| `solution-architect` | Orchestrator skill entry (gated pipeline entry; drives Scaffold + Brainstorm) | `plugins/arcus/skills/solution-architect/SKILL.md` |
+| `arcus-controller` | Orchestrator skill entry (AFK-only autonomous pipeline driver) | `plugins/arcus/skills/arcus-controller/SKILL.md` |
+| `implementation-runner` | Orchestrator skill entry (shared Implementation loop: deferred branch + task loop) | `plugins/arcus/skills/implementation-runner/SKILL.md` |
 | `repo-agentifier` | Orchestrator skill entry (context + agentification) | `plugins/arcus/skills/repo-agentifier/SKILL.md` |
 | `SessionStart` hook | Plugin lifecycle entry | `plugins/arcus/hooks/hooks.json` -> `plugins/arcus/scripts/bootstrap.sh` |
 | Docs build/deploy workflow | CI entry for documentation artifact | `.github/workflows/docs.yml` |

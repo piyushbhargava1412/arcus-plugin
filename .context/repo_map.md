@@ -20,14 +20,18 @@ arcus-plugin/
 │       ├── hooks/hooks.json
 │       ├── scripts/
 │       │   ├── bootstrap.sh
+│       │   ├── scaffold.sh
 │       │   ├── branch.sh
 │       │   ├── checkpoint.sh
 │       │   ├── commit.sh
 │       │   ├── extract_story_id.sh
 │       │   ├── pr.sh
+│       │   ├── lib/branch_name.sh
 │       │   └── tests/checkpoint.test.sh
 │       └── skills/
-│           ├── arcus-controller/
+│           ├── arcus-controller/        # AFK-only autonomous orchestrator
+│           ├── solution-architect/      # gated planning driver (entry)
+│           ├── implementation-runner/   # canonical Implementation loop
 │           ├── repo-agentifier/
 │           ├── repository-context-builder/
 │           └── ... (supporting skills)
@@ -64,7 +68,7 @@ arcus-plugin/
 |---|---|---|
 | Marketplace metadata | Declares marketplace and plugin source | `.claude-plugin/marketplace.json` |
 | Plugin manifest + hook wiring | Declares plugin metadata and session hook behavior | `plugins/arcus/.claude-plugin/plugin.json`, `plugins/arcus/hooks/hooks.json` |
-| Orchestrator skills | Pipeline and repository-agentification orchestrators | `plugins/arcus/skills/arcus-controller/`, `plugins/arcus/skills/repo-agentifier/` |
+| Orchestrator skills | AFK-only pipeline orchestrator, gated planning driver, Implementation loop driver, and repository-agentification | `plugins/arcus/skills/arcus-controller/` (AFK-only), `plugins/arcus/skills/solution-architect/` (gated entry), `plugins/arcus/skills/implementation-runner/` (shared loop), `plugins/arcus/skills/repo-agentifier/` |
 | Supporting skill modules | Spec finalization, planning, review, context/test discovery, PR closure | `plugins/arcus/skills/*/` |
 | Helper script runtime | Deterministic git/state helper scripts | `plugins/arcus/scripts/` |
 | Docs site | User documentation and concepts site | `site/` |
@@ -73,7 +77,9 @@ arcus-plugin/
 | Entry Surface | Type | Path |
 |---|---|---|
 | `SessionStart` -> `bootstrap.sh` | Hook command entry | `plugins/arcus/hooks/hooks.json` |
-| `arcus-controller` | Skill activation entry | `plugins/arcus/skills/arcus-controller/SKILL.md` |
+| `solution-architect` | Skill activation entry (gated pipeline entry: `solution-architect`/`plan <STORY>`) | `plugins/arcus/skills/solution-architect/SKILL.md` |
+| `arcus-controller` | Skill activation entry (AFK-only: `afk`/`--afk`/`forge`/`run afk on <STORY>`) | `plugins/arcus/skills/arcus-controller/SKILL.md` |
+| `implementation-runner` | Skill activation entry (Implementation loop: `implement`/`code <STORY>`) | `plugins/arcus/skills/implementation-runner/SKILL.md` |
 | `repo-agentifier` | Skill activation entry | `plugins/arcus/skills/repo-agentifier/SKILL.md` |
 | Docs local dev | Command entry (`pnpm docs:dev`) | `site/package.json` |
 | Docs CI build/deploy | Workflow entry | `.github/workflows/docs.yml` |
@@ -108,8 +114,10 @@ arcus-plugin/
 | Script / File | Purpose | Path |
 |---|---|---|
 | `bootstrap.sh` | Stage helper scripts into `.arcus/bin` on session start | `plugins/arcus/scripts/bootstrap.sh` |
-| `branch.sh` | Create story branch and scaffold `.arcus/specs/<STORY_ID>/` | `plugins/arcus/scripts/branch.sh` |
-| `checkpoint.sh` | Manage story execution checkpoint state machine | `plugins/arcus/scripts/checkpoint.sh` |
+| `scaffold.sh` | Scaffold `.arcus/specs/<STORY_ID>/` + copy story + init checkpoint with the **planned** branch (creates **no** git branch) | `plugins/arcus/scripts/scaffold.sh` |
+| `branch.sh` | Realize the deferred git branch at Implementation start; bumps on collision and calls `checkpoint.sh set-branch` if the name changed | `plugins/arcus/scripts/branch.sh` |
+| `lib/branch_name.sh` | Sourced library defining the `arcus/<STORY_ID>-N` naming convention once (used by `scaffold.sh` + `branch.sh`) | `plugins/arcus/scripts/lib/branch_name.sh` |
+| `checkpoint.sh` | Manage story execution checkpoint state machine (init / read / complete / set-status / reopen / set-mode / **set-branch**) | `plugins/arcus/scripts/checkpoint.sh` |
 | `commit.sh` | Stage/commit with conventional message format | `plugins/arcus/scripts/commit.sh` |
 | `extract_story_id.sh` | Parse story ID from input story markdown | `plugins/arcus/scripts/extract_story_id.sh` |
 | `pr.sh` | Push branch and create PR via `gh pr create` | `plugins/arcus/scripts/pr.sh` |
@@ -154,5 +162,9 @@ arcus-plugin/
 
 ## Notable Patterns
 - Skill-first architecture: behavior is primarily encoded in `SKILL.md` contracts and templates under `assets/` and `references/`.
+- Two pipeline experiences over one ordered set of checkpoint stage keys (`scaffold → context_pack → spec_finalizer → blueprint → test_plan → branch → task_1..N → code_review → closure`): a **gated** self-handoff chain (no router, no shared pipeline file; entry `solution-architect`) and an **AFK-only** `arcus-controller` that holds the single canonical ordered list. The `implementation-runner` skill is the shared Implementation loop.
+- Deferred branch creation: `scaffold.sh` records only the *planned* branch; `branch.sh` creates the git branch at Implementation start (naming defined once in `lib/branch_name.sh`, persisted via `checkpoint.sh set-branch`).
+- Consolidated planning artifact: deliberation lives in a single `plan.md` (the former separate assumptions / clarifications files are gone); the machine-parsed task list stays in `blueprint.md`.
+- Skills are dispatched imperatively (by name); `context: fork` is not in use (deferred follow-up).
 - Deterministic script adapters: git/state/PR operations are centralized in bash helpers and invoked by skills/hooks.
 - Docs and plugin packaging are separated: runtime plugin assets live under `plugins/arcus/`, while user-facing docs are built from `site/` and deployed via GitHub Pages.
