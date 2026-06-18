@@ -6,7 +6,7 @@ description: >
   token bleed between tasks. Used by the afk-skill-router orchestrator during the
   Code stage.
 metadata:
-  version: "2.0.0"
+  version: "2.1.0"
   team: krill
   type:
     - orchestrator
@@ -75,29 +75,37 @@ After a `DONE` response:
 4. If verification passes: proceed to Step 6 (Review)
 5. If verification fails: re-dispatch implementer subagent with error output as additional context (max 2 retries)
 
-### Step 6: Review (Two-Pass)
+### Step 6: Per-task Spec Check (single, lightweight)
 
-After verification passes, run a two-pass review before committing:
+After verification passes, run **one** fast spec-compliance check before committing. This pass exists
+to catch the few things green tests + the later holistic review can't cheaply catch *early*, while the
+task's context is still fresh:
 
-**Pass 1 — Spec Compliance:**
+- **gamed/over-fitted tests** — tests pass but don't actually encode the DoD;
+- **DoD items with no test at all** — a requirement silently skipped;
+- **`[EXTRA]` scope creep** — work the task didn't ask for, before it accretes across tasks.
+
+Code **quality** (patterns, structure, maintainability), **security**, and **performance** are NOT
+reviewed here — they are owned holistically by the post-implementation `arcus:code-reviewer` stage,
+which judges them over the whole branch diff with a signal-over-noise threshold. Reviewing quality
+per-task is redundant (subagents never see prior tasks' code, so quality issues don't propagate) and
+its binary FAIL conflicts with the holistic stage's "one or two warnings is still fine" rubric.
+
 1. Dispatch a reviewer subagent:
-   - **Prompt**: Include the full task requirements (from blueprint), the implementer's status report (FILES_MODIFIED, TESTS_PASSING, NOTES), and the instruction: "Read and follow the `arcus:spec-compliance-reviewer` skill. Review Task N."
+   - **Prompt**: Include the full task requirements (from blueprint), the implementer's status report
+     (FILES_MODIFIED, TESTS_PASSING, NOTES), and the instruction: "Read and follow the
+     `arcus:spec-compliance-reviewer` skill. Review Task N (per-task mode)."
    - **Description**: `"Review: spec-compliance Task N"`
    - **Model**: Resolve complexity `medium` via the `arcus:model-strategy` skill
 2. Read the VERDICT:
-   - `PASS` → proceed to Pass 2
-   - `FAIL` → re-dispatch the implementer subagent with the ISSUES list as additional context. After fix, re-run Pass 1. Max 2 attempts.
-
-**Pass 2 — Code Quality:**
-1. Dispatch a reviewer subagent:
-   - **Prompt**: Include the list of modified files, relevant architecture patterns from `context-pack.md`, and the instruction: "Read and follow the `arcus:code-quality-reviewer` skill. Review Task N."
-   - **Description**: `"Review: code-quality Task N"`
-   - **Model**: Resolve complexity `medium` via the `arcus:model-strategy` skill
-2. Read the VERDICT:
    - `PASS` → proceed to Step 7 (Commit)
-   - `FAIL` → re-dispatch the implementer subagent with the ISSUES list as additional context. After fix, re-run Pass 2 only (spec already passed). Max 2 attempts.
+   - `FAIL` → re-dispatch the implementer subagent **once** with the ISSUES list as additional
+     context, then re-run this check.
 
-**If either review fails after 2 retry attempts**: Commit anyway with a note in the commit message: `"Task N: <desc> [review: unresolved]"`. Do not block the pipeline indefinitely.
+**If the spec check still FAILs after the single retry**: this is an advisory pass, not a hard gate —
+do not block the pipeline. Commit with a note in the commit message: `"Task N: <desc> [spec: unresolved]"`,
+and carry the unresolved ISSUES forward so the holistic `code-reviewer` re-evaluates them over the full
+diff (where they may resolve in context, or be confirmed as real findings).
 
 ### Step 7: Commit
 
@@ -122,11 +130,11 @@ After reviews pass (or retry limit reached):
 ## Retry Protocol
 
 - **Implementation retries**: Max 2 retries per task (Step 4 BLOCKED/verification failures)
-- **Review retries**: Max 2 retries per review pass (spec-compliance or code-quality)
+- **Spec-check retry**: Max 1 retry for the per-task spec check (Step 6)
 - Each retry includes the error/issue output from the previous attempt
 - **Escalation rule**: If implementation fails after 2 retries at the current complexity, promote complexity one level (light → medium → heavy), re-resolve the model via the `arcus:model-strategy` skill, and re-dispatch with the higher-tier model. Max 1 escalation per task.
 - If implementation fails after escalation: mark as BLOCKED, stop pipeline
-- If review fails after 2 retries: commit with `[review: unresolved]` tag, continue pipeline
+- If the spec check fails after its retry: commit with `[spec: unresolved]` tag and carry the ISSUES forward to the holistic `code-reviewer`; continue pipeline
 
 ## Success Criteria
 

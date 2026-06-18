@@ -7,6 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Test commands deduplicated to a single source of truth.** `testing-patterns.md` → Execution
+  Patterns now solely owns test commands (incl. the Full Suite row the deterministic gate reads);
+  `repo_map.md`'s Build & Run table drops its Test row and owns only non-test build/quality commands
+  (build, run, lint, format, typecheck, static analysis). `test-pattern-discovery` (version `1.1.0`)
+  declares the source-of-truth boundary and emphasises full-suite + CI-authoritative command extraction.
+- **Per-task review collapsed from two passes to one.** The `subagent-task-dispatcher` (version `2.1.0`) Step 6 no longer
+  runs a per-task `code-quality-reviewer` pass. Quality, security, and performance are now reviewed
+  exclusively — and holistically — by the post-implementation `code-reviewer` stage over the full branch
+  diff. Reviewing quality per task was redundant (isolated subagents never see prior tasks' code, so
+  quality issues don't propagate between them) and its binary FAIL conflicted with the holistic stage's
+  signal-over-noise threshold. The remaining per-task `spec-compliance-reviewer` check is reframed as an
+  early, advisory correctness gate (single retry, then commit with `[spec: unresolved]` and carry the
+  findings forward to the holistic reviewer) focused on gamed/missing tests and `[EXTRA]` scope creep.
+- `code-quality-reviewer` (version `2.1.0`) is now a holistic-only skill (per-task mode and its binary
+  `VERDICT` output removed). `subagent-task-dispatcher`, `spec-compliance-reviewer` (version `2.1.0`),
+  and `arcus-controller` updated to match.
+- **`code-reviewer` (version `1.1.0`) reworked into a two-tier stage** as the last quality gate before a PR is raised.
+  - **Tier 1 — Deterministic Gate** runs the repo's *real* tooling (typecheck, **full** test suite,
+    build + startup smoke, secret scan, lint, format, static analysis) over the integrated branch
+    instead of having an LLM eyeball the diff for them. Commands resolve from the repo's CI/CD
+    workflows first (the authoritative "what blocks a PR" set), then `.context/` tables. Lint/format
+    issues with a fix mode are **auto-fixed and committed** so mechanical churn doesn't burn a loopback
+    round; a hard failure (typecheck/tests/build/secret) short-circuits to `changes_requested`. This
+    anticipates CI, cutting post-PR fix cycles.
+  - **Tier 2 — Semantic Review** keeps the four specialist reviewers but scopes them to judgment-grade
+    concerns only (they no longer re-litigate anything the gate settles).
+  - **Reviewer persona** is now explicitly *zero-trust / brutal in the hunt, fair in the verdict*:
+    distrust the implementer's claims and verify against source + tool output, while keeping the
+    verdict calibrated for signal over noise so the pipeline still ships.
+- `code-quality-reviewer` gained explicit **cognitive-complexity** judgment and a **test
+  proportionality** dimension (flags excessive/over-engineered tests and slow wrong-layer integration
+  tests that bloat the build).
+- `repo_map.md` template's **Build & Run Commands** table extended with Lint-autofix, Format-check,
+  Format-write, Typecheck, and Static-analysis rows so the deterministic gate has first-class command
+  sources.
+- **`repository-context-builder` (version `1.2.0`)** now actively extracts quality & build commands
+  (build, full-suite test, run, lint/autofix, format check/write, typecheck, static analysis) into the
+  Build & Run Commands table, preferring the command CI actually runs and recording evidence (or an
+  explicit `Not found`). The output-spec and validation gates require the table to be populated, so the
+  code-review deterministic gate reliably has real commands to run.
+
 ## [0.5.0] - 2026-06-17
 
 ### Added

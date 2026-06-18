@@ -131,7 +131,7 @@ Stage status values: `pending | in_progress | awaiting_handoff | complete | need
 | 0 Init | `init` | Infra | Deterministic | none → flows into Stage 1 |
 | 1 Brainstorm | `context_pack`, `spec_finalizer`, `blueprint` | Architect | Human-in-the-loop dialogue | **GATE A** after |
 | 2 Test Plan | `test_plan` | QA | Automated (no gate of its own) | **GATE B** before implementation |
-| 3 Implementation | `task_1`..`task_N` | Engineer | Automated, per-task TDD + dual review | **GATE C** after |
+| 3 Implementation | `task_1`..`task_N` | Engineer | Automated, per-task TDD + spec check | **GATE C** after |
 | 4 Code Review | `code_review` | Reviewer | Automated | **GATE D** decision (approve / loopback) |
 | 5 Closure | `closure` | Release | Manual trigger | none (terminal) |
 
@@ -225,8 +225,10 @@ of assumptions and an implementation plan the user has approved.
 
 ### Stage 4: Code Review (automated, decision gate)
 
-1. **Run the review** — Dispatch the review coordinator:
-   - **Prompt**: "Read and follow the `arcus:code-reviewer` skill. Story ID: `<STORY_ID>`. Review the full branch diff against base. Produce `.arcus/specs/<STORY_ID>/review.md` and end your reply with `VERDICT: approved | changes_requested`."
+1. **Run the review** — Dispatch the review coordinator. This is the **last quality gate before the PR**:
+   it first runs a deterministic tooling gate (typecheck, full test suite, build/startup, secret scan,
+   lint/format with autofix) and then fans out to semantic reviewers, anticipating what CI will check.
+   - **Prompt**: "Read and follow the `arcus:code-reviewer` skill. Story ID: `<STORY_ID>`. Run the deterministic gate, then review the full branch diff against base. Produce `.arcus/specs/<STORY_ID>/review.md` and end your reply with `VERDICT: approved | changes_requested`."
    - **Description**: "Review: code-reviewer"
    - **Model**: Resolve complexity `heavy` via the `arcus:model-strategy` skill.
    - Verify `review.md` exists. Capture the verdict and counts (`critical`, `warning`, `suggestion`).
