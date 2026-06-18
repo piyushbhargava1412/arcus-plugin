@@ -136,15 +136,15 @@ graph LR
 - Each task includes:
   - Implementation
   - Test writing (following test-plan.md)
-  - Per-task compliance review
-  - Per-task quality review
+  - One lightweight, **advisory** per-task spec-compliance check (does not hard-block; unresolved issues are carried forward to Stage 4)
 - Commits code incrementally (one commit per task)
 - Runs tests after each task
 
+> **Note:** Quality is *not* reviewed per-task. Code quality is owned holistically by Stage 4 over the whole branch diff — reviewing it per-task is redundant because isolated subagents never see prior tasks' code.
+
 **Skills invoked:**
 - `subagent-task-dispatcher` (orchestrates task execution)
-- `spec-compliance-reviewer` (per-task mode)
-- `code-quality-reviewer` (per-task mode)
+- `spec-compliance-reviewer` (per-task mode, advisory)
 
 **Artifacts created:**
 - Code changes (committed to branch)
@@ -166,13 +166,24 @@ graph LR
 
 ### Stage 4: Review 🔍
 
-**Purpose:** Holistic quality check across all changes
+**Purpose:** The real last gate before a PR. Runs over the **full branch diff** in two tiers, with a zero-trust persona — brutal in the hunt (assume the code is guilty, verify every claim by reading source and running tools), fair in the verdict (only genuine, concrete problems block).
 
 **What happens:**
-- Reviews **full branch diff** (not individual tasks)
-- Runs multiple review perspectives:
+
+**Tier 1 — Deterministic Gate (runs the repo's real tooling, fails fast):**
+- Executes the actual commands CI would run over the integrated branch — never simulated by eyeballing the diff. Resolved from CI workflows first, then `.context/` tables.
+  - **Typecheck / compile**
+  - **Full test suite** (per-task green ≠ whole-branch green)
+  - **Build + startup smoke**
+  - **Secret scan**
+  - **Lint & format** (auto-fixed and committed where a fix mode exists)
+  - **Static analysis** (findings feed the semantic tier)
+- Any hard block (typecheck / tests / build / secret) → skips the semantic fan-out and returns `changes_requested` immediately. Unresolvable commands are honestly recorded as `skipped: not configured`.
+
+**Tier 2 — Semantic Review (only if the gate passes):**
+- Fans out to specialist reviewers for judgment-grade concerns no tool can answer:
   - **Spec compliance** (holistic): Does it meet all requirements?
-  - **Code quality** (holistic): Clean structure, maintainability?
+  - **Code quality** (holistic): Clean structure, maintainability, **cognitive complexity**, and **test proportionality** (over-engineered/slow tests that bloat the build)?
   - **Security**: Any exploitable vulnerabilities?
   - **Performance**: Any concrete regressions?
 - Consolidates findings
@@ -191,7 +202,7 @@ graph LR
 - `performance-reviewer`
 
 **Artifacts created:**
-- `review.md` — Consolidated findings with verdict
+- `review.md` — Deterministic gate results (pass/fail/skipped per check) + consolidated semantic findings with verdict
 
 **Handoff Gate D:**
 - **If approved:** "Review passed, ready to create PR?"
