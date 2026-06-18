@@ -12,6 +12,7 @@
 #   scripts/checkpoint.sh set-status <STORY_ID> <stage> <status>
 #   scripts/checkpoint.sh reopen     <STORY_ID> <stage>        # -> needs_rework, bumps review_round
 #   scripts/checkpoint.sh set-mode   <STORY_ID> <gated|afk>
+#   scripts/checkpoint.sh set-branch <STORY_ID> <branch> <base>
 #
 # Stage status values: pending | in_progress | awaiting_handoff | complete | needs_rework
 # Modes: gated (default, human handoff between stages) | afk (autonomous, auto-confirm)
@@ -84,14 +85,15 @@ case "$ACTION" in
   "schema_version": 2,
   "mode": "$MODE",
   "current_status": "IN_PROGRESS",
-  "current_stage": "init",
+  "current_stage": "scaffold",
   "review_round": 0,
   "stages": {
-    "init": "pending",
+    "scaffold": "pending",
     "context_pack": "pending",
     "spec_finalizer": "pending",
     "blueprint": "pending",
     "test_plan": "pending",
+    "branch": "pending",
     "task_1": "pending",
     "task_2": "pending",
     "task_3": "pending",
@@ -162,8 +164,19 @@ EOF
         echo "MODE_SET: $MODE"
         ;;
 
+    set-branch)
+        BRANCH="$3"
+        BASE="$4"
+        if [ -z "$BRANCH" ] || [ -z "$BASE" ]; then
+            echo "[ERROR] Usage: checkpoint.sh set-branch <STORY_ID> <branch> <base>" >&2
+            exit 1
+        fi
+        mutate_json "cp.branch_name = '$BRANCH'; cp.base_branch = '$BASE';"
+        echo "BRANCH_SET: $BRANCH (base: $BASE)"
+        ;;
+
     *)
-        echo "[ERROR] Unknown action: $ACTION. Use init|read|complete|set-status|reopen|set-mode." >&2
+        echo "[ERROR] Unknown action: $ACTION. Use init|read|complete|set-status|reopen|set-mode|set-branch." >&2
         exit 1
         ;;
 esac
