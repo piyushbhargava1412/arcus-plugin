@@ -47,10 +47,13 @@ bash "$CHECKPOINT" init "$STORY_ID" "arcus/$STORY_ID-1" "main" >/dev/null
 assert_eq "$(jget schema_version)" "2" "schema_version is 2"
 assert_eq "$(jget mode)" "gated" "default mode is gated"
 assert_eq "$(jget review_round)" "0" "review_round starts at 0"
-assert_eq "$(jget stages.init)" "pending" "stages use status strings (pending)"
+assert_eq "$(jget stages.scaffold)" "pending" "scaffold stage exists"
+assert_eq "$(jget stages.branch)" "pending" "branch stage exists"
+assert_eq "$(jget current_stage)" "scaffold" "current_stage is scaffold after init"
 assert_eq "$(jget stages.code_review)" "pending" "code_review stage exists"
 assert_eq "$(jget stages.closure)" "pending" "closure stage exists"
 assert_eq "$(jget base_branch)" "main" "base_branch captured"
+assert_eq "$(jget branch_name)" "arcus/$STORY_ID-1" "branch_name captured"
 
 echo "== init with afk mode =="
 rm -rf .arcus
@@ -58,8 +61,21 @@ bash "$CHECKPOINT" init "$STORY_ID" "arcus/$STORY_ID-1" "main" "afk" >/dev/null
 assert_eq "$(jget mode)" "afk" "init honors mode arg"
 
 echo "== complete =="
-bash "$CHECKPOINT" complete "$STORY_ID" init >/dev/null
-assert_eq "$(jget stages.init)" "complete" "complete sets status to complete"
+bash "$CHECKPOINT" complete "$STORY_ID" scaffold >/dev/null
+assert_eq "$(jget stages.scaffold)" "complete" "complete sets status to complete"
+
+echo "== set-branch =="
+# current_stage is 'scaffold' here (set by the complete above); set-branch must
+# update branch_name/base_branch only and leave stages/current_stage untouched.
+if bash "$CHECKPOINT" set-branch "$STORY_ID" "arcus/$STORY_ID-2" "dev" >/dev/null 2>&1; then
+    pass "set-branch action accepted (exit 0)"
+else
+    fail "set-branch action accepted (exit 0)"
+fi
+assert_eq "$(jget branch_name)" "arcus/$STORY_ID-2" "set-branch updates branch_name"
+assert_eq "$(jget base_branch)" "dev" "set-branch updates base_branch"
+assert_eq "$(jget current_stage)" "scaffold" "set-branch does not clobber current_stage"
+assert_eq "$(jget stages.scaffold)" "complete" "set-branch does not clobber stages"
 
 echo "== set-status =="
 bash "$CHECKPOINT" set-status "$STORY_ID" test_plan in_progress >/dev/null
