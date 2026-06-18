@@ -31,7 +31,7 @@ For task N from `blueprint.md`, extract:
 
 1. **Task definition**: The full `### Task N:` section (description, files to modify, DoD)
 2. **Relevant test cases**: From `test-plan.md`, extract only the test cases mapped to Task N
-3. **Constraints**: From `assumptions.md`, extract only the decisions relevant to this task's domain
+3. **Constraints**: From `plan.md`, extract only the decisions relevant to this task's domain
 4. **Prior task outcomes** (if any): Summary of what tasks 1..N-1 produced (file list only, not full content)
 
 ### Step 2: Build Subagent Prompt
@@ -117,7 +117,7 @@ After reviews pass (or retry limit reached):
 **DO include in subagent prompt:**
 - The specific task definition from blueprint
 - Mapped test cases from test-plan
-- Relevant decisions from assumptions.md
+- Relevant decisions from plan.md
 - Architecture overview (brief) from context-pack
 - List of files modified by prior tasks (so subagent doesn't conflict)
 

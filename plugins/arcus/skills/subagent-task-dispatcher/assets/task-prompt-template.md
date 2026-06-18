@@ -87,5 +87,5 @@ TDD: add or adjust a test that would have caught the issue (RED), then fix it (G
 | `{{FILE_LIST}}` | `blueprint.md` → task's "Files" subsection | "src/main/java/com/example/OrderService.java" |
 | `{{DOD}}` | `blueprint.md` → task's "Definition of Done" | "- OrderService.createOrder() handles validation..." |
 | `{{TEST_CASES}}` | `test-plan.md` → cases mapped to this task ID | Full test case definitions |
-| `{{RELEVANT_DECISIONS}}` | `assumptions.md` → decisions that affect this task | "Error handling: use standard HTTP 400..." |
+| `{{RELEVANT_DECISIONS}}` | `plan.md` → decisions that affect this task | "Error handling: use standard HTTP 400..." |
 | `{{PRIOR_TASK_FILES}}` | Orchestrator state — files committed by tasks 1..N-1 | "src/main/java/.../OrderEntity.java (Task 1)" |
