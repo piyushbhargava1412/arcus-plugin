@@ -39,6 +39,18 @@ for script in "$ARCUS_HOME"/scripts/*.sh; do
     chmod +x "$BIN_DIR/$name"
 done
 
+# Stage sourced libraries (the top-level glob above does not recurse into lib/).
+if [ -d "$ARCUS_HOME/scripts/lib" ]; then
+    LIB_DIR="$BIN_DIR/lib"
+    mkdir -p "$LIB_DIR"
+    for lib in "$ARCUS_HOME"/scripts/lib/*.sh; do
+        [ -e "$lib" ] || continue
+        name="$(basename "$lib")"
+        cp "$lib" "$LIB_DIR/$name"
+        chmod +x "$LIB_DIR/$name"
+    done
+fi
+
 # Record the plugin home so skills can locate bundled resources (templates,
 # references, the model-strategy skill) if they ever need an absolute path.
 cat > "$WORKSPACE_ROOT/.arcus/env" <<ENV
