@@ -1,10 +1,13 @@
-import { defineConfig } from 'vitepress'
+import { withMermaid } from 'vitepress-plugin-mermaid'
 
-export default defineConfig({
+export default withMermaid({
   base: '/arcus-plugin/',
   title: 'ARCUS',
   description: 'Any Repository Can Use Spec-driven development — a Spec → Code → Pull Request agentic SDLC factory.',
   lastUpdated: true,
+  head: [
+    ['link', { rel: 'icon', href: '/arcus-plugin/favicon.ico' }]
+  ],
   themeConfig: {
     nav: [
       { text: 'Guide', link: '/guide/introduction' },
@@ -33,5 +36,6 @@ export default defineConfig({
     socialLinks: [
       { icon: 'github', link: 'https://github.com/piyushbhargava1412/arcus-plugin' }
     ]
-  }
+  },
+  mermaid: {}
 })
