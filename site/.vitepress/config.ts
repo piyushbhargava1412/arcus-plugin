@@ -37,5 +37,13 @@ export default withMermaid({
       { icon: 'github', link: 'https://github.com/piyushbhargava1412/arcus-plugin' }
     ]
   },
-  mermaid: {}
+  mermaid: {},
+  vite: {
+    optimizeDeps: {
+      include: ['mermaid', 'dayjs', '@braintree/sanitize-url', 'debug', 'cytoscape', 'cytoscape-cose-bilkent']
+    },
+    ssr: {
+      noExternal: ['mermaid', 'vitepress-plugin-mermaid']
+    }
+  }
 })
