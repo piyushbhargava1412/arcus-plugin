@@ -19,7 +19,7 @@ Acts as the **QA Lead** to ensure high-quality, regression-free development. It 
 ### Step 1: Input Gathering
 Read the following artifacts from `.arcus/specs/[STORY-ID]/`:
 1. `blueprint.md`: The planned implementation tasks.
-2. `assumptions.md`: The technical decisions (especially error-handling choices).
+2. `plan.md`: The technical decisions (especially error-handling choices).
 3. `context-pack.md`: For Testing Patterns and the **Relevant Flows** links. Follow those links into `.context/flows/*` for flow detail (Entry Points, Core Path, Data Touchpoints, Integrations, Tests).
 
 ### Step 2: Analysis & Dependency Mapping

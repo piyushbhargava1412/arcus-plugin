@@ -5,7 +5,7 @@ When acting as the **QA Lead** to compile a Test Plan, follow these strategies t
 ## 1. The Pyramid of Testing
 - **Unit Tests**: Focus on business logic isolation. High volume, fast execution.
 - **Integration Tests**: Focus on the boundaries (Database, external APIs, cross-module).
-- **Contract Tests**: Verify that API inputs/outputs match precisely with the `assumptions.md`.
+- **Contract Tests**: Verify that API inputs/outputs match precisely with the `plan.md`.
 
 ## 2. Scenario Discovery Heuristics
 For every task in the `blueprint.md`, ask:
