@@ -1,194 +1,249 @@
 # 🔄 Pipeline Overview
 
-Understanding ARCUS's 6-stage SDLC workflow
+Understanding ARCUS's Spec → Code → PR workflow
 
 ---
 
 ## The Pipeline at a Glance
 
+ARCUS runs an ordered list of stages. The keys (in order) are:
+
+```
+scaffold → context_pack → spec_finalizer → blueprint → test_plan
+        → branch → task_1..N → code_review → closure
+```
+
 ```mermaid
-graph LR
-    Init[0️⃣ Init<br/>Branch & Workspace] --> Brainstorm[1️⃣ Brainstorm<br/>Resolve Ambiguities]
-    Brainstorm -->|GATE A| TestPlan[2️⃣ Test Plan<br/>Design Test Matrix]
-    TestPlan -->|GATE B| Code[3️⃣ Code<br/>Implement & Verify]
-    Code -->|GATE C| Review[4️⃣ Review<br/>Holistic Quality Check]
-    Review -->|GATE D<br/>approved| Closure[5️⃣ Closure<br/>Create PR]
-    Review -.->|changes_requested<br/>max 3 rounds| Code
-    
-    style Init fill:#e1f5ff
-    style Brainstorm fill:#fff4e1
+graph TD
+    Scaffold[scaffold<br/>Folder + Checkpoint] --> ContextPack[context_pack<br/>Story-specific context]
+    ContextPack --> SpecFinalizer[spec_finalizer<br/>Resolve ambiguities → plan.md]
+    SpecFinalizer --> Blueprint[blueprint<br/>Atomic task list]
+    Blueprint --> TestPlan[test_plan<br/>Design test matrix]
+    TestPlan --> Branch[branch<br/>Create git branch NOW]
+    Branch --> Tasks[task_1..N<br/>Implement & verify each task]
+    Tasks --> CodeReview[code_review<br/>Holistic quality gate]
+    CodeReview -->|approved| Closure[closure<br/>Create PR]
+    CodeReview -.->|changes_requested<br/>max 3 rounds| Tasks
+
+    style Scaffold fill:#e1f5ff
+    style ContextPack fill:#e1f5ff
+    style SpecFinalizer fill:#fff4e1
+    style Blueprint fill:#fff4e1
     style TestPlan fill:#f0e1ff
-    style Code fill:#e1ffe8
-    style Review fill:#ffe1f0
+    style Branch fill:#e8e8ff
+    style Tasks fill:#e1ffe8
+    style CodeReview fill:#ffe1f0
     style Closure fill:#fff9e1
 ```
+
+> **Heads up — the branch is created late.** `scaffold` records the *planned* branch
+> name in the checkpoint but does **not** create any git branch. The real git branch is
+> created at the **start of Implementation** by the `branch` stage. See
+> ["Deferred branch creation"](#deferred-branch-creation) below.
+
+---
+
+## Two Experiences: Gated vs AFK
+
+ARCUS ships **two ways to drive the same pipeline**:
+
+- **Gated (default, user-driven)** — a chain of self-handing-off skills. You stay in
+  control, reviewing each stage's output and saying "yes"/"proceed" to advance. Entry
+  point is the **`solution-architect`** skill (triggers on `solution-architect <STORY>`
+  or `plan <STORY>`). There is **no router** and **no shared pipeline file** — each stage
+  skill embeds a **Handoff Protocol** that names only its immediate successor.
+
+- **AFK (autonomous)** — the **`arcus-controller`** skill runs the entire pipeline
+  unattended. It activates only on AFK phrases (`afk`, `--afk`, `forge`,
+  `run afk on <STORY>`), runs every stage as a one-shot subagent with milestone output,
+  and its body holds the single canonical ordered stage list.
+
+See **"gated or afk?"** for guidance on choosing.
 
 ---
 
 ## Stage Breakdown
 
-### Stage 0: Init 🔧
+### scaffold 🔧
 
-**Purpose:** Set up workspace and prepare for development
+**Purpose:** Create the story workspace and pipeline state — *without* creating a branch.
 
 **What happens:**
-- Creates feature branch: `arcus/[STORY-ID]`
-- Scaffolds `.arcus/specs/[STORY-ID]/` directory
-- Copies story file to workspace
-- Initializes `session-checkpoint.json` (pipeline state tracker)
+- `scaffold.sh` creates `.arcus/specs/[STORY-ID]/`
+- Copies the story file into the workspace as `story.md`
+- Initializes `session-checkpoint.json`, **recording the planned `branch_name` and
+  `base_branch`** for later
+- Creates **no git branch** (deferred to the `branch` stage)
 
-**Skills invoked:**
-- `arcus-controller` (deterministic Stage 0 via helper scripts)
+**Driven by:**
+- Gated: `solution-architect` (main thread) calls `scaffold.sh`
+- AFK: `arcus-controller` runs scaffold as its first stage
 
 **Artifacts created:**
 - `.arcus/specs/[STORY-ID]/story.md` (copy of original)
-- `.arcus/session-checkpoint.json` (state tracking)
-- Git branch `arcus/[STORY-ID]`
-
-**Handoff:** No handoff gate. Stage 0 flows directly into Stage 1.
-
-**What to check:**
-- Branch created successfully
-- Story copied correctly to workspace
-- Ready to proceed
+- `.arcus/session-checkpoint.json` (state tracking, with planned branch info)
 
 **Duration:** < 1 minute (deterministic)
 
 ---
 
-### Stage 1: Brainstorm 💡
+### context_pack 📚
 
-**Purpose:** Resolve ambiguities and document technical decisions
-
-**What happens:**
-- Analyzes story for completeness
-- Identifies ambiguous requirements
-- **Gated mode:** Asks clarifying questions one-by-one (dialogue)
-- **AFK mode:** Auto-resolves ambiguities (one-shot)
-- Documents assumptions and constraints
-- Optionally builds story-specific context pack
-- Creates implementation plan (`blueprint.md`) before implementation begins
+**Purpose:** Build a minimal, story-specific context bundle from the shared `.context/`
+snapshot.
 
 **Skills invoked:**
-- `spec-finalizer` (dialogue mode or one-shot)
-- `context-pack-builder` (optional, for story-specific context)
-- `implementation-planner` (creates `blueprint.md`)
+- `context-pack-builder`
 
 **Artifacts created:**
-- `assumptions.md` — Technical decisions, constraints, error handling
-- `clarifications.md` — User answers (gated mode only)
-- `context-pack.md` — Story-specific context (optional)
-- `blueprint.md` — Implementation plan with atomic tasks
+- `context-pack.md` — relevant flows, likely working areas, related patterns
 
-**Handoff Gate A:** "Assumptions and implementation plan documented, ready for test planning?"
-
-**What to check:**
-- Assumptions align with your intent
-- No missing technical constraints
-- Error handling approach makes sense
-- Architecture decisions are correct
-
-**Duration:** 5-15 minutes (gated), faster in AFK
-
-**💡 Tip:** This is your chance to course-correct before implementation. Review assumptions carefully!
+**Duration:** 1-3 minutes
 
 ---
 
-### Stage 2: Test Plan 🧪
+### spec_finalizer 💡
 
-**Purpose:** Design comprehensive test matrix before writing code
+**Purpose:** Resolve ambiguities and document technical decisions before planning.
 
 **What happens:**
-- Reviews blueprint and assumptions
-- Designs test cases across three categories:
-  - **Functional:** Happy path verification
-  - **Edge Case:** Boundary conditions, null handling
-  - **Error Handling:** Validation failures, exception paths
-- Maps each test to blueprint task IDs
+- Analyzes the story for completeness and identifies ambiguous requirements
+- **Gated mode:** interactive dialogue. **Every interview question is presented with
+  exactly one option marked Recommended (with a one-line rationale) plus a custom-answer
+  option** — so you can accept the recommendation fast or steer.
+- **AFK mode:** auto-resolves ambiguities one-shot, grounded in repo patterns
+- Consolidates all planning deliberation into a single **`plan.md`**
+
+**Skills invoked:**
+- `spec-finalizer`
+
+**Artifacts created:**
+- `plan.md` — consolidated planning deliberation (technical decisions, constraints,
+  error handling, and — in gated mode — the recorded Q&A). *This single file replaces the
+  two separate planning files used by earlier versions of ARCUS.*
+
+**💡 Tip:** This is your chance to course-correct before implementation. Review `plan.md`
+carefully!
+
+---
+
+### blueprint 🗂️
+
+**Purpose:** Decompose the story into atomic implementation tasks.
+
+**What happens:**
+- Acts as a Tech Lead: designs the technical approach and breaks the story into
+  atomic tasks with a Definition of Done
+- **Gated mode:** the `implementation-planner` runs the same recommendation-first
+  interview style — every question carries one **Recommended** option + rationale and a
+  custom-answer option
+- Writes the **machine-parsed task list** to `blueprint.md`
+
+**Skills invoked:**
+- `implementation-planner`
+
+**Artifacts created:**
+- `blueprint.md` — atomic task list with IDs, complexity, affected files, Definition of Done
+
+---
+
+### test_plan 🧪
+
+**Purpose:** Design a comprehensive test matrix before writing code (TDD).
+
+**What happens:**
+- Reviews `blueprint.md` and `plan.md`
+- Designs test cases across **Functional / Edge Case / Error Handling**
+- Maps each test to a blueprint task ID
 - Follows patterns from `.context/testing-patterns.md`
 
 **Skills invoked:**
 - `test-spec-compiler`
 
 **Artifacts created:**
-- `test-plan.md` — Test matrix with functional/edge/error categories
+- `test-plan.md` — test matrix
 
-**Handoff Gate B:** "Test plan complete, ready to implement?"
-
-**What to check:**
-- Test coverage feels comprehensive
-- Edge cases captured
-- Error scenarios realistic
-- Test structure follows repo patterns
-
-**Duration:** 5-10 minutes
-
-**💡 Tip:** Add missing test cases to `test-plan.md` before proceeding. This is TDD in action!
+**💡 Tip:** Add missing test cases to `test-plan.md` before proceeding.
 
 ---
 
-### Stage 3: Code ⚙️
+### branch 🌿
 
-**Purpose:** Implement the story with continuous verification
+**Purpose:** Create the git feature branch — *now*, at the start of Implementation.
 
 **What happens:**
-- Dispatches each task to isolated subagent
-- Each task includes:
-  - Implementation
-  - Test writing (following test-plan.md)
-  - One lightweight, **advisory** per-task spec-compliance check (does not hard-block; unresolved issues are carried forward to Stage 4)
-- Commits code incrementally (one commit per task)
-- Runs tests after each task
+- `branch.sh` (driven by the `implementation-runner` skill) creates the git branch
+  `arcus/[STORY-ID]` using the name planned during `scaffold`
+- **Bumps on collision** if a branch with that name already exists
+- If the final name differs from the planned name, calls
+  `checkpoint.sh set-branch` to record the actual name
 
-> **Note:** Quality is *not* reviewed per-task. Code quality is owned holistically by Stage 4 over the whole branch diff — reviewing it per-task is redundant because isolated subagents never see prior tasks' code.
+**Driven by:**
+- `implementation-runner` (used by both gated and AFK)
+
+**Why deferred?** Planning never touches git. The branch is only created once you commit
+to writing code, keeping aborted/abandoned plans from littering your branch list.
+
+---
+
+### task_1..N ⚙️ (Implementation)
+
+**Purpose:** Implement the story task-by-task with continuous verification.
+
+**What happens:**
+- The `implementation-runner` drives the per-task loop (the same loop is reused by
+  gated and AFK)
+- Each task is dispatched to an isolated subagent with scoped context
+- Each task includes implementation, test writing (following `test-plan.md`), and one
+  lightweight, **advisory** per-task spec-compliance check (does not hard-block;
+  unresolved issues carry forward to Code Review)
+- Commits incrementally (one commit per task) and runs tests after each task
+
+> **Note:** Quality is *not* reviewed per-task. Code quality is owned holistically by the
+> `code_review` stage over the whole branch diff — reviewing it per-task is redundant
+> because isolated subagents never see prior tasks' code.
 
 **Skills invoked:**
-- `subagent-task-dispatcher` (orchestrates task execution)
+- `implementation-runner` (loop driver)
+- `subagent-task-dispatcher` (per-task dispatch protocol)
 - `spec-compliance-reviewer` (per-task mode, advisory)
 
 **Artifacts created:**
-- Code changes (committed to branch)
-- Tests (committed alongside code)
-
-**Handoff Gate C:** "All tasks complete, tests passing, ready for holistic review?"
-
-**What to check:**
-- All tests pass locally
-- Implementation feels complete
-- No obvious gaps or missing features
-- Commits are clean and atomic
-
-**Duration:** 15-60 minutes (depends on complexity)
-
-**💡 Tip:** You can edit `blueprint.md` at Gate A or Gate B before implementation begins.
+- Code changes + tests (committed to the branch)
 
 ---
 
-### Stage 4: Review 🔍
+### code_review 🔍
 
-**Purpose:** The real last gate before a PR. Runs over the **full branch diff** in two tiers, with a zero-trust persona — brutal in the hunt (assume the code is guilty, verify every claim by reading source and running tools), fair in the verdict (only genuine, concrete problems block).
+**Purpose:** The real last gate before a PR. Runs over the **full branch diff** in two
+tiers, with a zero-trust persona — brutal in the hunt (assume the code is guilty, verify
+every claim by reading source and running tools), fair in the verdict (only genuine,
+concrete problems block).
 
 **What happens:**
 
 **Tier 1 — Deterministic Gate (runs the repo's real tooling, fails fast):**
-- Executes the actual commands CI would run over the integrated branch — never simulated by eyeballing the diff. Resolved from CI workflows first, then `.context/` tables.
+- Executes the actual commands CI would run over the integrated branch — never simulated
+  by eyeballing the diff. Resolved from CI workflows first, then `.context/` tables.
   - **Typecheck / compile**
   - **Full test suite** (per-task green ≠ whole-branch green)
   - **Build + startup smoke**
   - **Secret scan**
   - **Lint & format** (auto-fixed and committed where a fix mode exists)
   - **Static analysis** (findings feed the semantic tier)
-- Any hard block (typecheck / tests / build / secret) → skips the semantic fan-out and returns `changes_requested` immediately. Unresolvable commands are honestly recorded as `skipped: not configured`.
+- Any hard block (typecheck / tests / build / secret) → skips the semantic fan-out and
+  returns `changes_requested` immediately. Unresolvable commands are honestly recorded as
+  `skipped: not configured`.
 
 **Tier 2 — Semantic Review (only if the gate passes):**
 - Fans out to specialist reviewers for judgment-grade concerns no tool can answer:
   - **Spec compliance** (holistic): Does it meet all requirements?
-  - **Code quality** (holistic): Clean structure, maintainability, **cognitive complexity**, and **test proportionality** (over-engineered/slow tests that bloat the build)?
+  - **Code quality** (holistic): Clean structure, maintainability, **cognitive
+    complexity**, and **test proportionality** (over-engineered/slow tests that bloat the
+    build)?
   - **Security**: Any exploitable vulnerabilities?
   - **Performance**: Any concrete regressions?
-- Consolidates findings
-- Deduplicates and filters noise
-- Assigns severity levels:
+- Consolidates findings, deduplicates, filters noise, assigns severity:
   - **critical** — Blocks merge (outage, data loss, security breach)
   - **warning** — Concrete issue (performance hit, maintainability concern)
   - **suggestion** — Minor nit (non-blocking)
@@ -202,38 +257,24 @@ graph LR
 - `performance-reviewer`
 
 **Artifacts created:**
-- `review.md` — Deterministic gate results (pass/fail/skipped per check) + consolidated semantic findings with verdict
+- `review.md` — Deterministic gate results (pass/fail/skipped per check) + consolidated
+  semantic findings with verdict
 
-**Handoff Gate D:**
-- **If approved:** "Review passed, ready to create PR?"
-- **If changes_requested:** "Issues found, fix and re-review? (Auto-loops up to 3 rounds)"
-
-**What to check:**
-- Review findings are accurate
-- Severity levels appropriate
-- No false positives
-- Critical issues are genuine blockers
-
-**Duration:** 5-15 minutes
-
-**💡 Tip:** If you disagree with findings, you can proceed anyway (override verdict).
+**💡 Tip:** If you disagree with the semantic findings, you can proceed anyway (override
+verdict). Tier 1 (deterministic) failures are objective and can't be overridden by
+judgment.
 
 ---
 
-### Stage 5: Closure 🎯
+### closure 🎯
 
-**Purpose:** Create pull request with evidence and context
+**Purpose:** Create the pull request with evidence and context.
 
 **What happens:**
-- Runs final test suite
-- Gathers evidence of completion
-- Synthesizes PR description from:
-  - Original story
-  - Assumptions
-  - Blueprint
-  - Test results
-  - Review findings
-- Creates pull request (if `gh` CLI configured)
+- Runs the final test suite, gathers evidence of completion
+- Synthesizes the PR description from: original story, `plan.md`, `blueprint.md`, test
+  results, and review findings
+- Creates the pull request (if `gh` CLI configured)
 
 **Skills invoked:**
 - `pull-request-builder`
@@ -241,57 +282,55 @@ graph LR
 **Artifacts created:**
 - `PR_DESCRIPTION.md` — Final PR body
 
-**Terminal stage:** PR created or ready for manual creation
-
-**What to check:**
-- PR description is accurate and complete
-- All tests pass
-- Branch is up to date with base
-
-**Duration:** 2-5 minutes
+**Terminal stage:** PR created or ready for manual creation.
 
 ---
 
 ## Review Loopback Mechanism
 
-If Stage 4 returns `changes_requested`:
+If `code_review` returns `changes_requested`:
 
 1. **Fix-tasks generated** from review findings
-2. **Loop back to Stage 3** (Code)
-3. **Subagents address issues** following fix-tasks
-4. **Return to Stage 4** for re-review
+2. **Loop back into the task loop** (Implementation)
+3. **Subagents address issues** following the fix-tasks
+4. **Return to `code_review`** for re-review
 5. **Bounded to 3 rounds maximum** to prevent infinite loops
-6. **Manual intervention** required if 3rd round still fails
+6. **Manual intervention** required if the 3rd round still fails
 
-**Why bounded?** Prevents loops on subjective or unclear issues. After 3 rounds, human judgment needed.
+**Why bounded?** Prevents loops on subjective or unclear issues. After 3 rounds, human
+judgment is needed.
 
 ---
 
 ## Gated vs AFK Behavior
 
-| Aspect | Gated Mode | AFK Mode |
-|--------|------------|----------|
-| **Gates** | Pauses at 5 handoff points | Auto-confirms all gates |
-| **Brainstorm** | Interactive dialogue (one question at a time) | One-shot auto-resolution |
-| **User Role** | Review and approve at each gate | Hands-off until completion |
-| **Session** | Can pause/resume across days | Single uninterrupted session |
+| Aspect | Gated (self-handoff chain) | AFK (`arcus-controller`) |
+|--------|----------------------------|--------------------------|
+| **Driver** | `solution-architect` entry; each stage skill hands off to its successor | `arcus-controller` runs every stage one-shot |
+| **Gates** | Pauses between stages for your "yes"/"proceed" | Auto-confirms; runs back-to-back |
+| **spec_finalizer** | Recommendation-first dialogue (one question at a time) | One-shot auto-resolution |
+| **Resume** | Cold resume = the next stage's explicit phrase + the checkpoint | Intended to run uninterrupted |
 | **Output** | Full progress updates | Milestone-only output |
+
+> The **`arcus-controller`** drives **AFK only**. It does *not* drive gated mode — gated is
+> the self-handoff chain entered via `solution-architect`.
 
 ---
 
-## Quick Stage Reference
+## Gated Resume Phrases
 
-| Stage | Entry Command | Exit Condition | Duration |
-|-------|---------------|----------------|----------|
-| 0: Init | `implement story.md` | Workspace ready | < 1 min |
-| 1: Brainstorm | Auto or `brainstorm story` | `assumptions.md` + `blueprint.md` complete | 5-15 min |
-| 2: Test Plan | Auto or `generate tests story` | `test-plan.md` complete | 5-10 min |
-| 3: Code | Auto or `code story` | All tasks done, tests pass | 15-60 min |
-| 4: Review | Auto or `review story` | Verdict: approved/changes | 5-15 min |
-| 5: Closure | Auto or `close story` | PR created | 2-5 min |
+In gated mode, each stage's Handoff Protocol tells you the exact phrase to resume the next
+stage in a fresh session. Examples:
 
-**Total time (gated):** 30-90 minutes active time, spread over hours/days  
-**Total time (AFK):** 30-90 minutes uninterrupted
+| To run / resume… | Say |
+|------------------|-----|
+| Planning (entry) | `solution-architect <STORY>` (or `plan <STORY>`) |
+| Test plan | `generate test plan for <STORY>` |
+| Implementation | `implement <STORY>` |
+| Code review | `review <STORY>` |
+| Closure (PR) | `create pull request for <STORY>` |
+
+Within the same session, a simple `yes` / `proceed` loads the next stage directly.
 
 ---
 

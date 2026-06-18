@@ -89,32 +89,37 @@ causing bounce rates and poor data quality.
 
 ### Phase 3: Run the Pipeline 🎯
 
-**Command to run:**
+**Command to run (gated, default):**
 ```
-implement path/to/story.md
-```
-
-Or alternatives:
-```
-build path/to/story.md
-forge path/to/story.md
+solution-architect path/to/story.md
 ```
 
-**What happens:** ARCUS runs a 6-stage SDLC pipeline:
+Or use the alias:
+```
+plan path/to/story.md
+```
 
-1. **Init** — Creates branch `arcus/[STORY-ID]`, scaffolds workspace
-2. **Brainstorm** — Resolves ambiguities and creates implementation plan → `assumptions.md` + `blueprint.md`
-3. **Test Plan** — Designs test matrix → `test-plan.md`
-4. **Code** — Implements tasks → committed code
-5. **Review** — Holistic quality check → `review.md`
-6. **Closure** — Creates pull request
+**What happens:** ARCUS walks an ordered Spec → Code → PR pipeline:
 
-**Default mode:** **Gated** (pauses at each handoff gate for your review)
+1. **scaffold** — Creates `.arcus/specs/[STORY-ID]/`, copies the story, and inits the
+   checkpoint (recording the *planned* branch name). **No git branch is created yet.**
+2. **context_pack** — Builds story-specific context → `context-pack.md`
+3. **spec_finalizer** — Resolves ambiguities → consolidated `plan.md`
+4. **blueprint** — Decomposes into atomic tasks → `blueprint.md`
+5. **test_plan** — Designs the test matrix → `test-plan.md`
+6. **branch** — **Creates the git branch `arcus/[STORY-ID]` now**, at the start of
+   Implementation (bumps the name on collision)
+7. **task_1..N** — Implements each task → committed code + tests
+8. **code_review** — Holistic two-tier quality gate → `review.md`
+9. **closure** — Creates the pull request
+
+**Default mode:** **Gated** — a self-handoff chain entered at `solution-architect`. It
+pauses between stages for your review.
 
 **Your role:**
-- Review artifacts at each gate
-- Say **"yes"** to proceed to next stage
-- Say **"no"** to pause and return later
+- Review artifacts at each handoff
+- Say **"yes"** / **"proceed"** to advance to the next stage
+- Say **"no"** to pause and return later (resume with that stage's phrase)
 
 **Duration:** 30-90 minutes of active time (can be spread over hours/days)
 
@@ -135,9 +140,10 @@ forge path/to/story.md
 - ✅ Simple feature or bug fix
 - ✅ Can dedicate 30-90 minutes uninterrupted
 
-**To use AFK mode:**
+**To use AFK mode** (runs the `arcus-controller`):
 ```
 run afk on path/to/story.md
+forge path/to/story.md
 implement path/to/story.md --afk
 ```
 
@@ -151,7 +157,7 @@ implement path/to/story.md --afk
 
 ## Next Steps
 
-1. **If .context/ is ready:** Write your first story and run `implement story.md`
+1. **If .context/ is ready:** Write your first story and run `solution-architect story.md`
 2. **If .context/ is missing:** Run `agentify this repo` now
 3. **Need help deciding?** Ask: "Should I use gated or AFK mode?"
 4. **Want to understand more?** Ask: "Explain the pipeline"

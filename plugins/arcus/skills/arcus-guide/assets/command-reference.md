@@ -27,33 +27,35 @@ Begin the SDLC pipeline
 
 | Command | What it does | When to use |
 |---------|-------------|-------------|
-| `implement <STORY>.md` | Start pipeline in gated mode | Begin work on any story (default, recommended) |
-| `build <STORY>.md` | Alias for implement | Same as above |
-| `forge <STORY>.md` | Alias for implement | Same as above |
-| `run afk on <STORY>.md` | Start pipeline in AFK mode (autonomous) | High-confidence stories, familiar codebases |
-| `implement <STORY> --afk` | Start pipeline with AFK flag | Same as above |
-| `build <STORY> --afk` | Start pipeline with AFK flag | Same as above |
+| `solution-architect <STORY>.md` | Start the **gated** chain (entry skill) | Begin work on any story (default, recommended) |
+| `plan <STORY>.md` | Alias for solution-architect (gated entry) | Same as above |
+| `run afk on <STORY>.md` | Start the pipeline in **AFK** mode (autonomous, via `arcus-controller`) | High-confidence stories, familiar codebases |
+| `forge <STORY>.md` | AFK trigger | Same as above |
+| `implement <STORY> --afk` | Start the pipeline with the AFK flag | Same as above |
+
+> **Gated vs AFK:** `solution-architect` / `plan` enter the **gated self-handoff chain**.
+> AFK phrases (`afk`, `--afk`, `forge`, `run afk on …`) activate the **`arcus-controller`**,
+> which runs every stage unattended. `arcus-controller` is **AFK-only**.
 
 ---
 
-## ⏭️ Stage Jump Commands
+## ⏭️ Gated Resume Phrases
 
-Jump to a specific pipeline stage
+In gated mode, each stage's Handoff Protocol names its successor. To cold-resume a later
+stage in a fresh session, use that stage's explicit phrase.
 
-| Command | What it does | When to use |
-|---------|-------------|-------------|
-| `brainstorm <STORY>` | Jump to Stage 1 (Brainstorm) | Resume or restart spec finalization |
-| `plan <STORY>` | Alias for brainstorm | Same as above |
-| `generate tests <STORY>` | Jump to Stage 2 (Test Plan) | Resume or restart test planning |
-| `implement <STORY>` | Jump to Stage 3 (Code) | Resume or restart implementation |
-| `code <STORY>` | Alias for implement Stage 3 | Same as above |
-| `review <STORY>` | Jump to Stage 4 (Review) | Resume or restart code review |
+| Command | Resumes / runs | When to use |
+|---------|----------------|-------------|
+| `solution-architect <STORY>` | Planning (entry: scaffold → context_pack → spec_finalizer → blueprint) | Start or resume planning |
+| `plan <STORY>` | Alias for solution-architect | Same as above |
+| `generate test plan for <STORY>` | The `test_plan` stage | Resume or restart test planning |
+| `implement <STORY>` | Implementation (creates the branch, then the task loop) | Resume or restart implementation |
+| `review <STORY>` | The `code_review` stage | Resume or restart code review |
 | `code review <STORY>` | Alias for review | Same as above |
-| `close <STORY>` | Jump to Stage 5 (Closure) | Resume or restart PR creation |
-| `raise pr <STORY>` | Alias for close | Same as above |
-| `ship <STORY>` | Alias for close | Same as above |
+| `create pull request for <STORY>` | The `closure` stage | Resume or restart PR creation |
 
-**⚠️ Warning:** Jumping stages may skip important artifacts or context. Use with caution.
+**⚠️ Warning:** Cold-resuming a later stage assumes the earlier artifacts already exist.
+Use the resume phrases your last handoff printed.
 
 ---
 
@@ -82,7 +84,7 @@ Handle review loops
 
 | Command | What it does | When to use |
 |---------|-------------|-------------|
-| `fix <STORY>` | Loopback: feed review findings into Stage 3 as fix-tasks | After Stage 4 returns `changes_requested` verdict |
+| `fix <STORY>` | Loopback: feed review findings into the task loop as fix-tasks | After `code_review` returns `changes_requested` verdict |
 
 **Note:** Review loops are automatic (up to 3 rounds). This command is for manual intervention.
 
@@ -120,10 +122,10 @@ Helper and history tools
 **Starting fresh:**
 ```
 agentify this repo              # First-time setup
-implement story.md              # Run your first story (gated)
+solution-architect story.md     # Run your first story (gated entry)
 ```
 
-**Mid-pipeline:**
+**Mid-pipeline (gated):**
 ```
 where am I?                     # Check status
 yes                             # Proceed to next stage

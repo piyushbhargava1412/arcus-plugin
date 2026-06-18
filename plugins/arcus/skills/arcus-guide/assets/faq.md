@@ -52,25 +52,31 @@ See the full README for detailed instructions.
 
 ### Q: How do I start a story?
 
-**A:** Use any of these commands:
+**A:** Start the **gated** chain via the `solution-architect` entry skill:
 ```
-implement path/to/story.md
-build path/to/story.md
-forge path/to/story.md
+solution-architect path/to/story.md
+plan path/to/story.md
 ```
 
-Default mode is **gated** (pauses at each stage). Add `--afk` for autonomous mode.
+Gated is the default (pauses at each stage). For autonomous **AFK** mode (the
+`arcus-controller`), use an AFK trigger instead:
+```
+run afk on path/to/story.md
+forge path/to/story.md
+implement path/to/story.md --afk
+```
 
 ---
 
-### Q: What's the difference between "implement" and "build"?
+### Q: What enters gated mode vs AFK mode?
 
-**A:** **None** — they're aliases. All three trigger the same pipeline:
-- `implement <story>`
-- `build <story>`
-- `forge <story>`
+**A:** They're driven by different skills:
+- **Gated:** `solution-architect` (also `plan <story>`) — a chain of self-handing-off
+  skills, where each stage hands off to its successor. This is the default.
+- **AFK:** `arcus-controller`, activated only by AFK phrases (`afk`, `--afk`, `forge`,
+  `run afk on <story>`). It runs every stage unattended.
 
-Use whichever feels natural.
+`arcus-controller` is **AFK-only** — it does not drive gated mode.
 
 ---
 
@@ -80,9 +86,9 @@ Use whichever feels natural.
 
 **✅ Safe to edit:**
 - All `.context/` files (repo_scope.md, flows/*.md, etc.)
-- `assumptions.md` (refine before Stage 2)
-- `blueprint.md` (adjust tasks before Stage 3)
-- `test-plan.md` (add tests before Stage 3)
+- `plan.md` (refine decisions before the `blueprint` stage)
+- `blueprint.md` (adjust tasks before Implementation)
+- `test-plan.md` (add tests before Implementation)
 
 **⚠️ Edit with caution:**
 - `session-checkpoint.json` (only if you understand state schema)
@@ -95,18 +101,19 @@ See **Artifacts Guide** for full editing guidelines.
 
 ---
 
-### Q: How do I skip a stage?
+### Q: How do I resume or jump to a stage?
 
-**A:** Use jump commands:
+**A:** In gated mode, use the resume phrase your last handoff printed (each stage's
+Handoff Protocol names its successor):
 ```
-brainstorm <story>      # Jump to Stage 1
-generate tests <story>  # Jump to Stage 2
-implement <story>       # Jump to Stage 3
-review <story>          # Jump to Stage 4
-close <story>           # Jump to Stage 5
+solution-architect <story>           # Planning (entry)
+generate test plan for <story>       # Test plan stage
+implement <story>                    # Implementation (creates branch, then task loop)
+review <story>                       # Code review stage
+create pull request for <story>      # Closure stage
 ```
 
-⚠️ **Warning:** Skipping stages may result in missing artifacts or incomplete context.
+⚠️ **Warning:** Cold-resuming a later stage assumes the earlier artifacts already exist.
 
 ---
 
@@ -163,15 +170,21 @@ See **Modes Explained** for detailed decision framework.
 
 ## Pipeline & Stages
 
-### Q: What are the 6 stages?
+### Q: What are the pipeline stages?
 
-**A:**
-1. **Init** — Branch creation, workspace setup
-2. **Brainstorm** — Resolve ambiguities and finalize plan → `assumptions.md` + `blueprint.md`
-3. **Test Plan** — Design test matrix → `test-plan.md`
-4. **Code** — Implement tasks → committed code
-5. **Review** — Holistic quality check → `review.md`
-6. **Closure** — Create pull request
+**A:** In order: `scaffold → context_pack → spec_finalizer → blueprint → test_plan →
+branch → task_1..N → code_review → closure`.
+
+1. **scaffold** — Creates the story folder + checkpoint (records the *planned* branch
+   name). **No git branch yet.**
+2. **context_pack** — Story-specific context → `context-pack.md`
+3. **spec_finalizer** — Resolve ambiguities → consolidated `plan.md`
+4. **blueprint** — Atomic task list → `blueprint.md`
+5. **test_plan** — Test matrix → `test-plan.md`
+6. **branch** — **Creates the git branch now**, at the start of Implementation
+7. **task_1..N** — Implement tasks → committed code + tests
+8. **code_review** — Holistic two-tier quality gate → `review.md`
+9. **closure** — Create the pull request
 
 See **Pipeline Overview** for detailed breakdown.
 
@@ -199,9 +212,9 @@ You can resume anytime with `"yes"`.
 
 ### Q: What if code review fails?
 
-**A:** ARCUS automatically loops back to Stage 3 (Code) with fix-tasks generated from review findings. This loop is **bounded to 3 rounds maximum**. If still failing after 3 rounds, manual intervention is required.
+**A:** ARCUS automatically loops back into the task loop (Implementation) with fix-tasks generated from review findings. This loop is **bounded to 3 rounds maximum**. If still failing after 3 rounds, manual intervention is required.
 
-Stage 4 runs as a **two-tier gate**, so a failure means one of two things:
+`code_review` runs as a **two-tier gate**, so a failure means one of two things:
 - **Tier 1 (deterministic gate)** — the repo's real tooling failed (typecheck, full test suite, build/startup, or secret scan). These are objective and stop the semantic review immediately. Fix the concrete breakage.
 - **Tier 2 (semantic review)** — specialist reviewers flagged genuine design/spec/security/perf concerns. These are judgment calls you can address or override.
 
@@ -225,7 +238,7 @@ Created by `agentify this repo`, used by all stories.
 
 **A:** Session workspace (git-ignored), per-story working data:
 - `session-checkpoint.json` — Pipeline state
-- `specs/[STORY-ID]/` — Story artifacts (assumptions, blueprint, test-plan, review, PR description)
+- `specs/[STORY-ID]/` — Story artifacts (`plan.md`, `blueprint.md`, `test-plan.md`, `review.md`, `PR_DESCRIPTION.md`)
 - `bin/` — Helper scripts
 
 Not committed to git, safe to delete after PR merged.
@@ -246,13 +259,13 @@ Not committed to git, safe to delete after PR merged.
 
 ### Q: What if I accidentally delete `.arcus/`?
 
-**A:** You lose pipeline state and will need to restart from Stage 0. But `.context/` is safe (committed to git), so you won't lose repository knowledge.
+**A:** You lose pipeline state and will need to restart from the `scaffold` stage. But `.context/` is safe (committed to git), so you won't lose repository knowledge.
 
 ---
 
 ### Q: Where's my PR description?
 
-**A:** `.arcus/specs/[STORY-ID]/PR_DESCRIPTION.md` after Stage 5 completes.
+**A:** `.arcus/specs/[STORY-ID]/PR_DESCRIPTION.md` after the `closure` stage completes.
 
 ---
 
@@ -262,13 +275,13 @@ Not committed to git, safe to delete after PR merged.
 
 **A:** **No**, ARCUS maintains a single session checkpoint (`.arcus/session-checkpoint.json`). Running multiple stories concurrently would cause state conflicts.
 
-**Workaround:** Complete one story through Stage 5, then start the next.
+**Workaround:** Complete one story through `closure`, then start the next.
 
 ---
 
 ### Q: Does ARCUS commit automatically?
 
-**A:** **Yes**, during Stage 3 (Code), each task is committed incrementally to the `arcus/[STORY-ID]` branch. You control whether to create the final PR (Stage 5 asks for confirmation in gated mode).
+**A:** **Yes** — the branch is created at the start of Implementation (the `branch` stage), then each task is committed incrementally to the `arcus/[STORY-ID]` branch. You control whether to create the final PR (the `closure` stage asks for confirmation in gated mode).
 
 ---
 
@@ -287,8 +300,8 @@ ARCUS adapts to your patterns rather than enforcing its own.
 ### Q: How do I customize review criteria?
 
 **A:** Review criteria are embedded in reviewer skills. Currently not user-configurable, but you can:
-1. Review findings in `review.md` after Stage 4
-2. Override verdict by editing code and skipping to Stage 5: `"close <story>"`
+1. Review findings in `review.md` after `code_review`
+2. Override the semantic verdict by editing code and resuming closure: `"create pull request for <story>"`
 
 **Future:** Reviewer configuration files may be supported.
 
@@ -297,7 +310,7 @@ ARCUS adapts to your patterns rather than enforcing its own.
 ### Q: What if I disagree with the blueprint?
 
 **A:** 
-1. Pause at **GATE B** (after test-plan.md, before Stage 3)
+1. Pause at the handoff before Implementation (after `blueprint` / `test_plan`)
 2. Say `"no"` to pause
 3. Edit `.arcus/specs/[STORY-ID]/blueprint.md` to adjust tasks
 4. Say `"yes"` when ready to proceed with your changes
@@ -337,14 +350,14 @@ ARCUS adapts to your patterns rather than enforcing its own.
 
 ---
 
-### Q: Tests are failing in Stage 3, what should I do?
+### Q: Tests are failing during Implementation, what should I do?
 
 **A:** 
 1. Run tests manually (check `.context/testing-patterns.md` for commands)
 2. Review test failures
 3. Or fix manually and continue
 
-Don't rely on shipping failing tests past Stage 3 — the Stage 4 deterministic gate **runs the full test suite over the whole branch** and will hard-block on any failure (per-task green ≠ whole-branch green), so unresolved failures bounce the pipeline back.
+Don't rely on shipping failing tests past Implementation — the `code_review` deterministic gate **runs the full test suite over the whole branch** and will hard-block on any failure (per-task green ≠ whole-branch green), so unresolved failures bounce the pipeline back.
 
 See **Troubleshooting** for detailed solutions.
 
@@ -355,7 +368,7 @@ See **Troubleshooting** for detailed solutions.
 **A:** Review loops are bounded to 3 rounds maximum. If you hit the limit:
 1. Review findings in `.arcus/specs/[ID]/review.md`
 2. Fix critical issues manually if needed
-3. Skip to Stage 5: `"close <story>"`
+3. Resume closure: `"create pull request for <story>"`
 
 See **Troubleshooting** for detailed solutions.
 
@@ -363,7 +376,7 @@ See **Troubleshooting** for detailed solutions.
 
 ### Q: What if `.arcus/` directory is missing?
 
-**A:** Reinitialize with `implement story.md` to trigger workspace setup. See **Troubleshooting** for details.
+**A:** Reinitialize with `solution-architect story.md` to trigger the `scaffold` stage and rebuild the workspace. See **Troubleshooting** for details.
 
 ---
 
@@ -413,8 +426,8 @@ Or ask natural language questions like:
 **Most common commands:**
 ```
 agentify this repo          # Initial setup
-implement story.md          # Start story (gated)
-run afk on story.md         # Start story (autonomous)
+solution-architect story.md # Start story (gated entry)
+run afk on story.md         # Start story (autonomous, arcus-controller)
 where am I?                 # Check status
 yes                         # Proceed at gate
 no                          # Pause at gate

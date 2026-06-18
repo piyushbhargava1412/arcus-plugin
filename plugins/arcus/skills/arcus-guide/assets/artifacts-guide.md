@@ -51,13 +51,17 @@ ARCUS creates two main directory structures:
     └── [STORY-ID]/
         ├── story.md                   # Original story (copy)
         ├── context-pack.md            # Story-specific context
-        ├── assumptions.md             # Technical decisions
-        ├── clarifications.md          # User answers (gated mode)
-        ├── blueprint.md               # Implementation plan
+        ├── plan.md                    # Consolidated planning deliberation
+        ├── blueprint.md               # Machine-parsed atomic task list
         ├── test-plan.md               # Test matrix
         ├── review.md                  # Review findings
         └── PR_DESCRIPTION.md          # Final PR body
 ```
+
+> **Note — deferred branch.** The story folder, `story.md` copy, and checkpoint are all
+> created by the **`scaffold`** stage (`scaffold.sh`), which records the *planned* branch
+> name but creates **no git branch**. The git branch is created later, at the start of
+> Implementation, by the `branch` stage. See `session-checkpoint.json` below.
 
 ---
 
@@ -220,29 +224,35 @@ ARCUS creates two main directory structures:
 
 ### `session-checkpoint.json`
 
-**Created by:** `arcus-controller` (Stage 0)
+**Created by:** `scaffold.sh` (the `scaffold` stage)
 
-**Purpose:** Track pipeline state for resumability across sessions
+**Purpose:** Track pipeline state for resumability across sessions. Also records the
+**planned** `branch_name` / `base_branch` (the git branch itself is created later, by the
+`branch` stage; if the name is bumped on collision, `branch.sh` updates it via
+`checkpoint.sh set-branch`).
 
 **Safe to edit:** ⚠️ Rarely (can manually reset stage status if needed)
 
-**Schema:**
+**Schema (illustrative):**
 ```json
 {
-  "version": 2,
   "story_id": "STORY-123",
   "mode": "gated",
-  "current_stage": 2,
+  "branch_name": "arcus/STORY-123",
+  "base_branch": "main",
   "stages": {
-    "0": {"status": "complete"},
-    "1": {"status": "complete"},
-    "2": {"status": "in_progress"},
-    "3": {"status": "pending"},
-    "4": {"status": "pending"},
-    "5": {"status": "pending"}
+    "scaffold":       {"status": "complete"},
+    "context_pack":   {"status": "complete"},
+    "spec_finalizer": {"status": "in_progress"},
+    "blueprint":      {"status": "pending"},
+    "test_plan":      {"status": "pending"},
+    "branch":         {"status": "pending"},
+    "task_1":         {"status": "pending"},
+    "code_review":    {"status": "pending"},
+    "closure":        {"status": "pending"}
   },
   "review_round": 0,
-  "last_updated": "2026-06-17T10:30:00Z"
+  "last_updated": "2026-06-18T10:30:00Z"
 }
 ```
 
@@ -257,7 +267,7 @@ ARCUS creates two main directory structures:
 
 ### `specs/[STORY-ID]/story.md`
 
-**Created by:** `arcus-controller` (Stage 0)
+**Created by:** `scaffold.sh` (the `scaffold` stage)
 
 **Purpose:** Canonical copy of original story for reference
 
@@ -269,7 +279,7 @@ ARCUS creates two main directory structures:
 
 ### `specs/[STORY-ID]/context-pack.md`
 
-**Created by:** `context-pack-builder` (Stage 1, optional)
+**Created by:** `context-pack-builder` (the `context_pack` stage)
 
 **Purpose:** Story-specific context bundle (relevant flows and patterns)
 
@@ -282,20 +292,23 @@ ARCUS creates two main directory structures:
 
 ---
 
-### `specs/[STORY-ID]/assumptions.md`
+### `specs/[STORY-ID]/plan.md`
 
-**Created by:** `spec-finalizer` (Stage 1)
+**Created by:** `spec-finalizer` (the `spec_finalizer` stage)
 
-**Purpose:** Document technical decisions and constraints
+**Purpose:** Single consolidated home for **all planning deliberation**. It consolidates
+the two separate planning files used by earlier versions of ARCUS (technical decisions
+and the gated-mode clarifications) into one file — those older files are gone, and no
+skill reads them anymore.
 
-**Safe to edit:** ✅ Yes, refine decisions before proceeding to Stage 2
+**Safe to edit:** ✅ Yes, refine decisions before the `blueprint` stage
 
 **Contains:**
 - Architecture decisions (layering, patterns to use)
 - Validation rules and error handling approach
-- Performance constraints
-- Security considerations
-- Integration decisions
+- Performance constraints, security considerations, integration decisions
+- **In gated mode:** the recorded Q&A from the recommendation-first interview (each
+  question carried one **Recommended** option + rationale plus a custom-answer option)
 
 **Example excerpt:**
 ```markdown
@@ -312,29 +325,24 @@ ARCUS creates two main directory structures:
 ## Validation
 - Email format: RFC 5322
 - Password: min 8 chars, require uppercase, number, special char
+
+## Clarifications (gated dialogue)
+- Q: Where should validation live? → A: Controller layer (Recommended)
 ```
 
----
-
-### `specs/[STORY-ID]/clarifications.md`
-
-**Created by:** `spec-finalizer` (Stage 1, gated mode only)
-
-**Purpose:** Record user answers to clarifying questions
-
-**Safe to edit:** ✅ Yes, correct answers before planning
-
-**Contains:** Q&A pairs from interactive dialogue
+> The **machine-parsed task list** lives separately in `blueprint.md` (below) — `plan.md`
+> holds the human-readable deliberation, `blueprint.md` holds the structured tasks.
 
 ---
 
 ### `specs/[STORY-ID]/blueprint.md`
 
-**Created by:** `implementation-planner` (Stage 1)
+**Created by:** `implementation-planner` (the `blueprint` stage)
 
-**Purpose:** Break story into atomic tasks with Definition of Done
+**Purpose:** Break story into atomic tasks with Definition of Done. This is the
+**machine-parsed task list** the implementation loop reads.
 
-**Safe to edit:** ✅ Yes, refine tasks before `subagent-task-dispatcher` runs
+**Safe to edit:** ✅ Yes, refine tasks before Implementation runs
 
 **Contains:**
 - Task list with IDs
@@ -365,11 +373,11 @@ ARCUS creates two main directory structures:
 
 ### `specs/[STORY-ID]/test-plan.md`
 
-**Created by:** `test-spec-compiler` (Stage 2)
+**Created by:** `test-spec-compiler` (the `test_plan` stage)
 
 **Purpose:** Design test matrix before code is written (TDD)
 
-**Safe to edit:** ✅ Yes, add missing test cases before Stage 3
+**Safe to edit:** ✅ Yes, add missing test cases before Implementation
 
 **Contains:**
 - **Functional tests:** Happy path verification
@@ -410,7 +418,7 @@ ARCUS creates two main directory structures:
 
 ### `specs/[STORY-ID]/review.md`
 
-**Created by:** `code-reviewer` (Stage 4)
+**Created by:** `code-reviewer` (the `code_review` stage)
 
 **Purpose:** Consolidated review findings with verdict
 
@@ -434,15 +442,15 @@ ARCUS creates two main directory structures:
 
 ### `specs/[STORY-ID]/PR_DESCRIPTION.md`
 
-**Created by:** `pull-request-builder` (Stage 5)
+**Created by:** `pull-request-builder` (the `closure` stage)
 
 **Purpose:** Final PR body synthesized from all artifacts
 
-**Safe to edit:** ⚠️ After Stage 5 completes (for manual tweaks)
+**Safe to edit:** ⚠️ After the `closure` stage completes (for manual tweaks)
 
 **Contains:**
 - Story summary
-- Key assumptions
+- Key decisions (from `plan.md`)
 - Implementation approach
 - Test coverage
 - Review status
@@ -457,12 +465,12 @@ ARCUS creates two main directory structures:
 **These files are meant to be reviewed and improved:**
 
 - **All `.context/` files** — Improve documentation quality anytime
-- **`assumptions.md`** — Refine decisions before planning (Gate A)
-- **`blueprint.md`** — Adjust task breakdown before implementation (Gate B)
-- **`test-plan.md`** — Add missing test cases before coding (Gate B)
+- **`plan.md`** — Refine decisions before the `blueprint` stage
+- **`blueprint.md`** — Adjust task breakdown before Implementation
+- **`test-plan.md`** — Add missing test cases before coding
 - **`context-pack.md`** — Add missing context before planning
 
-**Best practice:** Edit at handoff gates before saying "yes" to proceed
+**Best practice:** In gated mode, edit at a handoff before saying "yes" to proceed
 
 ---
 
@@ -472,7 +480,7 @@ ARCUS creates two main directory structures:
 
 - **`session-checkpoint.json`** — Only edit if you understand state schema
 - **`story.md`** — Edit original file instead (this is a copy)
-- **`PR_DESCRIPTION.md`** — Edit after Stage 5 if needed, but regeneration overwrites
+- **`PR_DESCRIPTION.md`** — Edit after the `closure` stage if needed, but regeneration overwrites
 
 ---
 
@@ -504,15 +512,17 @@ graph LR
 
 ```mermaid
 graph LR
-    A[Run: implement story.md] --> B[Stage 0: workspace created]
-    B --> C[Stage 1: assumptions.md + blueprint.md]
-    C --> D[Stage 2: test-plan.md]
-    D --> E[Stage 3: code + tests]
-    E --> F[Stage 4: review.md]
-    F -->|approved| G[Stage 5: PR_DESCRIPTION.md]
-    F -->|changes_requested| E
-    G --> H[PR created]
-    H --> I[.arcus/ can be deleted]
+    A[Run: solution-architect story.md] --> B[scaffold: folder + checkpoint<br/>NO branch yet]
+    B --> C[context_pack + spec_finalizer: plan.md]
+    C --> D[blueprint: blueprint.md]
+    D --> E[test_plan: test-plan.md]
+    E --> Br[branch: git branch created NOW]
+    Br --> F[task_1..N: code + tests]
+    F --> G[code_review: review.md]
+    G -->|approved| H[closure: PR_DESCRIPTION.md]
+    G -->|changes_requested| F
+    H --> I[PR created]
+    I --> J[.arcus/ can be deleted]
 ```
 
 ---
@@ -523,7 +533,7 @@ graph LR
 A: Not recommended. It's git-ignored by design (workspace data, not source).
 
 **Q: What if I accidentally delete `.arcus/`?**  
-A: You lose pipeline state and will need to restart from Stage 0. Artifacts in `.context/` are safe (committed to git).
+A: You lose pipeline state and will need to restart from the `scaffold` stage. Artifacts in `.context/` are safe (committed to git).
 
 **Q: Should I commit `.context/` to git?**  
 A: ✅ Yes! It's shared knowledge for your team.
@@ -531,7 +541,7 @@ A: ✅ Yes! It's shared knowledge for your team.
 **Q: How do I refresh stale context?**  
 A: Re-run `agentify this repo` to regenerate `.context/`.
 
-**Q: Where do I find my PR description after Stage 5?**  
+**Q: Where do I find my PR description after the closure stage?**  
 A: `.arcus/specs/[STORY-ID]/PR_DESCRIPTION.md`
 
 **Q: Can I reuse artifacts across stories?**  

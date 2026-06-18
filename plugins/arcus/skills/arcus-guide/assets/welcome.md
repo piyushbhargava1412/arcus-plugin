@@ -17,7 +17,7 @@ All available commands and triggers
 → *Say: "show me commands" or "command reference"*
 
 ### 🔄 **Pipeline Overview**
-Understanding the 6-stage SDLC workflow  
+Understanding the Spec → Code → PR SDLC workflow  
 → *Say: "explain the pipeline" or "how does it work"*
 
 ### ⚙️ **Modes Explained**

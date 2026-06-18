@@ -27,26 +27,26 @@ Self-service solutions for common ARCUS issues
 **If status is corrupted:**
 - Manually edit `.arcus/session-checkpoint.json`
 - Set stage status back to `pending` or `complete`
-- Resume with stage-specific command (e.g., `"brainstorm story.md"`)
+- Resume with the stage's explicit phrase (e.g., `"solution-architect story.md"`)
 
-**Recovery commands:**
+**Recovery commands (gated resume phrases):**
 ```
 # Check current status
 where am I?
 
-# Jump to specific stage if needed
-brainstorm story.md
-generate tests story.md
-implement story.md
-review story.md
-close story.md
+# Resume a specific stage if needed
+solution-architect story.md             # Planning (entry)
+generate test plan for story.md         # Test plan
+implement story.md                      # Implementation
+review story.md                         # Code review
+create pull request for story.md        # Closure
 ```
 
 ---
 
 ## Issue: Spec finalizer keeps asking same questions
 
-**Symptoms:** Stage 1 loops, similar questions repeated, dialogue feels circular
+**Symptoms:** The `spec_finalizer` dialogue loops, similar questions repeated, feels circular
 
 **Root Cause:** Original story lacks clarity or has circular dependencies
 
@@ -64,9 +64,9 @@ close story.md
 - Provide example scenarios
 - Remove ambiguous language ("maybe", "if possible", "TBD")
 
-**2. Restart Stage 1:**
+**2. Restart planning:**
 ```
-brainstorm story.md
+solution-architect story.md
 ```
 
 **Story quality checklist:**
@@ -78,7 +78,7 @@ brainstorm story.md
 
 ---
 
-## Issue: Tests failing in Stage 3
+## Issue: Tests failing during Implementation
 
 **Symptoms:** Task marked complete but tests don't pass
 
@@ -102,8 +102,8 @@ npm run test:e2e           # E2E tests
 - Check if expectations are correct
 - Verify test cases are realistic
 
-**3. Don't defer to Stage 4 — the gate will block:**
-- Stage 4's deterministic gate runs the **full test suite** over the whole branch before any semantic review
+**3. Don't defer to `code_review` — the gate will block:**
+- The `code_review` deterministic gate runs the **full test suite** over the whole branch before any semantic review
 - A failing test there is a hard block (`critical`) that returns `changes_requested` immediately
 - So fix failures now rather than carrying them forward
 
@@ -122,7 +122,7 @@ npm run test:e2e           # E2E tests
 
 ## Issue: Review loop won't exit
 
-**Symptoms:** Stage 4 keeps returning `changes_requested`, cycling back to Stage 3 repeatedly
+**Symptoms:** `code_review` keeps returning `changes_requested`, cycling back into the task loop repeatedly
 
 **Root Cause:** Review loop is bounded to 3 rounds maximum to prevent infinite loops
 
@@ -148,14 +148,14 @@ npm run test:e2e           # E2E tests
 - Review findings in `.arcus/specs/[ID]/review.md`
 - Assess if critical issues are genuine
 - Options:
-  1. Fix critical issues manually and skip to Stage 5: `"close story.md"`
-  2. Accept the code as-is (override verdict)
+  1. Fix critical issues manually and resume closure: `"create pull request for story.md"`
+  2. Accept the code as-is (override the semantic verdict)
   3. Restart implementation: `"implement story.md"`
 
 **If findings are false positives:**
 - Review findings may be overly strict
 - Use your judgment to override
-- Skip to closure: `"close story.md"`
+- Resume closure: `"create pull request for story.md"`
 
 ---
 
@@ -166,8 +166,8 @@ npm run test:e2e           # E2E tests
 **Diagnosis:**
 1. Inspect `.arcus/session-checkpoint.json`
 2. Check for impossible states:
-   - Stage 5 complete but no PR exists
-   - Stage 3 pending but code was committed
+   - `closure` complete but no PR exists
+   - `task_*` pending but code was committed
    - Negative review_round
 3. Check for syntax errors in JSON
 
@@ -188,27 +188,30 @@ code .arcus/session-checkpoint.json
 # Delete corrupted workspace
 rm -rf .arcus/specs/[STORY-ID]/
 
-# Restart from Stage 0
-implement story.md
+# Restart from the scaffold stage
+solution-architect story.md
 ```
 
 **3. Manual checkpoint repair:**
 ```json
 {
-  "version": 2,
   "story_id": "STORY-123",
   "mode": "gated",
-  "current_stage": 1,
+  "branch_name": "arcus/STORY-123",
+  "base_branch": "main",
   "stages": {
-    "0": {"status": "complete"},
-    "1": {"status": "pending"},
-    "2": {"status": "pending"},
-    "3": {"status": "pending"},
-    "4": {"status": "pending"},
-    "5": {"status": "pending"}
+    "scaffold":       {"status": "complete"},
+    "context_pack":   {"status": "pending"},
+    "spec_finalizer": {"status": "pending"},
+    "blueprint":      {"status": "pending"},
+    "test_plan":      {"status": "pending"},
+    "branch":         {"status": "pending"},
+    "task_1":         {"status": "pending"},
+    "code_review":    {"status": "pending"},
+    "closure":        {"status": "pending"}
   },
   "review_round": 0,
-  "last_updated": "2026-06-17T10:30:00Z"
+  "last_updated": "2026-06-18T10:30:00Z"
 }
 ```
 
@@ -274,9 +277,9 @@ build shared repository context
 
 **1. Reinitialize workspace:**
 ```
-implement story.md
+solution-architect story.md
 ```
-This triggers Stage 0 in `arcus-controller`, which creates `.arcus/`.
+This triggers the `scaffold` stage (`scaffold.sh`), which creates `.arcus/`.
 
 **2. Check .gitignore:**
 ```bash
@@ -299,7 +302,7 @@ ls -ld .
 
 ## Issue: Can't find my story artifacts
 
-**Symptoms:** Can't locate `assumptions.md`, `blueprint.md`, `test-plan.md`, etc.
+**Symptoms:** Can't locate `plan.md`, `blueprint.md`, `test-plan.md`, etc.
 
 **Diagnosis:**
 - Story artifacts live in `.arcus/specs/[STORY-ID]/`
@@ -340,11 +343,11 @@ This shows active story ID and current stage.
 
 ## Issue: Subagent task failing repeatedly
 
-**Symptoms:** Same task fails in Stage 3 across multiple attempts
+**Symptoms:** Same task fails during Implementation across multiple attempts
 
 **Diagnosis:**
 1. Check if task definition in `blueprint.md` is clear
-2. Check if task has conflicting constraints in `assumptions.md`
+2. Check if task has conflicting constraints in `plan.md`
 3. Review task complexity (might be too heavy)
 4. Check if dependent tasks completed successfully
 
@@ -366,7 +369,7 @@ code .arcus/specs/[STORY-ID]/blueprint.md
 yes
 ```
 
-**2. Check assumptions:**
+**2. Check `plan.md`:**
 - Verify constraints don't conflict
 - Ensure patterns referenced actually exist in codebase
 - Check if architecture decision is feasible
@@ -395,7 +398,7 @@ yes
 - Interrupt the session (Ctrl+C if applicable)
 - Delete `.arcus/specs/[STORY-ID]/`
 - Fix story file
-- Restart in gated mode: `implement story.md`
+- Restart in gated mode: `solution-architect story.md`
 
 **Prevention:**
 - Only use AFK mode when spec is solid
@@ -406,7 +409,7 @@ yes
 
 ## Issue: Git conflicts during pipeline
 
-**Symptoms:** Stage 3 or 5 fails due to git conflicts
+**Symptoms:** Implementation or closure fails due to git conflicts
 
 **Root Cause:** Base branch moved while pipeline was running
 
@@ -443,9 +446,9 @@ yes
 
 ---
 
-## Issue: PR creation fails (Stage 5)
+## Issue: PR creation fails (closure stage)
 
-**Symptoms:** Stage 5 completes but PR not created
+**Symptoms:** The `closure` stage completes but PR not created
 
 **Root Cause:** Usually `gh` CLI not configured
 
@@ -512,18 +515,18 @@ When stuck, try this sequence:
 
 4. **Try recovery commands:**
    ```
-   # Jump to current or previous stage
-   brainstorm story.md
-   generate tests story.md
+   # Resume current or previous stage (gated resume phrases)
+   solution-architect story.md
+   generate test plan for story.md
    implement story.md
    review story.md
-   close story.md
+   create pull request for story.md
    ```
 
 5. **If all else fails, restart:**
    ```bash
    rm -rf .arcus/specs/[STORY-ID]/
-   implement story.md
+   solution-architect story.md
    ```
 
 ---
