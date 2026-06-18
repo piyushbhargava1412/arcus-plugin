@@ -222,14 +222,14 @@ copilot                                   # or: claude
 > plan path/to/story.md                   # gated entry: solution-architect; stops at each handoff for your "yes"
 ```
 
-The gated stages are:
+The gated pipeline runs as **five phases** over nine ordered stages (`scaffold` is the opening
+stage of Brainstorm, not a phase of its own):
 
-1. **Scaffold** (deterministic, `scaffold.sh`) — spec folder + `story.md` + checkpoint with the *planned* branch. **No git branch yet.**
-2. **Brainstorm** (human-in-the-loop) — context pack, then recommendation-first spec-finalizer + implementation-planner dialogues → `plan.md` + `blueprint.md`. *Gate.*
-3. **Test Plan** (automated) — `test-plan.md`. Runs on your `yes`, then pauses before implementation.
-4. **Implementation** (automated, TDD per task) — the `branch` step creates the git branch first (deferred-branch design), then per-task committed code. *Gate.*
-5. **Code Review** (automated) — two-tier holistic review of the branch diff → `review.md` + verdict. *Decision gate:* approve, or loop findings back into Implementation as fix-tasks.
-6. **Closure** (manual trigger) — opens the pull request.
+1. **Brainstorm** (human-in-the-loop) — `scaffold.sh` creates the spec folder + `story.md` + checkpoint with the *planned* branch (**no git branch yet**); then the context pack and recommendation-first spec-finalizer + implementation-planner dialogues → `plan.md` + `blueprint.md`. Stages `scaffold`, `context_pack`, `spec_finalizer`, `blueprint`. *Gate.*
+2. **Test Plan** (automated) — `test-plan.md`. Runs on your `yes`, then pauses before implementation. Stage `test_plan`.
+3. **Implementation** (automated, TDD per task) — the `branch` step creates the git branch first (deferred-branch design), then per-task committed code. Stages `branch`, `task_1..N`. *Gate.*
+4. **Code Review** (automated) — two-tier holistic review of the branch diff → `review.md` + verdict. *Decision gate:* approve, or loop findings back into Implementation as fix-tasks. Stage `code_review`.
+5. **Closure** (manual trigger) — opens the pull request. Stage `closure`.
 
 Gated entry / per-stage / continuation phrases: `solution-architect <STORY>` or `plan <STORY>`
 (entry), `generate test plan for <STORY>`, `implement <STORY>` / `code <STORY>`, `review <STORY>`,

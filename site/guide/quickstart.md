@@ -62,14 +62,13 @@ gate you respond "yes" to load the next stage, or "no" to pause; on a cold resum
 stage's explicit phrase (e.g. `generate test plan for <STORY>`, `implement <STORY>`,
 `review <STORY>`, `close <STORY>`).
 
-The pipeline stages are:
+The pipeline runs as **five phases** over nine ordered stages:
 
-1. **Scaffold** — Scaffolds the workspace and records the *planned* branch `arcus/[STORY-ID]-N` (no git branch yet)
-2. **Brainstorm** — Builds context, resolves ambiguities → `plan.md` + `blueprint.md`
-3. **Test Plan** — Designs test matrix → `test-plan.md`
-4. **Implementation** — Creates the git branch, then implements tasks → committed code
-5. **Code Review** — Two-tier holistic quality check → `review.md` + verdict
-6. **Closure** — Creates pull request
+1. **Brainstorm** — Scaffolds the workspace and records the *planned* branch `arcus/[STORY-ID]-N` (no git branch yet), then builds context and resolves ambiguities → `plan.md` + `blueprint.md` (stages `scaffold`, `context_pack`, `spec_finalizer`, `blueprint`)
+2. **Test Plan** — Designs test matrix → `test-plan.md` (stage `test_plan`)
+3. **Implementation** — Creates the git branch, then implements tasks → committed code (stages `branch`, `task_1..N`)
+4. **Code Review** — Two-tier holistic quality check → `review.md` + verdict (stage `code_review`)
+5. **Closure** — Creates pull request (stage `closure`)
 
 ### Choosing Your Mode
 

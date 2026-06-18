@@ -28,18 +28,20 @@ stages, tracked in the session checkpoint by these ordered **stage keys**:
 scaffold → context_pack → spec_finalizer → blueprint → test_plan → branch → task_1..N → code_review → closure
 ```
 
-Grouped into the human-facing phases:
+The nine stages group into **five human-facing phases**. `scaffold` is not a phase of its own — it
+is the opening stage of **Brainstorm** (the `solution-architect` skill runs `scaffold.sh` as its
+first step before building the context pack):
 
-1. **Scaffold** — Workspace + planned branch (no git branch yet)
-2. **Brainstorm** — Context pack, spec finalization, implementation plan (GATE A)
-3. **Test Plan** — Design the verification matrix (GATE B)
-4. **Implementation** — Create the branch, then implement & verify each task (GATE C)
-5. **Code Review** — Two-tier holistic gate over the whole branch diff (GATE D)
-6. **Closure** — Create the pull request
+1. **Brainstorm** — Scaffold the workspace, build the context pack, finalize the spec, and produce
+   the implementation plan (`scaffold`, `context_pack`, `spec_finalizer`, `blueprint`; GATE A)
+2. **Test Plan** — Design the verification matrix (`test_plan`; GATE B)
+3. **Implementation** — Create the branch, then implement & verify each task (`branch`, `task_1..N`; GATE C)
+4. **Code Review** — Two-tier holistic gate over the whole branch diff (`code_review`; GATE D)
+5. **Closure** — Create the pull request (`closure`)
 
 ```mermaid
 flowchart LR
-  S0["Scaffold<br/><code>scaffold</code>"] --> S1["Brainstorm<br/><code>context_pack · spec_finalizer · blueprint</code>"]
+  S1["Brainstorm<br/><code>scaffold · context_pack · spec_finalizer · blueprint</code>"]
   S1 -->|"GATE A"| S2["Test Plan<br/><code>test_plan</code>"]
   S2 -->|"GATE B"| S3["Implementation<br/><code>branch · task_1..N</code>"]
   S3 -->|"GATE C"| S4["Code Review<br/><code>code_review</code>"]
@@ -49,13 +51,14 @@ flowchart LR
 
 Stages produce specific artifacts. In the **gated** experience the pipeline pauses at each handoff
 gate, where the just-finished stage skill names only its immediate successor; you reply "yes" (same
-session) or use the successor's explicit resume phrase (cold resume). Scaffold flows directly into
-Brainstorm without a gate. The Code Review stage can loop back to Implementation up to 3 times if
-changes are requested.
+session) or use the successor's explicit resume phrase (cold resume). Within Brainstorm the
+`scaffold`, `context_pack`, `spec_finalizer`, and `blueprint` stages run back-to-back under the
+`solution-architect` skill before the first gate (GATE A). The Code Review stage can loop back to
+Implementation up to 3 times if changes are requested.
 
-The **branch is created late**: `scaffold` records only the *planned* `branch_name` / `base_branch`
-in the checkpoint; the actual git branch is realized at the *start* of Implementation by the
-`branch` stage. See [Deferred Branch Creation](#deferred-branch-creation) below.
+The **branch is created late**: the `scaffold` stage records only the *planned* `branch_name` /
+`base_branch` in the checkpoint; the actual git branch is realized at the *start* of Implementation
+by the `branch` stage. See [Deferred Branch Creation](#deferred-branch-creation) below.
 
 ## What The Gates Mean
 
@@ -443,8 +446,7 @@ If Code Review returns `changes_requested`:
 
 | Phase | Stage key(s) | Gated entry / resume phrase | Exit condition |
 |-------|--------------|-----------------------------|----------------|
-| Scaffold | `scaffold` | `solution-architect <STORY>` / `plan <STORY>` | Workspace + planned branch ready |
-| Brainstorm | `context_pack`, `spec_finalizer`, `blueprint` | (continues from scaffold) | `plan.md` and `blueprint.md` complete |
+| Brainstorm | `scaffold`, `context_pack`, `spec_finalizer`, `blueprint` | `solution-architect <STORY>` / `plan <STORY>` | Workspace + planned branch ready; `plan.md` and `blueprint.md` complete |
 | Test Plan | `test_plan` | `generate test plan for <STORY>` | `test-plan.md` complete |
 | Implementation | `branch`, `task_1..N` | `implement <STORY>` / `code <STORY>` | Branch created, all tasks done, tests pass |
 | Code Review | `code_review` | `review <STORY>` | Verdict: approved / changes_requested |

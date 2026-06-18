@@ -4,7 +4,7 @@
 
 ## What is ARCUS?
 
-ARCUS is your AI-powered software development lifecycle factory. It takes a user story written in markdown and runs it through a six-stage pipeline (`Scaffold → Brainstorm → Test Plan → Implementation → Code Review → Closure`) that produces production-ready code, complete with tests and code review, ending with an opened pull request.
+ARCUS is your AI-powered software development lifecycle factory. It takes a user story written in markdown and runs it through a five-phase pipeline (`Brainstorm → Test Plan → Implementation → Code Review → Closure`, spanning nine ordered stages) that produces production-ready code, complete with tests and code review, ending with an opened pull request.
 
 The system is built around a repository-agentifier and **two experiences** over the same pipeline:
 
