@@ -90,10 +90,15 @@ order, skipping any whose checkpoint status is already `complete`.
 | 6 | `branch` | `branch.sh` (git branch CREATED here) | **Delegated** — realized at the start of Implementation by `arcus:implementation-runner` |
 | 7 | `task_1`..`task_N` | `arcus:implementation-runner` | **Delegated** loop — do NOT inline the per-task loop |
 | 8 | `code_review` | `arcus:code-reviewer` | One-shot subagent; verdict `approved \| changes_requested` |
-| 9 | `closure` | `arcus:pull-request-builder` + `pr.sh` | One-shot subagent, then run the script |
+| 9 | `context_sync` | `arcus:context-drift-sync` | One-shot subagent; runs **only after** `code_review` is `approved` (final diff) |
+| 10 | `closure` | `arcus:pull-request-builder` + `pr.sh` | One-shot subagent, then run the script |
 
 Stages 6 and 7 are both owned by `arcus:implementation-runner`: a single delegation realizes the
 branch (`branch.sh`) and then drives the task loop. The controller does not split them.
+
+Stage 9 (`context_sync`) runs **only after a final `approved` verdict** — when Code Review loops back
+(`changes_requested`), it re-enters Implementation; `context_sync` runs once, after the diff is
+stable and approved, and reconciles any `.context/` drift before Closure.
 
 ## Helper Scripts
 
@@ -112,7 +117,7 @@ that exists**: `.arcus/bin/` (preferred, staged by the plugin) → `$ARCUS_HOME/
 | `.arcus/bin/checkpoint.sh <action> <story-id> [args]` | Manage state | init / read / complete / set-status / reopen / set-mode / **set-branch** |
 
 Checkpoint stage keys (ordered): `scaffold` → `context_pack` → `spec_finalizer` → `blueprint`
-→ `test_plan` → `branch` → `task_1`..`task_N` → `code_review` → `closure`.
+→ `test_plan` → `branch` → `task_1`..`task_N` → `code_review` → `context_sync` → `closure`.
 Stage status values: `pending | in_progress | awaiting_handoff | complete | needs_rework`.
 
 The `set-branch` action records a bumped/realized branch name onto the checkpoint; `branch.sh`
@@ -192,9 +197,21 @@ are owned by the canonical loop driver. **Delegate** the whole Implementation st
    - Verify `review.md` exists. Capture the verdict and counts (`critical`, `warning`, `suggestion`),
      then `.arcus/bin/checkpoint.sh complete <STORY_ID> code_review`.
 2. **Auto-decide on the verdict** (no gate):
-   - **approved**: emit `[Review] approved: …` and continue to Closure.
+   - **approved**: emit `[Review] approved: …` and continue to Context Sync.
    - **changes_requested**: emit `[Review] changes_requested: …` and run the **Loopback Protocol**
      automatically (bounded by the review-round cap), then re-review.
+
+### Context Sync (one-shot, runs only after final approval)
+
+Runs **only after** a final `approved` verdict — the diff is now stable and approved. Reconciles any
+shared `.context/` artifact that the approved change set materially drifted.
+
+1. **Run the drift sync** — dispatch a one-shot subagent:
+   - **Prompt**: "Read and follow the `arcus:context-drift-sync` skill in one-shot (afk) mode. Story ID: `<STORY_ID>`. Run the strict FACTS-ONLY drift check over `.context/**`, surgically sync only the materially-drifted artifacts (refresh their context-meta and update `AGENTS.md` only if a flow file was added/removed), and commit via `commit.sh` with the structured `Updated:`/`Skipped:` body. On no material drift, make no commit."
+   - **Description**: "Context Sync: context-drift-sync"
+   - **Model**: resolve complexity `medium` via the `arcus:model-strategy` skill.
+   - Then `.arcus/bin/checkpoint.sh complete <STORY_ID> context_sync`.
+2. **Output**: `[Context] <K artifacts updated, J skipped — or "no material drift">`. Continue to Closure.
 
 ### Closure (one-shot + script, terminal)
 
@@ -230,7 +247,7 @@ When a checkpoint already exists:
    afk-only); do not re-infer the mode.
 2. Determine the next action from stage status, in this order:
    `scaffold` → `context_pack` → `spec_finalizer` → `blueprint` → `test_plan` → `branch` →
-   `task_1`..`task_N` → `code_review` → `closure`.
+   `task_1`..`task_N` → `code_review` → `context_sync` → `closure`.
    - Skip any stage whose status is `complete`.
    - Run the first stage that is `pending`, `in_progress`, or `needs_rework` (a `code_review` marked
      `needs_rework` means re-enter Implementation via `arcus:implementation-runner` on the fix-tasks,
