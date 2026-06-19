@@ -1,8 +1,8 @@
 # Repository Map: arcus-plugin
 
 <!-- context-meta
-verification-commit: 9107e6a1b19abee4250ef8d3df6e47ac13fa5ddf
-generated-at: 2026-06-18T03:01:42Z
+verification-commit: ad081f5dc516c79dec4f8912c20e2a1bf377a93b
+generated-at: 2026-06-19T00:00:00Z
 confidence: high
 -->
 
@@ -80,6 +80,7 @@ arcus-plugin/
 | `solution-architect` | Skill activation entry (gated pipeline entry: `solution-architect`/`plan <STORY>`) | `plugins/arcus/skills/solution-architect/SKILL.md` |
 | `arcus-controller` | Skill activation entry (AFK-only: `afk`/`--afk`/`forge`/`run afk on <STORY>`) | `plugins/arcus/skills/arcus-controller/SKILL.md` |
 | `implementation-runner` | Skill activation entry (Implementation loop: `implement`/`code <STORY>`) | `plugins/arcus/skills/implementation-runner/SKILL.md` |
+| `context-drift-sync` | Skill activation entry (Context Sync stage; standalone: `sync context for <STORY>`/`sync context`) | `plugins/arcus/skills/context-drift-sync/SKILL.md` |
 | `repo-agentifier` | Skill activation entry | `plugins/arcus/skills/repo-agentifier/SKILL.md` |
 | Docs local dev | Command entry (`pnpm docs:dev`) | `site/package.json` |
 | Docs CI build/deploy | Workflow entry | `.github/workflows/docs.yml` |
