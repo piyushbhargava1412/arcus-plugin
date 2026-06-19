@@ -3,26 +3,32 @@ layout: home
 
 hero:
   name: ARCUS
-  text: Any Repository Can Use Spec-driven development
-  tagline: Turn a written user story into a reviewed, test-backed pull request through human-gated SDLC stages, with an opt-in fully-autonomous AFK mode.
+  text: Your repo writes the code. You hold the gate.
+  tagline: ARCUS (Any Repository Can Use Spec-driven development) turns a written requirements into a tested, reviewed pull request. You approve the big moments; it sweats the rest. For simpler ones, it lets you sleep if you like ;)
   actions:
     - theme: brand
-      text: Get Started
+      text: Cut-the-chase
+      link: /guide/quickstart
+    - theme: alt
+      text: Lets-take-it-Slow
       link: /guide/introduction
     - theme: alt
-      text: Concepts
+      text: Tell-me-Everything
       link: /concepts/pipeline
     - theme: alt
-      text: GitHub
+      text: How-the-Magic-Happens
+      link: /guide/how-it-works
+    - theme: alt
+      text: What's Inside
       link: https://github.com/piyushbhargava1412/arcus-plugin
 
 features:
-  - title: Spec-driven pipeline
-    details: Orchestrates a Spec → Code → Pull Request flow through human-gated SDLC stages (Scaffold, Brainstorm, Test Plan, Implementation, Code Review, Closure). The pipeline pauses at handoff gates between major stages for your review before proceeding.
-  - title: "Repo agentifier (`.context/` + AGENTS.md)"
-    details: Scans your repository to build the `.context/` snapshot with repo scope, map, flows, and testing patterns, then generates `AGENTS.md` and `CLAUDE.md` to make it agent-ready.
-  - title: Human-gated with AFK opt-in
-    details: By default, a self-handing-off chain of stage skills (entry `solution-architect`) runs one stage at a time, pausing at each handoff. An opt-in AFK mode (the `arcus-controller`) runs the entire pipeline end-to-end unattended.
+  - title: "Spec-driven-development (SDD)"
+    details: Provides orchestration of Spec → Code → Pull Request flow through human-gated SDLC phases (Brainstorming, Test Planning, Implementation, Code Review, Closure).
+  - title: "Context Engineering - the Edge !"
+    details: Scans your repository to build the context snapshot (one-time) to make it "AI Ready" and also helps refresh and keep the context always in sync with the evolving code during each SDD cycle.
+  - title: "Human-gated + AFK (I am feeling lucky)"
+    details: A self-handing-off 5-phase chain of skills (entry `solution-architect`). AFK (Away From Keyboard) mode (the `arcus-controller`) runs the entire pipeline end-to-end unattended.
   - title: "Multi-tool (Copilot CLI / Claude Code / VS Code)"
     details: One plugin format serves GitHub Copilot CLI, Claude Code, and VS Code from the same marketplace. Install once, use everywhere.
 ---

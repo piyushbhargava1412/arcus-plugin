@@ -1,0 +1,51 @@
+/* Hero action button tooltips (pure CSS) */
+.VPHero .actions a {
+  position: relative;
+}
+
+.VPHero .actions a::after {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  z-index: 10;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: var(--vp-c-bg-elv, #1e1e20);
+  color: var(--vp-c-text-1, #fff);
+  border: 1px solid var(--vp-c-divider);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.24);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.3;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.VPHero .actions a:hover::after,
+.VPHero .actions a:focus-visible::after {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.VPHero .actions a[href*="/guide/quickstart"]::after {
+  content: 'Jump straight to the 5-minute setup';
+}
+
+.VPHero .actions a[href*="/guide/introduction"]::after {
+  content: 'A gentle, paced walkthrough';
+}
+
+.VPHero .actions a[href*="/concepts/pipeline"]::after {
+  content: 'The full stage-by-stage reference';
+}
+
+.VPHero .actions a[href*="/guide/how-it-works"]::after {
+  content: 'See how the gears actually turn';
+}
+
+.VPHero .actions a[href*="github.com"]::after {
+  content: 'Browse the source on GitHub';
+}

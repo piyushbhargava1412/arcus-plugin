@@ -4,7 +4,7 @@ description: >
   The gated planning driver for ARCUS. Chains the brainstorming sub-stages in the
   MAIN THREAD — scaffold → context-pack → spec-finalizer (dialogue) → implementation-planner
   (dialogue) — talking to the user at each interview, then hands off to the Test Plan.
-  Independently invocable. Activates on "solution-architect <STORY>" or "plan <STORY>".
+  Independently invocable. Activates on "architect <STORY>" or "plan <STORY>" or "brainstorm <STORY>".
 metadata:
   version: "1.0.0"
   team: krill

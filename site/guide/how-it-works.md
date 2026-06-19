@@ -44,7 +44,7 @@ ARCUS runs the same pipeline two ways, with two different orchestration shapes:
 
 - **Gated (default, user-driven)** is a **chain of self-handing-off skills** — there is **no router**
   and **no shared pipeline file**. You enter at `arcus:solution-architect`
-  (`solution-architect <STORY>` / `plan <STORY>`). Each stage skill embeds a **Handoff Protocol** that
+  (`architect <STORY>` / `plan <STORY>` / `brainstorm <STORY>`). Each stage skill embeds a **Handoff Protocol** that
   names only its immediate successor: a same-session `"yes"` loads the next stage, and a cold resume
   uses the successor's explicit phrase plus the checkpoint to pick up where you left off. The
   spec-finalizer and implementation-planner dialogues run **in the main thread** so they can interview

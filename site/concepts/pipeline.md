@@ -12,10 +12,7 @@ Understanding ARCUS's full Spec → Code → Pull Request stage map
 ---
 
 ::: tip Where the canonical list lives
-This page is the **single human-readable enumeration** of the ARCUS pipeline. The machine-canonical
-ordered stage list lives in the body of the AFK `arcus-controller` skill — there is intentionally
-**no** shared `skills/_shared/pipeline.md`. In the gated experience there is no central pipeline
-file at all: each stage skill knows only its own checkpoint key(s) and names only its immediate
+This page is the **single human-readable enumeration** of the ARCUS pipeline. In the gated experience, the human is the orchestrator with session-checkpoint being the glue between the 5 phases: each phase skill knows only its own checkpoint key(s) and names only its immediate
 successor (see [Modes](/concepts/modes)).
 :::
 
@@ -28,9 +25,7 @@ stages, tracked in the session checkpoint by these ordered **stage keys**:
 scaffold → context_pack → spec_finalizer → blueprint → test_plan → branch → task_1..N → code_review → closure
 ```
 
-The nine stages group into **five human-facing phases**. `scaffold` is not a phase of its own — it
-is the opening stage of **Brainstorm** (the `solution-architect` skill runs `scaffold.sh` as its
-first step before building the context pack):
+The nine stages group into **five human-facing phases**:
 
 1. **Brainstorm** — Scaffold the workspace, build the context pack, finalize the spec, and produce
    the implementation plan (`scaffold`, `context_pack`, `spec_finalizer`, `blueprint`; GATE A)
@@ -56,10 +51,6 @@ session) or use the successor's explicit resume phrase (cold resume). Within Bra
 `solution-architect` skill before the first gate (GATE A). The Code Review stage can loop back to
 Implementation up to 3 times if changes are requested.
 
-The **branch is created late**: the `scaffold` stage records only the *planned* `branch_name` /
-`base_branch` in the checkpoint; the actual git branch is realized at the *start* of Implementation
-by the `branch` stage. See [Deferred Branch Creation](#deferred-branch-creation) below.
-
 ## What The Gates Mean
 
 Gates are explicit pause points where you review outputs before the pipeline moves to the next stage
@@ -82,8 +73,9 @@ In the gated experience, ARCUS pauses at each gate and waits for your confirmati
 ### Scaffold
 
 <table class="pipeline-stage-table">
+  <tbody>
   <tr>
-    <th colspan="3">Purpose: Set up the workspace and record the planned branch — without creating a git branch</th>
+    <th colspan="3">Purpose: Set up the workspace and record the planned branch — without creating actual git branch</th>
   </tr>
   <tr>
     <th><strong>What happens</strong></th>
@@ -96,7 +88,7 @@ In the gated experience, ARCUS pauses at each gate and waits for your confirmati
         <li>Scaffolds <code>.arcus/specs/[STORY-ID]/</code> directory</li>
         <li>Copies story file to the workspace</li>
         <li>Initializes <code>session-checkpoint.json</code> recording the <strong>planned</strong> <code>branch_name</code> / <code>base_branch</code></li>
-        <li><strong>No git branch is created</strong> — branch creation is deferred to the <code>branch</code> stage at the start of Implementation</li>
+        <li><strong>No git branch is created</strong> — branch creation is deferred to the <code>branch</code> stage at the start of Implementation. See [Deferred Branch Creation](#deferred-branch-creation)</li>
       </ul>
     </td>
     <td>
@@ -116,6 +108,7 @@ In the gated experience, ARCUS pauses at each gate and waits for your confirmati
   <tr>
     <td colspan="3"><strong>Handoff:</strong> No handoff gate. Scaffold flows directly into Brainstorm.</td>
   </tr>
+  </tbody>
 </table>
 
 **What to check:**
@@ -127,8 +120,9 @@ In the gated experience, ARCUS pauses at each gate and waits for your confirmati
 ### Brainstorm
 
 <table class="pipeline-stage-table">
+  <tbody>
   <tr>
-    <th colspan="3">Purpose: Build context, resolve ambiguities, and produce a task-level plan</th>
+    <th colspan="3">Purpose: Build context, resolve ambiguities, capture design decisions and produce a task-level plan</th>
   </tr>
   <tr>
     <th><strong>What happens</strong></th>
@@ -164,6 +158,7 @@ In the gated experience, ARCUS pauses at each gate and waits for your confirmati
   <tr>
     <td colspan="3"><strong>Handoff Gate A:</strong> "Planning complete → next: Test Plan." Resume phrase: <code>generate test plan for &lt;STORY-ID&gt;</code>.</td>
   </tr>
+  </tbody>
 </table>
 
 **What to check:**
@@ -171,7 +166,7 @@ In the gated experience, ARCUS pauses at each gate and waits for your confirmati
 - No missing technical constraints; error handling makes sense
 - Blueprint tasks are atomic and correctly ordered
 
-**Tip:** This is your chance to course-correct before implementation. Review `plan.md` and
+**Tip:** This is the place where "make-or-break" decisions are taken before implementation. Review `plan.md` and
 `blueprint.md` carefully.
 
 ---
@@ -179,6 +174,7 @@ In the gated experience, ARCUS pauses at each gate and waits for your confirmati
 ### Test Plan
 
 <table class="pipeline-stage-table">
+  <tbody>
   <tr>
     <th colspan="3">Purpose: Design comprehensive test matrix before writing code</th>
   </tr>
@@ -216,6 +212,7 @@ In the gated experience, ARCUS pauses at each gate and waits for your confirmati
   <tr>
     <td colspan="3"><strong>Handoff Gate B:</strong> "Test plan complete → next: Implementation." Resume phrase: <code>implement &lt;STORY-ID&gt;</code>.</td>
   </tr>
+  </tbody>
 </table>
 
 **What to check:**
@@ -230,6 +227,7 @@ In the gated experience, ARCUS pauses at each gate and waits for your confirmati
 ### Implementation
 
 <table class="pipeline-stage-table">
+  <tbody>
   <tr>
     <th colspan="3">Purpose: Create the branch, then implement the story with continuous verification</th>
   </tr>
@@ -273,6 +271,7 @@ In the gated experience, ARCUS pauses at each gate and waits for your confirmati
   <tr>
     <td colspan="3"><strong>Handoff Gate C:</strong> "Implementation complete → next: Code Review." Resume phrase: <code>review &lt;STORY-ID&gt;</code>.</td>
   </tr>
+  </tbody>
 </table>
 
 **What to check:**
@@ -287,6 +286,7 @@ In the gated experience, ARCUS pauses at each gate and waits for your confirmati
 ### Code Review
 
 <table class="pipeline-stage-table">
+  <tbody>
   <tr>
     <th colspan="3">Purpose: The real last gate before a PR — a two-tier review over all changes, with a zero-trust persona (brutal in the hunt, fair in the verdict)</th>
   </tr>
@@ -348,6 +348,7 @@ In the gated experience, ARCUS pauses at each gate and waits for your confirmati
   <tr>
     <td colspan="3"><strong>Handoff Gate D:</strong> If approved: "Review passed → next: Closure" (resume phrase <code>close &lt;STORY-ID&gt;</code>) | If changes_requested: "Issues found, fix and re-review? (Auto-loops up to 3 rounds)"</td>
   </tr>
+  </tbody>
 </table>
 
 **What to check:**
@@ -361,6 +362,7 @@ In the gated experience, ARCUS pauses at each gate and waits for your confirmati
 ### Closure
 
 <table class="pipeline-stage-table">
+  <tbody>
   <tr>
     <th colspan="3">Purpose: Create pull request with evidence and context</th>
   </tr>
@@ -401,6 +403,7 @@ In the gated experience, ARCUS pauses at each gate and waits for your confirmati
   <tr>
     <td colspan="3"><strong>Handoff Gate:</strong> Terminal stage — closes the gated chain. PR created or ready for manual creation.</td>
   </tr>
+  </tbody>
 </table>
 
 **What to check:**
@@ -446,7 +449,7 @@ If Code Review returns `changes_requested`:
 
 | Phase | Stage key(s) | Gated entry / resume phrase | Exit condition |
 |-------|--------------|-----------------------------|----------------|
-| Brainstorm | `scaffold`, `context_pack`, `spec_finalizer`, `blueprint` | `solution-architect <STORY>` / `plan <STORY>` | Workspace + planned branch ready; `plan.md` and `blueprint.md` complete |
+| Brainstorm | `scaffold`, `context_pack`, `spec_finalizer`, `blueprint` | `architect <STORY>` / `plan <STORY>` / `brainstorm <STORY>`| Workspace + planned branch ready; `plan.md` and `blueprint.md` complete |
 | Test Plan | `test_plan` | `generate test plan for <STORY>` | `test-plan.md` complete |
 | Implementation | `branch`, `task_1..N` | `implement <STORY>` / `code <STORY>` | Branch created, all tasks done, tests pass |
 | Code Review | `code_review` | `review <STORY>` | Verdict: approved / changes_requested |

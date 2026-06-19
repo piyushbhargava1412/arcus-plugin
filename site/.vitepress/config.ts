@@ -37,7 +37,16 @@ export default withMermaid({
       { icon: 'github', link: 'https://github.com/piyushbhargava1412/arcus-plugin' }
     ]
   },
-  mermaid: {},
+  mermaid: {
+    flowchart: {
+      padding: 32,
+      nodeSpacing: 60,
+      rankSpacing: 90
+    },
+    themeVariables: {
+      fontSize: '32px'
+    }
+  },
   vite: {
     optimizeDeps: {
       include: ['mermaid', 'dayjs', '@braintree/sanitize-url', 'debug', 'cytoscape', 'cytoscape-cose-bilkent']

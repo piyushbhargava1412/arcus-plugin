@@ -1,6 +1,6 @@
 # Introduction
 
-**ARCUS (Any Repository Can Use Spec-driven development)** is an agentic SDLC factory that transforms written user stories into reviewed, test-backed pull requests. Delivered as an installable agent-skills plugin for GitHub Copilot, Claude Code, and VS Code, ARCUS orchestrates a complete Spec → Code → Pull Request pipeline through human-gated stages, with an opt-in fully-autonomous Away From Keyboard (AFK) mode.
+**ARCUS (Any Repository Can Use Spec-driven development)** is an agentic SDLC factory that transforms written user stories into reviewed, test-backed pull requests. Delivered as an installable agent-skills plugin for GitHub Copilot, Claude Code, and VS Code, ARCUS orchestrates a complete Spec → Code → Pull Request pipeline through human-gated stages, with a fully-autonomous Away From Keyboard (AFK) mode as an add-on orchestrator skill.
 
 ## What is ARCUS?
 
