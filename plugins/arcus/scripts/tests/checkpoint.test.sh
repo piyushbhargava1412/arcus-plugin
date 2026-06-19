@@ -51,7 +51,19 @@ assert_eq "$(jget stages.scaffold)" "pending" "scaffold stage exists"
 assert_eq "$(jget stages.branch)" "pending" "branch stage exists"
 assert_eq "$(jget current_stage)" "scaffold" "current_stage is scaffold after init"
 assert_eq "$(jget stages.code_review)" "pending" "code_review stage exists"
+assert_eq "$(jget stages.context_sync)" "pending" "context_sync stage exists"
 assert_eq "$(jget stages.closure)" "pending" "closure stage exists"
+# context_sync must be ordered AFTER code_review and BEFORE closure in the stages object.
+STAGE_ORDER="$(node -e "
+    const fs = require('fs');
+    const cp = JSON.parse(fs.readFileSync('.arcus/specs/$STORY_ID/session-checkpoint.json', 'utf8'));
+    const keys = Object.keys(cp.stages || {});
+    const cr = keys.indexOf('code_review');
+    const cs = keys.indexOf('context_sync');
+    const cl = keys.indexOf('closure');
+    console.log((cs !== -1 && cr !== -1 && cl !== -1 && cs > cr && cs < cl) ? 'ok' : 'bad');
+")"
+assert_eq "$STAGE_ORDER" "ok" "context_sync ordered after code_review and before closure"
 assert_eq "$(jget base_branch)" "main" "base_branch captured"
 assert_eq "$(jget branch_name)" "arcus/$STORY_ID-1" "branch_name captured"
 
@@ -114,6 +126,10 @@ EOF
 bash "$CHECKPOINT" complete "LEGACY-1" context_pack >/dev/null
 LEGACY_CTX="$(node -e "console.log(JSON.parse(require('fs').readFileSync('.arcus/specs/LEGACY-1/session-checkpoint.json','utf8')).stages.context_pack)")"
 assert_eq "$LEGACY_CTX" "complete" "legacy boolean schema upgraded on write"
+
+echo "== complete context_sync =="
+bash "$CHECKPOINT" complete "$STORY_ID" context_sync >/dev/null
+assert_eq "$(jget stages.context_sync)" "complete" "complete transitions context_sync to complete"
 
 echo
 echo "RESULTS: $PASS passed, $FAIL failed"
