@@ -217,17 +217,19 @@ re-infer it.
 ### AFK (autonomous)
 
 One-shot, like `spec-finalizer` / `implementation-planner`. **No gate** — the `arcus:arcus-controller`
-owns gating. Run the same strict drift-check, auto-decide using the same triggers, apply the surgical
-edits + context-meta refresh + `AGENTS.md` update (if a flow changed), and commit with the structured
-`Updated:` / `Skipped:` body. On NO-OP, report "No material context drift" and continue. Do **not**
-render the gated template. Continue to Closure.
+owns gating. AFK is a **story-scope run** (Step 1): use the **merge-base baseline** and re-bump only
+the **flagged-and-edited** artifacts. Run the same strict drift-check, auto-decide using the same
+triggers, apply the surgical edits + context-meta refresh + `AGENTS.md` update (if a flow changed),
+and commit with the structured `Updated:` / `Skipped:` body. On NO-OP, report "No material context
+drift" and continue (true NO-OP — no commit). Do **not** render the gated template. Continue to Closure.
 
 ### Standalone
 
 Invocable directly:
 
-- `"sync context for <STORY_ID>"` — resume against an existing checkpoint; behaves per the persisted
-  `mode`, then hands to Closure.
+- `"sync context for <STORY_ID>"` — resume against an existing checkpoint; a **story-scope run**
+  (merge-base baseline, flagged-and-edited bump only — see Step 1), behaving per the persisted `mode`,
+  then hands to Closure.
 - `"sync context"` — **no story**, **full sweep**. Run the **same** algorithm but with the
   **standalone baseline** (each artifact's stored `verification-commit`; fallback
   `git merge-base HEAD <default-branch>`), so it assesses main-level / pre-fork drift that story runs
