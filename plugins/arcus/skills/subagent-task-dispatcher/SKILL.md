@@ -53,7 +53,7 @@ Resolve the task's model before dispatching:
 
 Invoke the subagent using the platform's spawner, passing the resolved model string:
 - **Copilot / VS Code**: `runSubagent`
-- **Claude Code**: the **`Agent`** tool — it **honors a per-subagent `model`** (`"opus"` / `"sonnet"` / `"haiku"`). Do **not** use the legacy `Task` tool for dispatch, as it ignores `model` and silently inherits the (often Opus) session model — defeating the cost benefit of the tiering.
+- **Claude Code**: the **`Agent`** tool
 
 With:
 - **prompt**: The constructed prompt from Step 2

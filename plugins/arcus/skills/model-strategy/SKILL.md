@@ -59,8 +59,6 @@ The dispatcher resolves the model tier to a platform-specific string:
 
 **Claude Code CLI**: Dispatch subagents with the **`Agent` tool**, which **accepts a per-subagent `model` parameter** (`"opus"` / `"sonnet"` / `"haiku"`). Pass the resolved string directly so each task/reviewer runs on its complexity-appropriate tier — light/mechanical work on `haiku`, standard work on `sonnet`, judgment-heavy work on `opus`. 
 
-Only the **main orchestration thread** is fixed to the session model and cannot be switched mid-session; the per-subagent override applies to all delegated work. (Note: the older `Task` tool does **not** accept a per-task `model` and inherits the session model — prefer `Agent` for any dispatch that should honor the resolved tier.)
-
 ## Static Stage Assignments
 
 Fixed complexity for orchestrator-level stages (does not vary per story):
