@@ -111,7 +111,9 @@ plan path/to/story.md
    Implementation (bumps the name on collision)
 7. **task_1..N** — Implements each task → committed code + tests
 8. **code_review** — Holistic two-tier quality gate → `review.md`
-9. **closure** — Creates the pull request
+9. **context_sync** — On approval, reconciles only the `.context/` artifacts the diff materially
+   drifted (no new artifact; rationale in the sync commit), then auto-continues
+10. **closure** — Creates the pull request
 
 **Default mode:** **Gated** — a self-handoff chain entered at `solution-architect`. It
 pauses between stages for your review.

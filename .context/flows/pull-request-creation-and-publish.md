@@ -12,7 +12,8 @@ content. The mechanism is unchanged, but `base_branch` is now reliably populated
 the checkpoint at **scaffold** time (by `scaffold.sh` via `checkpoint.sh init`) and refreshed by
 `branch.sh` if the branch name was bumped, so `pr.sh` always reads a populated base. This is the
 **terminal `closure` stage** — in the gated experience the `pull-request-builder` skill closes the
-self-handoff chain (it names no successor).
+self-handoff chain (it names no successor). Its immediate predecessor is now the new `context_sync`
+stage (the Context Sync stage runs just before Closure, after Code Review approves).
 
 ## Entry Points
 - **Type**: Job

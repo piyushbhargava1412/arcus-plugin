@@ -222,18 +222,19 @@ copilot                                   # or: claude
 > plan path/to/story.md                   # gated entry: solution-architect; stops at each handoff for your "yes"
 ```
 
-The gated pipeline runs as **five phases** over nine ordered stages (`scaffold` is the opening
+The gated pipeline runs as **six phases** over ten ordered stages (`scaffold` is the opening
 stage of Brainstorm, not a phase of its own):
 
 1. **Brainstorm** (human-in-the-loop) — `scaffold.sh` creates the spec folder + `story.md` + checkpoint with the *planned* branch (**no git branch yet**); then the context pack and recommendation-first spec-finalizer + implementation-planner dialogues → `plan.md` + `blueprint.md`. Stages `scaffold`, `context_pack`, `spec_finalizer`, `blueprint`. *Gate.*
 2. **Test Plan** (automated) — `test-plan.md`. Runs on your `yes`, then pauses before implementation. Stage `test_plan`.
 3. **Implementation** (automated, TDD per task) — the `branch` step creates the git branch first (deferred-branch design), then per-task committed code. Stages `branch`, `task_1..N`. *Gate.*
 4. **Code Review** (automated) — two-tier holistic review of the branch diff → `review.md` + verdict. *Decision gate:* approve, or loop findings back into Implementation as fix-tasks. Stage `code_review`.
-5. **Closure** (manual trigger) — opens the pull request. Stage `closure`.
+5. **Context Sync** (automated) — on approval, reconciles only the shared `.context/` artifacts the diff materially drifted (facts-only, diff-driven; rationale in the sync commit body), then auto-continues to Closure. Stage `context_sync`.
+6. **Closure** (manual trigger) — opens the pull request. Stage `closure`.
 
 Gated entry / per-stage / continuation phrases: `solution-architect <STORY>` or `plan <STORY>`
 (entry), `generate test plan for <STORY>`, `implement <STORY>` / `code <STORY>`, `review <STORY>`,
-`fix <STORY>`, `close <STORY>`, and `yes` / `no` at any gate. The Implementation loop is the shared
+`fix <STORY>`, `sync context for <STORY>`, `close <STORY>`, and `yes` / `no` at any gate. The Implementation loop is the shared
 `implementation-runner` skill, reused by both the gated chain and the AFK controller.
 
 #### Fully unattended (AFK) mode

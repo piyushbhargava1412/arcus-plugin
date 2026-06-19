@@ -16,7 +16,7 @@ Persists and mutates per-story stage status to support resumable gated and AFK o
 
 ## Core Path
 1. `plugins/arcus/scripts/checkpoint.sh` resolves action, story workspace, and checkpoint file path.
-2. `plugins/arcus/scripts/checkpoint.sh init` writes schema-v2 JSON with the **ordered stage keys** `scaffold → context_pack → spec_finalizer → blueprint → test_plan → branch → task_1..N → code_review → closure` and default statuses, plus the **planned** `branch_name` / `base_branch` fields (init records the planned branch **without creating a git branch** — branch creation is deferred to `branch.sh`).
+2. `plugins/arcus/scripts/checkpoint.sh init` writes schema-v2 JSON with the **ordered stage keys** `scaffold → context_pack → spec_finalizer → blueprint → test_plan → branch → task_1..N → code_review → context_sync → closure` and default statuses, plus the **planned** `branch_name` / `base_branch` fields (init records the planned branch **without creating a git branch** — branch creation is deferred to `branch.sh`).
 3. `plugins/arcus/scripts/checkpoint.sh` mutation actions invoke `mutate_json()` to migrate legacy booleans and update status/mode fields; the **`set-branch`** action records a realized (collision-bumped) `branch_name` / `base_branch` back onto the checkpoint (called by `branch.sh`).
 4. `plugins/arcus/scripts/checkpoint.sh` writes updated `.arcus/specs/<STORY_ID>/session-checkpoint.json` atomically via temp file move.
 

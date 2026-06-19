@@ -162,7 +162,7 @@ arcus-plugin/
 
 ## Notable Patterns
 - Skill-first architecture: behavior is primarily encoded in `SKILL.md` contracts and templates under `assets/` and `references/`.
-- Two pipeline experiences over one ordered set of checkpoint stage keys (`scaffold → context_pack → spec_finalizer → blueprint → test_plan → branch → task_1..N → code_review → closure`): a **gated** self-handoff chain (no router, no shared pipeline file; entry `solution-architect`) and an **AFK-only** `arcus-controller` that holds the single canonical ordered list. The `implementation-runner` skill is the shared Implementation loop.
+- Two pipeline experiences over one ordered set of checkpoint stage keys (`scaffold → context_pack → spec_finalizer → blueprint → test_plan → branch → task_1..N → code_review → context_sync → closure`): a **gated** self-handoff chain (no router, no shared pipeline file; entry `solution-architect`) and an **AFK-only** `arcus-controller` that holds the single canonical ordered list. The `implementation-runner` skill is the shared Implementation loop.
 - Deferred branch creation: `scaffold.sh` records only the *planned* branch; `branch.sh` creates the git branch at Implementation start (naming defined once in `lib/branch_name.sh`, persisted via `checkpoint.sh set-branch`).
 - Consolidated planning artifact: deliberation lives in a single `plan.md` (the former separate assumptions / clarifications files are gone); the machine-parsed task list stays in `blueprint.md`.
 - Skills are dispatched imperatively (by name); `context: fork` is not in use (deferred follow-up).

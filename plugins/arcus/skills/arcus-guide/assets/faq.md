@@ -173,7 +173,7 @@ See **Modes Explained** for detailed decision framework.
 ### Q: What are the pipeline stages?
 
 **A:** In order: `scaffold → context_pack → spec_finalizer → blueprint → test_plan →
-branch → task_1..N → code_review → closure`.
+branch → task_1..N → code_review → context_sync → closure`.
 
 1. **scaffold** — Creates the story folder + checkpoint (records the *planned* branch
    name). **No git branch yet.**
@@ -184,7 +184,9 @@ branch → task_1..N → code_review → closure`.
 6. **branch** — **Creates the git branch now**, at the start of Implementation
 7. **task_1..N** — Implement tasks → committed code + tests
 8. **code_review** — Holistic two-tier quality gate → `review.md`
-9. **closure** — Create the pull request
+9. **context_sync** — On approval, reconcile only the `.context/` artifacts the diff
+   materially drifted (no new artifact; rationale in the sync commit), then auto-continue
+10. **closure** — Create the pull request
 
 See **Pipeline Overview** for detailed breakdown.
 
