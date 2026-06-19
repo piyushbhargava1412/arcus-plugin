@@ -57,7 +57,7 @@ The dispatcher resolves the model tier to a platform-specific string:
 
 **VS Code / GitHub Copilot**: The `runSubagent` tool accepts a `model` parameter in `"Model Name (Vendor)"` format. Pass the resolved string directly.
 
-**Claude Code CLI**: The `Task` tool does not accept a per-task `model` parameter. Model selection is at session level. The resolved string is still passed — if the platform ignores it, the subagent runs on the session default.
+**Claude Code CLI**: Dispatch subagents with the **`Agent` tool**, which **accepts a per-subagent `model` parameter** (`"opus"` / `"sonnet"` / `"haiku"`). Pass the resolved string directly so each task/reviewer runs on its complexity-appropriate tier — light/mechanical work on `haiku`, standard work on `sonnet`, judgment-heavy work on `opus`. 
 
 ## Static Stage Assignments
 
@@ -106,14 +106,15 @@ The full resolution at dispatch time:
 complexity (heavy|medium|light)
   → model tier (opus|sonnet|haiku)        [from Complexity-to-Model Mapping]
     → platform model string               [from Tier-to-Platform Mapping]
-      → passed as `model` parameter to runSubagent / Task
+      → passed as `model` parameter to the subagent spawner
+        (Copilot: runSubagent; Claude Code: the Agent tool)
 ```
 
-Skills MUST NOT fail when model selection is unavailable. The `model` parameter is always optional.
+Skills MUST NOT fail when model selection is unavailable. The `model` parameter is always optional — if a platform or spawner ignores it, the subagent falls back to the session model.
 
 ## Escalation Rule
 
 If a task fails after 2 retries at its assigned complexity:
 - Promote complexity one level: light → medium → heavy
-- Re-resolve through the mapping chain
-- On platforms without per-subagent model selection, escalation is a no-op (retries use the session model)
+- Re-resolve through the mapping chain and pass the higher tier as the subagent `model` (Copilot `runSubagent` / Claude Code `Agent`)
+- Only on a spawner that ignores `model` (e.g. the legacy `Task` tool) does escalation fall back to the session model

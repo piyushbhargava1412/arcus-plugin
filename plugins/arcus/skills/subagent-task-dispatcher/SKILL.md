@@ -51,10 +51,14 @@ Resolve the task's model before dispatching:
 2. Look up the complexity-to-model mapping in the `arcus:model-strategy` skill to get the model tier.
 3. Look up the tier-to-platform mapping in the same file to get the platform model string.
 
-Invoke the subagent using `runSubagent` with:
+Invoke the subagent using the platform's spawner, passing the resolved model string:
+- **Copilot / VS Code**: `runSubagent`
+- **Claude Code**: the **`Agent`** tool
+
+With:
 - **prompt**: The constructed prompt from Step 2
 - **description**: `"Task N: <short task title>"`
-- **model**: The resolved platform model string (e.g., `"Claude Sonnet 4.6 (copilot)"`)
+- **model**: The resolved platform model string (Claude Code: `"opus"`/`"sonnet"`/`"haiku"`; Copilot: e.g. `"Claude Sonnet 4.6 (copilot)"`). Passing this is what makes a `light` task run on `haiku` and a `medium` task on `sonnet` instead of the session default — omitting it forfeits the savings.
 
 ### Step 4: Handle Response
 
