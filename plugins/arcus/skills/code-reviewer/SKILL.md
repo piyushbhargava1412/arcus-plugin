@@ -234,16 +234,17 @@ On finish, this skill marks its own checkpoint key complete:
 names **only its immediate successor on each branch**. It does **NOT** enumerate the full pipeline;
 that lives only in the afk `arcus:arcus-controller`.
 
-- **On `approved`** — successor is Closure: skill `arcus:pull-request-builder`, resume phrase
-  `"create pull request for <STORY_ID>"`.
+- **On `approved`** — successor is Context Sync: skill `arcus:context-drift-sync`, resume phrase
+  `"sync context for <STORY_ID>"`. (Context Sync reconciles any `.context/` drift introduced by the
+  approved diff, then hands to Closure.)
 - **On `changes_requested`** — loop back to Implementation: skill `arcus:implementation-runner`, resume
   phrase `"fix <STORY_ID>"`. (The implementation-runner's Loopback Protocol converts the open findings
   into fix-tasks, then re-reviews.)
 - **Same-session continuation**: on a `"yes"` / `"proceed"`, load and follow the successor for the
-  emitted verdict directly (Closure on `approved`; on `changes_requested`, treat `"fix"` as the
+  emitted verdict directly (Context Sync on `approved`; on `changes_requested`, treat `"fix"` as the
   proceed reply and load `arcus:implementation-runner`).
 - **Cold resume** (new session): the user types the branch's explicit phrase
-  (`"create pull request for <STORY_ID>"` or `"fix <STORY_ID>"`), which re-activates the successor by
+  (`"sync context for <STORY_ID>"` or `"fix <STORY_ID>"`), which re-activates the successor by
   description-matching + the checkpoint.
 
 Emit the block matching the verdict.
@@ -251,11 +252,11 @@ Emit the block matching the verdict.
 On `approved`:
 
 ```
-[Handoff] Code Review complete (approved) → next: Closure
+[Handoff] Code Review complete (approved) → next: Context Sync
 Summary: critical 0, warning <W>, suggestion <S>
 Artifacts: .arcus/specs/<STORY_ID>/review.md
-Proceed? Reply "yes" to run Closure, or "no" to pause.
-Resume later with: "create pull request for <STORY_ID>"
+Proceed? Reply "yes" to run Context Sync, or "no" to pause.
+Resume later with: "sync context for <STORY_ID>"
 ```
 
 On `changes_requested`:

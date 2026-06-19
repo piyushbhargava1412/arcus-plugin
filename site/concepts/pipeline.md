@@ -12,7 +12,7 @@ Understanding ARCUS's full Spec → Code → Pull Request stage map
 ---
 
 ::: tip Where the canonical list lives
-This page is the **single human-readable enumeration** of the ARCUS pipeline. In the gated experience, the human is the orchestrator with session-checkpoint being the glue between the 5 phases: each phase skill knows only its own checkpoint key(s) and names only its immediate
+This page is the **single human-readable enumeration** of the ARCUS pipeline. In the gated experience, the human is the orchestrator with session-checkpoint being the glue between the 6 phases: each phase skill knows only its own checkpoint key(s) and names only its immediate
 successor (see [Modes](/concepts/modes)).
 :::
 
@@ -22,17 +22,18 @@ ARCUS transforms a written user story into a reviewed, test-backed pull request 
 stages, tracked in the session checkpoint by these ordered **stage keys**:
 
 ```
-scaffold → context_pack → spec_finalizer → blueprint → test_plan → branch → task_1..N → code_review → closure
+scaffold → context_pack → spec_finalizer → blueprint → test_plan → branch → task_1..N → code_review → context_sync → closure
 ```
 
-The nine stages group into **five human-facing phases**:
+The ten stages group into **six human-facing phases**:
 
 1. **Brainstorm** — Scaffold the workspace, build the context pack, finalize the spec, and produce
    the implementation plan (`scaffold`, `context_pack`, `spec_finalizer`, `blueprint`; GATE A)
 2. **Test Plan** — Design the verification matrix (`test_plan`; GATE B)
 3. **Implementation** — Create the branch, then implement & verify each task (`branch`, `task_1..N`; GATE C)
 4. **Code Review** — Two-tier holistic gate over the whole branch diff (`code_review`; GATE D)
-5. **Closure** — Create the pull request (`closure`)
+5. **Context Sync** — Reconcile the shared `.context/` artifacts that the approved diff materially drifted (`context_sync`; automatic continuation)
+6. **Closure** — Create the pull request (`closure`)
 
 ```mermaid
 flowchart LR
@@ -40,7 +41,8 @@ flowchart LR
   S1 -->|"GATE A"| S2["Test Plan<br/><code>test_plan</code>"]
   S2 -->|"GATE B"| S3["Implementation<br/><code>branch · task_1..N</code>"]
   S3 -->|"GATE C"| S4["Code Review<br/><code>code_review</code>"]
-  S4 -->|"GATE D: approved"| S5["Closure<br/><code>closure</code>"]
+  S4 -->|"GATE D: approved"| S5["Context Sync<br/><code>context_sync</code>"]
+  S5 --> S6["Closure<br/><code>closure</code>"]
   S4 -. "changes_requested (max 3 rounds)" .-> S3
 ```
 
@@ -61,7 +63,9 @@ Gates are explicit pause points where you review outputs before the pipeline mov
 | Gate A | Brainstorm → Test Plan | Plan and blueprint are ready for test design. |
 | Gate B | Test Plan → Implementation | Test strategy is approved; the branch can be created and implementation can begin. |
 | Gate C | Implementation → Code Review | Code and tests are complete; ready for holistic review. |
-| Gate D | Code Review → Closure (or loopback) | Review decision point: approve for PR, or send fixes back to Implementation. |
+| Gate D | Code Review → Context Sync (or loopback) | Review decision point: approve (advances to Context Sync, which then auto-continues to Closure), or send fixes back to Implementation. |
+
+Context Sync → Closure is an **automatic continuation** (no user decision gate — like Test Plan auto-running): once the `.context/` reconciliation is decided, the pipeline proceeds straight to Closure.
 
 In the gated experience, ARCUS pauses at each gate and waits for your confirmation. In AFK, the
 `arcus-controller` auto-confirms every gate and runs end-to-end.
@@ -346,7 +350,7 @@ In the gated experience, ARCUS pauses at each gate and waits for your confirmati
     </td>
   </tr>
   <tr>
-    <td colspan="3"><strong>Handoff Gate D:</strong> If approved: "Review passed → next: Closure" (resume phrase <code>close &lt;STORY-ID&gt;</code>) | If changes_requested: "Issues found, fix and re-review? (Auto-loops up to 3 rounds)"</td>
+    <td colspan="3"><strong>Handoff Gate D:</strong> If approved: "Review passed → next: Context Sync" (resume phrase <code>sync context for &lt;STORY-ID&gt;</code>) | If changes_requested: "Issues found, fix and re-review? (Auto-loops up to 3 rounds)"</td>
   </tr>
   </tbody>
 </table>
@@ -356,6 +360,53 @@ In the gated experience, ARCUS pauses at each gate and waits for your confirmati
 - No false positives; critical issues are genuine blockers
 
 **Tip:** If you disagree with findings, you can proceed anyway (override verdict).
+
+---
+
+### Context Sync
+
+<table class="pipeline-stage-table">
+  <tbody>
+  <tr>
+    <th colspan="3">Purpose: Reconcile the shared <code>.context/</code> artifacts that the approved branch diff materially drifted — facts-only, diff-driven, no full rescan</th>
+  </tr>
+  <tr>
+    <th><strong>What happens</strong></th>
+    <th><strong>Skills involved</strong></th>
+    <th><strong>Artifacts created</strong></th>
+  </tr>
+  <tr>
+    <td>
+      <ul>
+        <li>Strictly assesses whether the approved branch diff materially changed any <code>.context/</code> artifact (business flows, <code>repo_map.md</code>, <code>repo_scope.md</code>, <code>testing-patterns.md</code>)</li>
+        <li>Surgically syncs <strong>only the affected</strong> artifacts, refreshing their context-meta; updates <code>AGENTS.md</code> only when a flow file is added or removed</li>
+        <li><strong>Facts-only and diff-driven</strong> — no full repository rescan</li>
+        <li><strong>Gated:</strong> shows a drift assessment plus a single consolidated yes/no</li>
+        <li><strong>AFK:</strong> auto-decides</li>
+        <li>Also <strong>standalone-invocable</strong> via <code>sync context for &lt;STORY-ID&gt;</code> / <code>sync context</code></li>
+        <li>Produces <strong>no new artifact</strong>; the rationale is persisted in the sync commit body</li>
+      </ul>
+    </td>
+    <td>
+      <ul>
+        <li><code>context-drift-sync</code> (stage key <code>context_sync</code>)</li>
+      </ul>
+    </td>
+    <td>
+      <ul>
+        <li>No new artifact — updates existing <code>.context/</code> files in place; rationale lives in the sync commit body</li>
+      </ul>
+    </td>
+  </tr>
+  <tr>
+    <td colspan="3"><strong>Handoff:</strong> No user decision gate — Context Sync auto-continues to Closure once the reconciliation is decided.</td>
+  </tr>
+  </tbody>
+</table>
+
+**What to check:**
+- The drift assessment correctly identifies which `.context/` artifacts the diff touched
+- Only materially-affected artifacts were synced (no over-reach)
 
 ---
 
@@ -453,6 +504,7 @@ If Code Review returns `changes_requested`:
 | Test Plan | `test_plan` | `generate test plan for <STORY>` | `test-plan.md` complete |
 | Implementation | `branch`, `task_1..N` | `implement <STORY>` / `code <STORY>` | Branch created, all tasks done, tests pass |
 | Code Review | `code_review` | `review <STORY>` | Verdict: approved / changes_requested |
+| Context Sync | `context_sync` | `sync context for <STORY>` | Affected `.context/` artifacts reconciled (auto-continues to Closure) |
 | Closure | `closure` | `close <STORY>` | PR created |
 
 ---

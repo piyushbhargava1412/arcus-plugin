@@ -10,7 +10,7 @@ ARCUS runs an ordered list of stages. The keys (in order) are:
 
 ```
 scaffold → context_pack → spec_finalizer → blueprint → test_plan
-        → branch → task_1..N → code_review → closure
+        → branch → task_1..N → code_review → context_sync → closure
 ```
 
 ```mermaid
@@ -22,7 +22,8 @@ graph TD
     TestPlan --> Branch[branch<br/>Create git branch NOW]
     Branch --> Tasks[task_1..N<br/>Implement & verify each task]
     Tasks --> CodeReview[code_review<br/>Holistic quality gate]
-    CodeReview -->|approved| Closure[closure<br/>Create PR]
+    CodeReview -->|approved| ContextSync[context_sync<br/>Reconcile drifted .context/]
+    ContextSync --> Closure[closure<br/>Create PR]
     CodeReview -.->|changes_requested<br/>max 3 rounds| Tasks
 
     style Scaffold fill:#e1f5ff
@@ -33,6 +34,7 @@ graph TD
     style Branch fill:#e8e8ff
     style Tasks fill:#e1ffe8
     style CodeReview fill:#ffe1f0
+    style ContextSync fill:#e1fff4
     style Closure fill:#fff9e1
 ```
 
@@ -266,6 +268,32 @@ judgment.
 
 ---
 
+### context_sync 🔁
+
+**Purpose:** After Code Review approves, reconcile the shared `.context/` artifacts that the
+approved branch diff materially drifted — *before* the PR is opened.
+
+**What happens:**
+- Strictly assesses whether the approved branch diff materially changed any `.context/` artifact
+  (business flows, `repo_map.md`, `repo_scope.md`, `testing-patterns.md`)
+- Surgically syncs **only the affected** artifacts (refreshing their context-meta); updates
+  `AGENTS.md` only when a flow file is added or removed
+- **Facts-only and diff-driven** — no full repository rescan
+- **Gated mode:** shows a drift assessment + a single consolidated yes/no
+- **AFK mode:** auto-decides
+- Also **standalone-invocable** via `sync context for <STORY_ID>` / `sync context`
+
+**Skills invoked:**
+- `context-drift-sync`
+
+**Artifacts created:**
+- **None** — updates existing `.context/` files in place; the rationale is persisted in the sync
+  commit body (no new artifact, no `plan.md` subsection)
+
+**Handoff:** No user decision gate — auto-continues to `closure` once the reconciliation is decided.
+
+---
+
 ### closure 🎯
 
 **Purpose:** Create the pull request with evidence and context.
@@ -328,6 +356,7 @@ stage in a fresh session. Examples:
 | Test plan | `generate test plan for <STORY>` |
 | Implementation | `implement <STORY>` |
 | Code review | `review <STORY>` |
+| Context sync | `sync context for <STORY>` |
 | Closure (PR) | `create pull request for <STORY>` |
 
 Within the same session, a simple `yes` / `proceed` loads the next stage directly.

@@ -249,6 +249,7 @@ ARCUS creates two main directory structures:
     "branch":         {"status": "pending"},
     "task_1":         {"status": "pending"},
     "code_review":    {"status": "pending"},
+    "context_sync":   {"status": "pending"},
     "closure":        {"status": "pending"}
   },
   "review_round": 0,
@@ -440,6 +441,20 @@ skill reads them anymore.
 
 ---
 
+### Context Sync (the `context_sync` stage) — no new artifact
+
+**Run by:** `context-drift-sync` (the `context_sync` stage, after `code_review` approves)
+
+**Purpose:** Reconcile only the shared `.context/` artifacts the approved branch diff materially
+drifted (business flows, `repo_map.md`, `repo_scope.md`, `testing-patterns.md`) — facts-only and
+diff-driven (no full rescan); updates `AGENTS.md` only when a flow file is added or removed.
+
+**Produces no new artifact.** It edits the existing `.context/` files in place (refreshing their
+context-meta); the rationale for what was/wasn't synced is persisted in the **sync commit body**, not
+in a new file or a `plan.md` subsection.
+
+---
+
 ### `specs/[STORY-ID]/PR_DESCRIPTION.md`
 
 **Created by:** `pull-request-builder` (the `closure` stage)
@@ -519,7 +534,8 @@ graph LR
     E --> Br[branch: git branch created NOW]
     Br --> F[task_1..N: code + tests]
     F --> G[code_review: review.md]
-    G -->|approved| H[closure: PR_DESCRIPTION.md]
+    G -->|approved| CS[context_sync: reconcile .context/<br/>no new artifact]
+    CS --> H[closure: PR_DESCRIPTION.md]
     G -->|changes_requested| F
     H --> I[PR created]
     I --> J[.arcus/ can be deleted]

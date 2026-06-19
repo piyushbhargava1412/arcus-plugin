@@ -1,8 +1,8 @@
 # Repository Map: arcus-plugin
 
 <!-- context-meta
-verification-commit: 9107e6a1b19abee4250ef8d3df6e47ac13fa5ddf
-generated-at: 2026-06-18T03:01:42Z
+verification-commit: ad081f5dc516c79dec4f8912c20e2a1bf377a93b
+generated-at: 2026-06-19T00:00:00Z
 confidence: high
 -->
 
@@ -80,6 +80,7 @@ arcus-plugin/
 | `solution-architect` | Skill activation entry (gated pipeline entry: `solution-architect`/`plan <STORY>`) | `plugins/arcus/skills/solution-architect/SKILL.md` |
 | `arcus-controller` | Skill activation entry (AFK-only: `afk`/`--afk`/`forge`/`run afk on <STORY>`) | `plugins/arcus/skills/arcus-controller/SKILL.md` |
 | `implementation-runner` | Skill activation entry (Implementation loop: `implement`/`code <STORY>`) | `plugins/arcus/skills/implementation-runner/SKILL.md` |
+| `context-drift-sync` | Skill activation entry (Context Sync stage; standalone: `sync context for <STORY>`/`sync context`) | `plugins/arcus/skills/context-drift-sync/SKILL.md` |
 | `repo-agentifier` | Skill activation entry | `plugins/arcus/skills/repo-agentifier/SKILL.md` |
 | Docs local dev | Command entry (`pnpm docs:dev`) | `site/package.json` |
 | Docs CI build/deploy | Workflow entry | `.github/workflows/docs.yml` |
@@ -162,7 +163,7 @@ arcus-plugin/
 
 ## Notable Patterns
 - Skill-first architecture: behavior is primarily encoded in `SKILL.md` contracts and templates under `assets/` and `references/`.
-- Two pipeline experiences over one ordered set of checkpoint stage keys (`scaffold → context_pack → spec_finalizer → blueprint → test_plan → branch → task_1..N → code_review → closure`): a **gated** self-handoff chain (no router, no shared pipeline file; entry `solution-architect`) and an **AFK-only** `arcus-controller` that holds the single canonical ordered list. The `implementation-runner` skill is the shared Implementation loop.
+- Two pipeline experiences over one ordered set of checkpoint stage keys (`scaffold → context_pack → spec_finalizer → blueprint → test_plan → branch → task_1..N → code_review → context_sync → closure`): a **gated** self-handoff chain (no router, no shared pipeline file; entry `solution-architect`) and an **AFK-only** `arcus-controller` that holds the single canonical ordered list. The `implementation-runner` skill is the shared Implementation loop.
 - Deferred branch creation: `scaffold.sh` records only the *planned* branch; `branch.sh` creates the git branch at Implementation start (naming defined once in `lib/branch_name.sh`, persisted via `checkpoint.sh set-branch`).
 - Consolidated planning artifact: deliberation lives in a single `plan.md` (the former separate assumptions / clarifications files are gone); the machine-parsed task list stays in `blueprint.md`.
 - Skills are dispatched imperatively (by name); `context: fork` is not in use (deferred follow-up).

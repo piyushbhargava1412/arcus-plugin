@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-06-19
+
+### Added
+
+- **New `context_sync` stage between Code Review and Closure (ARC-0003).** After Code Review
+  approves, a new **`context-drift-sync`** skill (stage key `context_sync`) strictly assesses whether
+  the approved branch diff materially changed any shared `.context/` artifact (business flows,
+  `repo_map.md`, `repo_scope.md`, `testing-patterns.md`) and **surgically syncs only the affected
+  ones** (refreshing their context-meta; updating `AGENTS.md` only when a flow file is added or
+  removed). It is **facts-only and diff-driven** — no full rescan. The rationale is persisted in the
+  sync commit body (no new artifact, no `plan.md` subsection). In the gated flow it shows a drift
+  assessment plus a single consolidated yes/no; in AFK it auto-decides; it is also standalone-invocable
+  via `sync context for <STORY_ID>` / `sync context`. Code Review's `approved` verdict now advances to
+  Context Sync (resume phrase `sync context for <STORY>`), which then **auto-continues to Closure** (no
+  user decision gate). The pipeline is now **six human-facing phases over ten ordered stages**.
+  - **Branch-scoped baseline (ARC-0003 refinement).** A story-scope run diffs from
+    `merge-base(HEAD, base_branch)` — it owns only the drift its own branch introduced, so the change
+    set is bounded and never grows unbounded with stale hashes. It re-bumps `verification-commit` only
+    on the artifacts it flags-and-edits; assessed-but-skipped artifacts keep their hash, so per-artifact
+    `verification-commit` values legitimately diverge. The **standalone full sweep** (`sync context`)
+    owns main-level / pre-fork drift and is the only run that re-levels every assessed artifact onto one
+    common commit. Full-sweep cadence is intentionally deferred to operational policy.
+
+### Changed
+
+- **Updated ordered pipeline / stage keys:** `scaffold → context_pack → spec_finalizer → blueprint →
+  test_plan → branch → task_1..N → code_review → context_sync → closure` (`context_sync` inserted
+  between `code_review` and `closure`).
+
 ## [1.0.0] - 2026-06-19
 
 ### Changed
@@ -21,7 +50,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   phrases (`afk`, `--afk`, `forge`, `run afk on <STORY>`), runs stages as one-shot subagents with
   milestone output, and its body holds the **single canonical ordered stage list**.
 - **New ordered pipeline / stage keys:** `scaffold → context_pack → spec_finalizer → blueprint →
-  test_plan → branch → task_1..N → code_review → closure`. The old standalone `init` stage is removed
+  test_plan → branch → task_1..N → code_review → context_sync → closure`. The old standalone `init`
+  stage is removed
   (`scaffold` is the new front), and `branch` is a **new** stage inserted between `test_plan` and the
   task loop.
 - **Deferred branch creation.** A new **`scaffold.sh`** creates the spec folder, copies `story.md`,

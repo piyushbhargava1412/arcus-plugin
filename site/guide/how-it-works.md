@@ -55,7 +55,7 @@ ARCUS runs the same pipeline two ways, with two different orchestration shapes:
 
 Both reuse the same `arcus:implementation-runner` loop driver for the Implementation stage, the same
 helper scripts, and the same checkpoint stage keys
-(`scaffold → context_pack → spec_finalizer → blueprint → test_plan → branch → task_1..N → code_review → closure`).
+(`scaffold → context_pack → spec_finalizer → blueprint → test_plan → branch → task_1..N → code_review → context_sync → closure`).
 
 > Skills are still dispatched imperatively (one skill reads and follows the next by name). Isolated
 > execution via `context: fork` is a deferred follow-up and is **not** in use today.

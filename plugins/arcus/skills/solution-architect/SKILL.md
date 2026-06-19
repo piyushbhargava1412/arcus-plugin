@@ -46,7 +46,7 @@ and `arcus:implementation-runner` use.
 | `checkpoint.sh <action> <STORY_ID> [args]` | Manage state | complete / set-status / read |
 
 Checkpoint stage keys (ordered): `scaffold` → `context_pack` → `spec_finalizer` → `blueprint`
-→ `test_plan` → `branch` → `task_1`..`task_N` → `code_review` → `closure`.
+→ `test_plan` → `branch` → `task_1`..`task_N` → `code_review` → `context_sync` → `closure`.
 Stage status values: `pending | in_progress | awaiting_handoff | complete | needs_rework`.
 
 The branch is **only planned** here (scaffold records the planned `branch_name`/`base_branch`); it

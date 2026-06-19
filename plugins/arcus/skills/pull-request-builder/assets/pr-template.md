@@ -8,6 +8,12 @@
 - **Tests**: [Test suites added/modified]
 - **Architecture**: [Patterns applied, referencing plan.md]
 
+## Context Updates
+[Include this section ONLY when the branch changed `.context/**` or `AGENTS.md` (the Context Sync
+stage ran and reconciled shared context). Render from the sync commit body's `Updated:` lines.
+Omit this entire section when no context artifacts changed.]
+- **[.context/<artifact>]**: [what changed / which trigger crossed — from the sync commit body]
+
 ## Verification Results
 - [ ] All unit tests pass
 - [ ] All integration tests pass

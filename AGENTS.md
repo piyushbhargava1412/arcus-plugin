@@ -15,7 +15,7 @@ Request workflow across Copilot CLI, Claude Code, and VS Code.
 
 The Spec -> Code -> Pull Request pipeline runs as two experiences over one ordered set of checkpoint
 stage keys (`scaffold -> context_pack -> spec_finalizer -> blueprint -> test_plan -> branch ->
-task_1..N -> code_review -> closure`):
+task_1..N -> code_review -> context_sync -> closure`):
 
 - **Gated (default, user-driven):** a chain of self-handing-off stage skills — no router, no shared
   pipeline file. Entry is the `solution-architect` skill; each stage names only its immediate

@@ -52,6 +52,7 @@ stage in a fresh session, use that stage's explicit phrase.
 | `implement <STORY>` | Implementation (creates the branch, then the task loop) | Resume or restart implementation |
 | `review <STORY>` | The `code_review` stage | Resume or restart code review |
 | `code review <STORY>` | Alias for review | Same as above |
+| `sync context for <STORY>` | The `context_sync` stage | Resume or run the post-review `.context/` drift sync (also: `sync context`) |
 | `create pull request for <STORY>` | The `closure` stage | Resume or restart PR creation |
 
 **⚠️ Warning:** Cold-resuming a later stage assumes the earlier artifacts already exist.

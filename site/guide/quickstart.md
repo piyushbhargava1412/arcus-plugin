@@ -60,15 +60,16 @@ solution-architect path/to/story.md
 pauses at each handoff gate for your review. The entry point is `arcus:solution-architect`. At each
 gate you respond "yes" to load the next stage, or "no" to pause; on a cold resume you type the next
 stage's explicit phrase (e.g. `generate test plan for <STORY>`, `implement <STORY>`,
-`review <STORY>`, `close <STORY>`).
+`review <STORY>`, `sync context for <STORY>`, `close <STORY>`).
 
-The pipeline runs as **five phases** over nine ordered stages:
+The pipeline runs as **six phases** over ten ordered stages:
 
 1. **Brainstorm** — Scaffolds the workspace and records the *planned* branch `arcus/[STORY-ID]-N` (no git branch yet), then builds context and resolves ambiguities → `plan.md` + `blueprint.md` (stages `scaffold`, `context_pack`, `spec_finalizer`, `blueprint`)
 2. **Test Plan** — Designs test matrix → `test-plan.md` (stage `test_plan`)
 3. **Implementation** — Creates the git branch, then implements tasks → committed code (stages `branch`, `task_1..N`)
 4. **Code Review** — Two-tier holistic quality check → `review.md` + verdict (stage `code_review`)
-5. **Closure** — Creates pull request (stage `closure`)
+5. **Context Sync** — On approval, reconciles only the `.context/` artifacts the diff materially drifted (no new artifact; rationale in the sync commit), then auto-continues (stage `context_sync`)
+6. **Closure** — Creates pull request (stage `closure`)
 
 ### Choosing Your Mode
 

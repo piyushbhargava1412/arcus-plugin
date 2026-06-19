@@ -103,6 +103,7 @@ case "$ACTION" in
     "task_7": "pending",
     "task_8": "pending",
     "code_review": "pending",
+    "context_sync": "pending",
     "closure": "pending"
   }
 }

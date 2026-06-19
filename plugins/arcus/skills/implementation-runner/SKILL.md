@@ -61,7 +61,7 @@ uses.
 | `checkpoint.sh <action> <STORY_ID> [args]` | Manage state | complete / set-status / reopen / read |
 
 Checkpoint stage keys (ordered): `scaffold` → `context_pack` → `spec_finalizer` → `blueprint`
-→ `test_plan` → **`branch`** → `task_1`..`task_N` → `code_review` → `closure`.
+→ `test_plan` → **`branch`** → `task_1`..`task_N` → `code_review` → `context_sync` → `closure`.
 Stage status values: `pending | in_progress | awaiting_handoff | complete | needs_rework`.
 
 ## Protocol
