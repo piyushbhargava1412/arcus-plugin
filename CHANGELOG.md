@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-06-19
+
 ### Changed
 
 - **Pipeline reworked into two experiences: a gated self-handoff chain and an AFK-only controller
@@ -197,7 +199,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `agent-forge:<skill>` name form, and executed helper scripts resolve through
   `.aforge/bin/` (falling back to `AFORGE_HOME`).
 
-[Unreleased]: https://github.com/piyushbhargava1412/arcus-plugin/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/piyushbhargava1412/arcus-plugin/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/piyushbhargava1412/arcus-plugin/compare/v0.5.0...v1.0.0
+[0.5.0]: https://github.com/piyushbhargava1412/arcus-plugin/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/piyushbhargava1412/arcus-plugin/compare/v0.2.0...v0.4.0
 [0.2.0]: https://github.com/piyushbhargava1412/arcus-plugin/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/piyushbhargava1412/arcus-plugin/releases/tag/v0.1.0
