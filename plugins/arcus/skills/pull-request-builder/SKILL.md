@@ -28,6 +28,22 @@ Read the following from `.arcus/specs/[STORY-ID]/`:
 - Categorize changes into Features, Fixes, and Tests.
 - Draft the PR description using `./assets/pr-template.md`.
 
+### Step 2b: Context Updates (from the Context Sync stage)
+The `context_sync` stage (skill `arcus:context-drift-sync`) runs immediately before Closure and may
+have reconciled shared `.context/` artifacts. Detect and render those updates:
+
+- Check `git diff --stat <base_branch>...HEAD` for changes under `.context/**` or to `AGENTS.md`.
+- **If present**: read the **sync commit body** (the `docs(context): sync ARCUS context for
+  <STORY_ID>` commit — e.g. `git log --format=%b -1 <sha>`, or scan recent commit bodies for the
+  `Updated:` / `Skipped:` structure) and render a `## Context Updates` section in the PR description
+  from its `Updated:` lines (and, if useful, `Skipped:` lines). The commit body is the **sole** source
+  of this rationale.
+- **If absent** (no `.context/**` / `AGENTS.md` changes): omit the `## Context Updates` section
+  entirely.
+
+Do **NOT** read any `plan.md` "Context Sync" subsection — no such subsection exists; the Context Sync
+stage deliberately persists its rationale only in the commit body.
+
 ### Step 3: Final Artifact Generation
 - Run the full test suite one last time on the feature branch.
 - Save the final, synthesized PR description to `.arcus/specs/[STORY-ID]/PR_DESCRIPTION.md`.
