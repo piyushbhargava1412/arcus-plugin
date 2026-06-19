@@ -61,8 +61,21 @@ Flag a flow file when **either** condition holds:
 - A changed file appears in that flow's **Entry Points**, **Core Path**, or **Scope**, **AND** the
   change alters the **entry**, **steps**, or **integration** of the flow. A change that is a pure
   internal refactor (no change to entry/steps/integration) does **not** qualify.
-- A **NEW** entry point, listener, job, or endpoint exists in the diff — this signals a **NEW flow**
-  that no existing flow file documents.
+- A **NEW** flow surface exists in the diff that is **not already covered by any existing flow
+  file's Entry Points, Core Path, or Scope**. A "new flow surface" is any addition that introduces
+  a distinct, independently-invocable path through the system — for example (non-exhaustive):
+  - HTTP handler (`@GetMapping`, `@PostMapping`, `@PutMapping`, `@DeleteMapping`, `@RequestMapping`, or framework equivalents)
+  - Message queue / event listener (`@SqsListener`, `@KafkaListener`, `@RabbitListener`, `@EventListener`, or equivalents)
+  - Scheduled job (`@Scheduled`, cron entry, job class)
+  - UI route or page handler (React route, MVC view, GraphQL resolver, gRPC handler)
+  - New public service-layer method that orchestrates a distinct business operation across multiple
+    collaborators (i.e. a new cross-cutting path, not a helper or private utility)
+  - New outbound integration entry (a new client class or SDK call that initiates a distinct
+    external interaction not covered by an existing flow)
+
+  The key test: **would a developer need a separate mental model to understand this path?** If yes,
+  it is a new flow. If it is a minor variant or extension of an existing flow already documented in
+  a `.context/flows/` file, it is **not** new — flag that existing file for an in-place edit instead.
 
 ## repo_map Drift — `.context/repo_map.md`
 

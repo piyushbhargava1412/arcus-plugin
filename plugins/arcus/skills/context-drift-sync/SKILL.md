@@ -124,6 +124,19 @@ file's Entry Points / Core Path / Scope; `repo_map`'s module/script/config/test 
 ownership/integration listings; `testing-patterns`' framework/layer/command listings), applying the
 strict triggers in [`references/drift-triggers.md`](references/drift-triggers.md).
 
+After mapping to existing artifacts, run a **new-flow completeness check**:
+
+1. Scan the diff for any new flow surface as defined in the "new flow surface" trigger in
+   `references/drift-triggers.md` (HTTP handlers, listeners, jobs, UI routes, new public
+   cross-cutting service methods, new outbound integration entries, etc.).
+2. For each candidate, check whether **any** existing `.context/flows/*.md` file already covers it
+   (i.e. the candidate appears in that file's Entry Points, Core Path, or Scope). Read the existing
+   flow files to verify — do not assume from filenames alone.
+3. If it is covered by an existing flow file → that file is already a flagged candidate (or will be
+   caught by the existing-artifact mapping above); no extra action needed.
+4. If it is **not** covered by any existing flow file → mark it `needs-new-flow-file` with a short
+   description of the new surface. This is carried into Sync Actions as a create action, not an edit.
+
 ### Step 4 — Read hunks only for flagged candidates (token economy)
 
 Only for files that map to a candidate artifact do you read the actual diff hunks
@@ -155,7 +168,13 @@ For each **flagged** artifact:
 
 1. **Edit only the affected section(s).** Do not regenerate the whole file. Touch the smallest set of
    lines that makes the artifact accurate again.
-2. **Refresh that artifact's context-meta block:** set `verification-commit = HEAD`,
+2. **Create new flow files for `needs-new-flow-file` entries.** For each surface marked
+   `needs-new-flow-file` in Step 3, create `.context/flows/<kebab-slug>.md` following the conventions
+   of existing flow files (frontmatter / context-meta block, Entry Points, Core Path, Scope, and any
+   other sections present in peer files). Set `verification-commit = HEAD`, `generated-at = <now>`,
+   `confidence = medium`. This counts as a flow-file addition and therefore **also triggers the
+   AGENTS.md update** in step 3 below.
+3. **Refresh that artifact's context-meta block:** set `verification-commit = HEAD`,
    `generated-at = <now, ISO-8601 UTC>`, and keep or adjust `confidence` to reflect the edit.
    - **Story-scope run:** re-bump **only the flagged-and-edited** artifacts. Artifacts that were
      assessed-but-skipped (NO-OP) keep their existing hash — a story checks them only against its own
@@ -166,7 +185,7 @@ For each **flagged** artifact:
      commit — this is the run that re-levels all artifacts onto one common baseline. Skipped artifacts
      get only the hash/`generated-at` bump (not a `confidence` change), since they were re-verified
      accurate but not re-generated.
-3. **Flow add/remove → also update `AGENTS.md`.** If the change introduces a **new flow file** or
+4. **Flow add/remove → also update `AGENTS.md`.** If the change introduces a **new flow file** or
    **removes** one (the set of flow files changes), regenerate the `AGENTS.md` **Business Flows index**
    and **Navigation table** per the AGENTS.md Flow-Index Rule in `references/drift-triggers.md`. In-place
    edits to the body of an existing flow file, `repo_map.md`, `repo_scope.md`, or `testing-patterns.md`
@@ -186,6 +205,7 @@ new artifact file** — the rationale lives only in the commit body. Structure t
 ```
 Updated:
 - <artifact path>: <reason — which trigger crossed / what changed>
+- .context/flows/<slug>.md: created — new flow surface: <short description>   # for each new-flow-file creation
 - AGENTS.md: <reason — flow added/removed, index + navigation regenerated>   # only if a flow file changed
 
 Skipped:
