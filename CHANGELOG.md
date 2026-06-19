@@ -20,6 +20,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   via `sync context for <STORY_ID>` / `sync context`. Code Review's `approved` verdict now advances to
   Context Sync (resume phrase `sync context for <STORY>`), which then **auto-continues to Closure** (no
   user decision gate). The pipeline is now **six human-facing phases over ten ordered stages**.
+  - **Branch-scoped baseline (ARC-0003 refinement).** A story-scope run diffs from
+    `merge-base(HEAD, base_branch)` — it owns only the drift its own branch introduced, so the change
+    set is bounded and never grows unbounded with stale hashes. It re-bumps `verification-commit` only
+    on the artifacts it flags-and-edits; assessed-but-skipped artifacts keep their hash, so per-artifact
+    `verification-commit` values legitimately diverge. The **standalone full sweep** (`sync context`)
+    owns main-level / pre-fork drift and is the only run that re-levels every assessed artifact onto one
+    common commit. Full-sweep cadence is intentionally deferred to operational policy.
 
 ### Changed
 

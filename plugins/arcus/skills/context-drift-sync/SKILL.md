@@ -71,27 +71,45 @@ confidence: high | medium | low
 -->
 ```
 
-- `verification-commit` is the commit at which the artifact was last verified accurate. It is the
-  **per-artifact diff baseline** — each artifact may carry a different one, so only drifted artifacts get
-  re-bumped.
-- The skill **reads** `verification-commit` to compute drift and **refreshes** the block on any artifact
-  it edits.
+- `verification-commit` means exactly **"the commit at which this artifact was last verified
+  accurate"** — nothing more. It is **not** always the diff baseline (see Step 1).
+- **Per-artifact divergence is normal and correct.** Different artifacts will sit on different
+  `verification-commit` hashes, because they get re-verified at different times. This is the honest
+  record, not drift. Only a **standalone full sweep** (see Standalone mode) re-levels every assessed
+  artifact onto one common commit; a **story-scope run never re-levels** — it advances only the
+  artifacts it actually re-verified.
+- The skill **refreshes** the block **only on artifacts it flags-and-edits** (story scope) or **on
+  every artifact it assesses** (standalone full sweep). An artifact that is assessed-but-skipped in a
+  story run keeps its existing hash — it was checked only against *this branch's* changes, not
+  re-verified against everything since its stored hash, so advancing it would overclaim.
 
 ## Workflow / Drift-Check Algorithm (FACTS-ONLY)
 
 Evaluate **each** `.context/` artifact independently. Read **no** story artifacts.
 
-### Step 1 — Per-artifact baseline
+### Step 1 — Choose the diff baseline (mode-dependent)
 
-For each artifact, read `verification-commit` from its context-meta block.
-**Fallback** when missing/blank/`unknown`: `git merge-base HEAD <base_branch>`.
+The baseline depends on **what drift this run is responsible for**:
+
+- **Story-scope run** (in-pipeline: gated / AFK / `"sync context for <STORY_ID>"`): baseline =
+  **`git merge-base HEAD <base_branch>`** — the branch fork point — for **every** artifact. A story
+  owns only the drift **its own branch introduced**, which is exactly `merge-base...HEAD`. This is
+  common across all artifacts, always recent (the branch was just cut), and bounded to this branch —
+  so the change set never grows unbounded no matter how stale any artifact's stored hash is.
+  Pre-fork drift on `<base_branch>` (e.g. from teammates not using ARCUS) is **deliberately out of
+  scope** for a story run; it is the standalone full sweep's job.
+- **Standalone full sweep** (`"sync context"`, no story): baseline = each artifact's stored
+  `verification-commit` (fallback `git merge-base HEAD <default-branch>` when missing/blank/`unknown`).
+  This run *is* responsible for main-level drift, so it assesses each artifact all the way back to its
+  own last-verified commit.
 
 ### Step 2 — Compute the change set (cheap first)
 
-Per artifact (its own baseline), collect the changed-file list using **name-status only** — do not read
-hunks yet:
+Using the baseline from Step 1 (`<baseline>` = the branch merge-base for a story run, or the
+artifact's stored `verification-commit` for a standalone sweep), collect the changed-file list using
+**name-status only** — do not read hunks yet:
 
-- Committed branch changes: `git diff --name-status <verification-commit>...HEAD`
+- Committed changes: `git diff --name-status <baseline>...HEAD`
 - **Plus** the uncommitted working tree:
   - `git diff --name-status` (unstaged)
   - `git diff --cached --name-status` (staged)
@@ -109,7 +127,7 @@ strict triggers in [`references/drift-triggers.md`](references/drift-triggers.md
 ### Step 4 — Read hunks only for flagged candidates (token economy)
 
 Only for files that map to a candidate artifact do you read the actual diff hunks
-(`git diff <verification-commit>...HEAD -- <file>` and the working-tree equivalents) to confirm whether a
+(`git diff <baseline>...HEAD -- <file>` and the working-tree equivalents) to confirm whether a
 trigger is genuinely crossed. Never read hunks for files that map to no artifact.
 
 ### Step 5 — Strict materiality gate
@@ -122,8 +140,12 @@ A change that crosses no trigger is a **NO-OP** for that artifact. The gate is d
 If **nothing crosses threshold across all artifacts**:
 
 - Report exactly: **No material context drift**.
-- Make **no edits and no commit**.
-- Mark the stage complete and hand off to Closure (per Handoff Protocol).
+- **Story-scope run:** make **no edits and no commit** — a clean story run is a true NO-OP and never
+  re-levels baselines. Mark the stage complete and hand off to Closure (per Handoff Protocol).
+- **Standalone full sweep:** still advance every assessed artifact's `verification-commit`/`generated-at`
+  to the synced commit and commit that re-leveling (body: all under `Skipped:` / "verified accurate, no
+  content change") — re-convergence is the sweep's purpose, so a clean sweep is the one case that writes
+  a hash-only commit.
 
 Otherwise proceed to Sync Actions.
 
@@ -134,8 +156,16 @@ For each **flagged** artifact:
 1. **Edit only the affected section(s).** Do not regenerate the whole file. Touch the smallest set of
    lines that makes the artifact accurate again.
 2. **Refresh that artifact's context-meta block:** set `verification-commit = HEAD`,
-   `generated-at = <now, ISO-8601 UTC>`, and keep or adjust `confidence` to reflect the edit. Only the
-   flagged (edited) artifacts get re-bumped; unflagged artifacts are left untouched.
+   `generated-at = <now, ISO-8601 UTC>`, and keep or adjust `confidence` to reflect the edit.
+   - **Story-scope run:** re-bump **only the flagged-and-edited** artifacts. Artifacts that were
+     assessed-but-skipped (NO-OP) keep their existing hash — a story checks them only against its own
+     branch changes, not against everything since their stored hash, so advancing them would overclaim
+     verification and would silently swallow pre-fork drift the next sweep must still catch. This is
+     why per-artifact hashes legitimately diverge.
+   - **Standalone full sweep:** advance **every assessed** artifact (flagged and skipped) to the synced
+     commit — this is the run that re-levels all artifacts onto one common baseline. Skipped artifacts
+     get only the hash/`generated-at` bump (not a `confidence` change), since they were re-verified
+     accurate but not re-generated.
 3. **Flow add/remove → also update `AGENTS.md`.** If the change introduces a **new flow file** or
    **removes** one (the set of flow files changes), regenerate the `AGENTS.md` **Business Flows index**
    and **Navigation table** per the AGENTS.md Flow-Index Rule in `references/drift-triggers.md`. In-place
@@ -198,12 +228,19 @@ Invocable directly:
 
 - `"sync context for <STORY_ID>"` — resume against an existing checkpoint; behaves per the persisted
   `mode`, then hands to Closure.
-- `"sync context"` — **no story**. Run the **same** algorithm using per-artifact `verification-commit`
-  baselines (fallback: `git merge-base HEAD <default-branch>`). Requires **no `story_id`** and **no
-  checkpoint**: do **not** read or mutate any checkpoint, and do **not** hand off to Closure. Report the
-  assessment and (on flagged artifacts) apply edits + commit, then stop. If invoked outside the pipeline
-  with no checkpoint, treat the confirmation like Gated (ask before editing) unless the caller says
-  otherwise.
+- `"sync context"` — **no story**, **full sweep**. Run the **same** algorithm but with the
+  **standalone baseline** (each artifact's stored `verification-commit`; fallback
+  `git merge-base HEAD <default-branch>`), so it assesses main-level / pre-fork drift that story runs
+  deliberately skip. Requires **no `story_id`** and **no checkpoint**: do **not** read or mutate any
+  checkpoint, and do **not** hand off to Closure. This is the run that **re-levels** all artifacts:
+  advance **every assessed** artifact (flagged *and* skipped) to the synced commit so they re-converge
+  onto one common baseline — including a clean sweep (a hash-only re-leveling commit). Report the
+  assessment, apply edits + commit, then stop. If invoked outside the pipeline with no checkpoint, treat
+  the confirmation like Gated (ask before editing) unless the caller says otherwise.
+
+  > **Cadence note:** how often the full sweep runs (manual, or scheduled) is intentionally left open
+  > here — defer to operational policy. It is the mechanism that keeps `<base_branch>` context true
+  > when not everyone uses ARCUS, so it should run on *some* regular cadence.
 
 ## Handoff Protocol
 
@@ -238,11 +275,18 @@ Resume later with: "create pull request for <STORY_ID>"
 - **FACTS-ONLY**: no `blueprint.md` / `plan.md` / `context-pack.md` / `test-plan.md` read — drift is
   established only from the diff and the artifacts' own content.
 - **Strict gate with a clean NO-OP path**: artifacts are flagged only when a trigger in
-  `references/drift-triggers.md` is crossed; "No material context drift" produces no edits and no commit.
+  `references/drift-triggers.md` is crossed; in a story run, "No material context drift" produces no
+  edits and no commit (a standalone sweep still writes a hash-only re-leveling commit).
+- **Branch-scoped baseline in-pipeline**: a story run diffs from `merge-base(HEAD, base_branch)`, so the
+  change set is bounded to the branch and never grows unbounded with stale hashes; pre-fork/main-level
+  drift is owned by the standalone full sweep, not by story runs.
+- **Per-artifact divergence is honest**: a story run re-bumps `verification-commit` only on
+  flagged-and-edited artifacts; skipped artifacts keep their hash. Only a standalone full sweep
+  re-levels every assessed artifact onto one common commit.
 - **Token-efficient**: name-status first; hunks read only for flagged candidates; the repo is never
   rescanned.
-- **Surgical edits + context-meta refresh**: only affected sections are edited; only edited artifacts
-  get `verification-commit = HEAD` and a refreshed `generated-at`.
+- **Surgical edits + context-meta refresh**: only affected sections are edited; refreshed
+  `verification-commit = HEAD` + `generated-at` follow the bump rule above.
 - **AGENTS.md updated only on flow add/remove**: in-place body edits never touch `AGENTS.md`.
 - **Commit-body-only rationale**: structured `Updated:` / `Skipped:` lines are the sole audit record —
   **no plan.md subsection** and **no new artifact file**.

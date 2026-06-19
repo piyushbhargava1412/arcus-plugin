@@ -17,6 +17,26 @@ intent is irrelevant here — only what the diff actually changed and what the a
 matters. If a fact cannot be established from the diff or the artifact content, it does not exist
 for the purposes of this check.
 
+## Baseline & Scope Invariant
+
+The diff baseline depends on **what drift the run owns**, and per-artifact baselines legitimately
+diverge:
+
+- **Story-scope run** (in-pipeline): baseline = `git merge-base HEAD <base_branch>` (the branch fork
+  point) for every artifact. A story owns only the drift **its own branch introduced**. The change set
+  is therefore bounded to the branch and never grows unbounded, regardless of how stale any artifact's
+  stored `verification-commit` is. Only **flagged-and-edited** artifacts get their `verification-commit`
+  bumped to HEAD; assessed-but-skipped artifacts keep their existing hash.
+- **Standalone full sweep** (`sync context`, no story): baseline = each artifact's stored
+  `verification-commit`. This run owns main-level / pre-fork drift and is the **only** operation that
+  **re-levels** all assessed artifacts onto one common commit.
+
+**Consequence (by design):** different `.context/` artifacts may sit on different
+`verification-commit` hashes at any given time. This is correct — the hash records "last verified
+accurate," not "last touched." Story runs never converge them; only the standalone full sweep does.
+A story run thus **does not** chase drift that landed on `<base_branch>` before the branch was cut —
+that is the sweep's responsibility.
+
 ## Strict Materiality Gate
 
 Flag an artifact for sync **only if at least one trigger below is crossed**. A change that crosses
