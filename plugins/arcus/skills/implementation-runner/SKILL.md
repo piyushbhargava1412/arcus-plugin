@@ -106,9 +106,13 @@ the heading order.
 
 ### Step 5: Loop over tasks
 
-Reference the model strategy once: load `arcus:model-strategy` for complexity→model resolution. (CLI
-per-task model selection is a session-level no-op — but `complexity` still guides the dispatcher's
-escalation and reviewer model picks.)
+Reference the model strategy once: load `arcus:model-strategy` for complexity→model resolution. Each
+task's `complexity` resolves to a model tier that the dispatcher passes as the subagent `model`
+override (Copilot `runSubagent`; **Claude Code: the `Agent` tool, which honors `model`** —
+`light`→`haiku`, `medium`→`sonnet`, `heavy`→`opus`), so mechanical tasks run on cheaper tiers. Only
+the **main orchestration thread** (this loop) is fixed to the session model and cannot switch
+mid-session; the per-task override applies to the dispatched subagents. `complexity` also guides the
+dispatcher's escalation and reviewer model picks.)
 
 For each task **in order**, skipping any whose checkpoint status is already `complete`:
 
