@@ -136,6 +136,7 @@ changed files plus the relevant spec section — not the full conversation. Reso
 | Code quality | `arcus:code-quality-reviewer` (holistic mode) | medium | Whole diff vs. repo patterns, incl. **test proportionality** (excessive/over-engineered tests, slow integration tests that bloat the build) |
 | Security | `arcus:security-reviewer` | medium | Whole diff |
 | Performance | `arcus:performance-reviewer` | medium | Whole diff |
+| History/Context | `arcus:history-context-reviewer` | medium | Whole diff vs. git blame/log — flags load-bearing complexity removals, silently-reverted fixes, and re-added reverted code |
 
 Each specialist returns findings as a list of `severity | file:line | description` plus a one-line
 summary. Tell each reviewer to read source files as needed to verify before flagging. Reviewers focus
@@ -152,7 +153,9 @@ Act as the coordinator:
 3. **Reasonableness filter**: Drop speculative nitpicks, false positives, theoretical risks needing
    unlikely preconditions, and findings that contradict the repo's own conventions. If unsure, read
    the source to verify before keeping.
-4. **Scope guard**: Only flag issues in code this branch changed. Ignore pre-existing problems in
+5. **Confidence filter**: Each specialist finding carries a confidence score (0–100). Drop any finding with confidence < 80 before the verdict step — these are noise, not signal.
+6. **False-positive drop-list**: Explicitly drop findings that are: (a) linter-catchable — already handled by the deterministic gate in Step 2; (b) in a file marked with a lint-ignore directive (e.g. `// eslint-disable`, `# noqa`, `// nolint`); (c) pre-existing in the base branch — the scope guard in item 4 already covers this, but make it explicit.
+7. **Scope guard**: Only flag issues in code this branch changed. Ignore pre-existing problems in
    untouched code.
 
 ### Step 5: Decide the verdict
@@ -196,6 +199,10 @@ Write `.arcus/specs/<STORY_ID>/review.md` with:
 
 ## Suggestions
 - [suggestion] <description> — <file:line>
+
+## History/Context
+- [severity] <description of git-history signal found> — <file:line>
+(Omit section if no findings.)
 
 ## Notes
 <one-paragraph summary: overall quality, what was verified, anything the user should know>
