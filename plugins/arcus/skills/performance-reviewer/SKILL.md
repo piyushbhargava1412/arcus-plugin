@@ -57,9 +57,11 @@ Return a short summary line, then findings (or `No performance findings.`):
 ```
 SUMMARY: <one line>
 FINDINGS:
-- [critical] <description> — <file:line>
-- [warning] <description> — <file:line>
+- [critical] <description> — <file:line> (confidence: N/100)
+- [warning] <description> — <file:line> (confidence: N/100)
 ```
+
+Only report findings with confidence ≥ 80; drop anything below that threshold rather than surfacing uncertain signals.
 
 ## Constraints
 

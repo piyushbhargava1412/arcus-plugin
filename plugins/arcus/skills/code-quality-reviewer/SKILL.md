@@ -31,9 +31,11 @@ Output format:
 ```
 SUMMARY: <one line>
 FINDINGS:
-- [critical] <issue> — <file:line>
-- [warning] <issue> — <file:line>
+- [critical] <issue> — <file:line> (confidence: N/100)
+- [warning] <issue> — <file:line> (confidence: N/100)
 ```
+
+Only report findings with confidence ≥ 80; drop anything below that threshold rather than surfacing uncertain signals.
 
 ## Inputs (provided by the coordinator in prompt)
 

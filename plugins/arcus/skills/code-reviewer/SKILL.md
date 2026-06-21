@@ -153,9 +153,9 @@ Act as the coordinator:
 3. **Reasonableness filter**: Drop speculative nitpicks, false positives, theoretical risks needing
    unlikely preconditions, and findings that contradict the repo's own conventions. If unsure, read
    the source to verify before keeping.
-5. **Confidence filter**: Each specialist finding carries a confidence score (0–100). Drop any finding with confidence < 80 before the verdict step — these are noise, not signal.
-6. **False-positive drop-list**: Explicitly drop findings that are: (a) linter-catchable — already handled by the deterministic gate in Step 2; (b) in a file marked with a lint-ignore directive (e.g. `// eslint-disable`, `# noqa`, `// nolint`); (c) pre-existing in the base branch — the scope guard in item 4 already covers this, but make it explicit.
-7. **Scope guard**: Only flag issues in code this branch changed. Ignore pre-existing problems in
+4. **Confidence filter**: Each specialist finding carries a confidence score (0–100). Drop any finding with confidence < 80 before the verdict step — these are noise, not signal.
+5. **False-positive drop-list**: Explicitly drop findings that are: (a) linter-catchable — already handled by the deterministic gate in Step 2; (b) in a file marked with a lint-ignore directive (e.g. `// eslint-disable`, `# noqa`, `// nolint`); (c) pre-existing in the base branch — the scope guard in item 6 already covers this, but make it explicit.
+6. **Scope guard**: Only flag issues in code this branch changed. Ignore pre-existing problems in
    untouched code.
 
 ### Step 5: Decide the verdict
