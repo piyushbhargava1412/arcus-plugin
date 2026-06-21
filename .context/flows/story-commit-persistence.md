@@ -1,8 +1,8 @@
 # Flow: Story Commit Persistence
 
 <!-- context-meta
-verification-commit: 9107e6a1b19abee4250ef8d3df6e47ac13fa5ddf
-generated-at: 2026-06-18T03:03:49Z
+verification-commit: be0eb93e8a0f015f0513832769b32636180154d8
+generated-at: 2026-06-21T08:00:00Z
 confidence: high
 -->
 
@@ -10,8 +10,8 @@ confidence: high
 Creates conventional commits for story work while excluding generated `.arcus` artifacts from commit
 payloads. During Implementation, the **per-task commits are driven by the `implementation-runner`
 skill** (the single canonical loop driver): for each `### Task N:` it invokes the
-`subagent-task-dispatcher` protocol, which calls `commit.sh` once per task. The script mechanism
-itself is unchanged.
+`subagent-task-dispatcher` protocol, which calls `commit.sh` once per task after the full
+RED→GREEN→refactor→spec-check sequence completes. The script mechanism itself is unchanged.
 
 ## Entry Points
 - **Type**: Job
@@ -38,7 +38,7 @@ itself is unchanged.
 ## Scope
 - `plugins/arcus/scripts/commit.sh`
 - `plugins/arcus/skills/implementation-runner/SKILL.md` (drives the per-task commit loop)
-- `plugins/arcus/skills/subagent-task-dispatcher/SKILL.md` (calls `commit.sh` per task)
+- `plugins/arcus/skills/subagent-task-dispatcher/SKILL.md` (calls `commit.sh` per task after verify → refactor gate → spec-check)
 - `plugins/arcus/skills/arcus-controller/SKILL.md`
 
 ## Tests

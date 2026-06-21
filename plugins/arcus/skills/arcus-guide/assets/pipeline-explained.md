@@ -196,9 +196,10 @@ to writing code, keeping aborted/abandoned plans from littering your branch list
 - The `implementation-runner` drives the per-task loop (the same loop is reused by
   gated and AFK)
 - Each task is dispatched to an isolated subagent with scoped context
-- Each task includes implementation, test writing (following `test-plan.md`), and one
-  lightweight, **advisory** per-task spec-compliance check (does not hard-block;
-  unresolved issues carry forward to Code Review)
+- Each task includes implementation, test writing (following `test-plan.md`), a refactor
+  gate (`code-simplifier`: mutate toward simplicity, re-run suite — skipped on `light`
+  tasks), and one lightweight, **advisory** per-task spec-compliance check (does not
+  hard-block; unresolved issues carry forward to Code Review)
 - Commits incrementally (one commit per task) and runs tests after each task
 
 > **Note:** Quality is *not* reviewed per-task. Code quality is owned holistically by the
@@ -208,6 +209,7 @@ to writing code, keeping aborted/abandoned plans from littering your branch list
 **Skills invoked:**
 - `implementation-runner` (loop driver)
 - `subagent-task-dispatcher` (per-task dispatch protocol)
+- `code-simplifier` (per-task refactor gate, skipped on `light`)
 - `spec-compliance-reviewer` (per-task mode, advisory)
 
 **Artifacts created:**
@@ -245,6 +247,7 @@ concrete problems block).
     build)?
   - **Security**: Any exploitable vulnerabilities?
   - **Performance**: Any concrete regressions?
+  - **History/Context**: Any load-bearing complexity removed, silently-reverted fixes, or re-added previously-reverted code? (skipped on docs-only diffs and shallow history)
 - Consolidates findings, deduplicates, filters noise, assigns severity:
   - **critical** — Blocks merge (outage, data loss, security breach)
   - **warning** — Concrete issue (performance hit, maintainability concern)
@@ -257,6 +260,7 @@ concrete problems block).
 - `code-quality-reviewer` (holistic mode)
 - `security-reviewer`
 - `performance-reviewer`
+- `history-context-reviewer`
 
 **Artifacts created:**
 - `review.md` — Deterministic gate results (pass/fail/skipped per check) + consolidated

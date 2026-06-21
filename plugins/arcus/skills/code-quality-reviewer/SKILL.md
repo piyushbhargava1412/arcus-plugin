@@ -31,9 +31,11 @@ Output format:
 ```
 SUMMARY: <one line>
 FINDINGS:
-- [critical] <issue> — <file:line>
-- [warning] <issue> — <file:line>
+- [critical] <issue> — <file:line> (confidence: N/100)
+- [warning] <issue> — <file:line> (confidence: N/100)
 ```
+
+Only report findings with confidence ≥ 80; drop anything below that threshold rather than surfacing uncertain signals.
 
 ## Inputs (provided by the coordinator in prompt)
 
@@ -74,6 +76,7 @@ FINDINGS:
 - Test names describe the behavior being verified?
 - No test interdependencies (each test can run in isolation)?
 - Edge cases covered where the DoD implies them?
+- **Critical-path coverage**: flag as `warning` any missing test for a behavior that, if broken, would produce a `critical` or `warning` finding elsewhere — e.g., pipeline-blocking paths, state mutations that affect downstream tasks, external integration error paths. Flag as `suggestion` coverage gaps on purely internal helpers with no downstream effect.
 
 ### 5. Test Proportionality (cost vs. value)
 

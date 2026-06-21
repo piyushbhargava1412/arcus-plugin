@@ -1,8 +1,8 @@
 # Repository Map: arcus-plugin
 
 <!-- context-meta
-verification-commit: ad081f5dc516c79dec4f8912c20e2a1bf377a93b
-generated-at: 2026-06-19T00:00:00Z
+verification-commit: be0eb93e8a0f015f0513832769b32636180154d8
+generated-at: 2026-06-21T08:00:00Z
 confidence: high
 -->
 
