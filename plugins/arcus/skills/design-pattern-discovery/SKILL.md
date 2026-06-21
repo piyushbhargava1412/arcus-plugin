@@ -19,7 +19,8 @@ metadata:
 ## Overview
 
 Identify how code is actually written in the repository — the recurring design patterns, layering and
-structural conventions, naming idioms, and error-handling & logging conventions — and persist them to
+structural conventions, naming idioms, error-handling & logging conventions, and configuration &
+dependency conventions — and persist them to
 `.context/design-and-coding-patterns.md`, together with a curated **Avoid** list of anti-patterns. This
 ensures downstream planning, implementation, and review agents write code that is indistinguishable
 from the existing codebase and steer clear of patterns the team has decided against.
@@ -58,6 +59,9 @@ not regenerated on routine diffs.
      idiomatic constructs the repo reaches for repeatedly.
    - **Error-handling & logging conventions**: how errors are raised/propagated/reported, exit-code vs
      exception vs result conventions, log/format/message conventions, fail-open vs fail-closed defaults.
+   - **Configuration & dependency conventions**: where configuration lives and how it is read, and the
+     dependency-management conventions / the bar for adding a new dependency (per `repo_scope` /
+     guardrails). Document only conventions that recur (≥3 places).
 
 4. **Build the curated Avoid list**: capture **prescriptive rules** the codebase's own conventions
    imply teams should NOT do (anti-patterns). These are *rules*, not an inventory of offending files —

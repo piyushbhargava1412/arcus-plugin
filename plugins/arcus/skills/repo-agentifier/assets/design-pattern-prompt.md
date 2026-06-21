@@ -4,7 +4,7 @@ You are a Repository Intelligence Builder. Your task is to analyze existing sour
 
 ## Objective
 
-Create or refresh `.context/design-and-coding-patterns.md` — a single file documenting the recurring design patterns, layering/structure conventions, naming idioms, and error-handling & logging conventions used in this repository, plus a curated **Avoid** list of anti-patterns.
+Create or refresh `.context/design-and-coding-patterns.md` — a single file documenting the recurring design patterns, layering/structure conventions, naming idioms, error-handling & logging conventions, and configuration & dependency conventions used in this repository, plus a curated **Avoid** list of anti-patterns.
 
 ## Upstream Context
 
