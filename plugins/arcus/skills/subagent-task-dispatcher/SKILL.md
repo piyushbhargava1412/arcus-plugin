@@ -70,16 +70,35 @@ The subagent returns one of three statuses:
 | `BLOCKED` | Cannot proceed — missing info or unresolvable conflict | Log to stdout, attempt once with additional context, then stop pipeline if still blocked |
 | `NEEDS_CONTEXT` | Requires information not in the scoped context | Orchestrator provides the requested file/section, re-dispatches |
 
-### Step 5: Verify & Commit
+### Step 5: Verify
 
 After a `DONE` response:
 1. Confirm the `TDD_EVIDENCE` line shows a RED step (a test that failed first) followed by GREEN. If the implementer skipped the failing-test step, re-dispatch requiring proper TDD.
 2. Run the test suite to confirm tests actually pass
 3. Use `get_errors` on modified files to check for lint/compile issues
-4. If verification passes: proceed to Step 6 (Review)
+4. If verification passes: proceed to Step 6 (Refactor gate)
 5. If verification fails: re-dispatch implementer subagent with error output as additional context (max 2 retries)
 
-### Step 6: Per-task Spec Check (single, lightweight)
+### Step 6: Refactor Gate (skip on `light` complexity)
+
+After verification passes:
+
+**Skip condition**: if the task `complexity` == `light`, skip this step entirely and proceed directly to Step 7 (Spec Check).
+
+Otherwise, dispatch the `arcus:code-simplifier` subagent:
+- **Prompt**: Include the list of files modified by this task, the task's DoD from `blueprint.md`, and the instruction: "Read and follow the `arcus:code-simplifier` skill."
+- **Description**: `"Refactor: Task N"`
+- **Model**: Resolve complexity `medium` via the `arcus:model-strategy` skill
+
+Handle the return status:
+| Status | Meaning | Action |
+|--------|---------|--------|
+| `SIMPLIFIED` | Mutations applied, suite green | Log summary, proceed to Step 7 (Spec Check) |
+| `REVERTED` | Mutations caused test failure; rolled back | Log explanation, append `[simplifier: reverted]` to the commit message in Step 8, proceed to Step 7 (Spec Check) |
+
+No retry for the refactor gate — `REVERTED` is not a failure; it means the code was already at a good simplicity level. The spec-check in Step 7 still runs regardless of `SIMPLIFIED` or `REVERTED`.
+
+### Step 7: Per-task Spec Check (single, lightweight)
 
 After verification passes, run **one** fast spec-compliance check before committing. This pass exists
 to catch the few things green tests + the later holistic review can't cheaply catch *early*, while the
@@ -102,7 +121,7 @@ its binary FAIL conflicts with the holistic stage's "one or two warnings is stil
    - **Description**: `"Review: spec-compliance Task N"`
    - **Model**: Resolve complexity `medium` via the `arcus:model-strategy` skill
 2. Read the VERDICT:
-   - `PASS` → proceed to Step 7 (Commit)
+   - `PASS` → proceed to Step 8 (Commit)
    - `FAIL` → re-dispatch the implementer subagent **once** with the ISSUES list as additional
      context, then re-run this check.
 
@@ -111,7 +130,7 @@ do not block the pipeline. Commit with a note in the commit message: `"Task N: <
 and carry the unresolved ISSUES forward so the holistic `code-reviewer` re-evaluates them over the full
 diff (where they may resolve in context, or be confirmed as real findings).
 
-### Step 7: Commit
+### Step 8: Commit
 
 After reviews pass (or retry limit reached):
 - Commit via `.arcus/bin/commit.sh <STORY_ID> <COMMIT_MESSAGE>`
@@ -134,14 +153,16 @@ After reviews pass (or retry limit reached):
 ## Retry Protocol
 
 - **Implementation retries**: Max 2 retries per task (Step 4 BLOCKED/verification failures)
-- **Spec-check retry**: Max 1 retry for the per-task spec check (Step 6)
+- **Spec-check retry**: Max 1 retry for the per-task spec check (Step 7)
 - Each retry includes the error/issue output from the previous attempt
 - **Escalation rule**: If implementation fails after 2 retries at the current complexity, promote complexity one level (light → medium → heavy), re-resolve the model via the `arcus:model-strategy` skill, and re-dispatch with the higher-tier model. Max 1 escalation per task.
 - If implementation fails after escalation: mark as BLOCKED, stop pipeline
 - If the spec check fails after its retry: commit with `[spec: unresolved]` tag and carry the ISSUES forward to the holistic `code-reviewer`; continue pipeline
+- **Refactor gate**: No retry — `REVERTED` is not a failure state; mutations are rolled back and the gate exits cleanly. Proceed to spec-check regardless.
 
 ## Success Criteria
 
 - Each subagent starts with < 30% of total story context (scoped, not full)
 - No token bleed between task executions
 - Each task is independently verifiable (tests pass after each dispatch)
+- Refactor gate ran (or was correctly skipped on `light` complexity) before the spec-check on every task
