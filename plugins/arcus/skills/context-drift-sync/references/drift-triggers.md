@@ -107,6 +107,26 @@ Flag `testing-patterns.md` when the diff introduces any of:
 - A new **canonical pattern**.
 - A **changed full-suite command**.
 
+## design-and-coding-patterns Drift — `.context/design-and-coding-patterns.md`
+
+This artifact is **static by design** — it captures the repository's *settled* design & coding
+conventions, not the contents of any one change. Flag `design-and-coding-patterns.md` **only** when the
+diff demonstrates a **newly-adopted, team-level** pattern/convention/idiom — i.e. the change introduces
+a convention that now **recurs** (≥3 distinct places) and is not yet documented, or **supersedes** a
+documented one. Concretely, flag when the diff introduces any of:
+
+- A new **recurring design pattern** (Strategy/Factory/Adapter/Repository/etc.) adopted across ≥3 places.
+- A new **layering / structural convention** (a new layer, module-organization rule, or boundary).
+- A new **naming / idiom convention** applied consistently across the change.
+- A new **error-handling or logging convention** (e.g. a switch to a Result type, a new standard
+  message/format) adopted repo-wide.
+- A convention change that **supersedes** an existing one — which may also warrant a new **Avoid** rule.
+
+**Do NOT flag** for routine diffs that merely *use* already-documented conventions, one-off code that
+does not establish recurrence, or pure bug-fixes/refactors that introduce no new convention. When in
+doubt, do not flag — keeping this document static is the correct default. The **Avoid** section is
+updated only when a convention is deliberately deprecated, never as an inventory of offending files.
+
 ---
 
 ## AGENTS.md Flow-Index Rule
@@ -114,4 +134,5 @@ Flag `testing-patterns.md` when the diff introduces any of:
 `AGENTS.md` holds a **Business Flows index** and a **Navigation table**. Regenerate that index +
 navigation table **only when a flow file is added or removed** (i.e. the set of flow files changes —
 a flow-index/navigation change). Do **NOT** regenerate `AGENTS.md` for in-place edits to the body
-of an existing flow file, `repo_map.md`, `repo_scope.md`, or `testing-patterns.md`.
+of an existing flow file, `repo_map.md`, `repo_scope.md`, `testing-patterns.md`, or
+`design-and-coding-patterns.md`.
