@@ -249,6 +249,7 @@ In the gated experience, ARCUS pauses at each gate and waits for your confirmati
           <ul>
             <li>Implementation</li>
             <li>Test writing (following <code>test-plan.md</code>)</li>
+            <li>Refactor gate (<code>code-simplifier</code>): mutate toward simplicity, re-run suite — skipped on <code>light</code> tasks</li>
             <li>One lightweight, <strong>advisory</strong> per-task spec-compliance check (does not hard-block; unresolved issues carry forward to Code Review)</li>
           </ul>
         </li>
@@ -261,6 +262,7 @@ In the gated experience, ARCUS pauses at each gate and waits for your confirmati
         <li><code>implementation-runner</code> (the single canonical loop driver — owns the branch step + task loop; reused by gated and afk)</li>
         <li><code>branch.sh</code> (deferred branch realization)</li>
         <li><code>subagent-task-dispatcher</code> (per-task execution)</li>
+        <li><code>code-simplifier</code> (per-task refactor gate, skipped on <code>light</code>)</li>
         <li><code>spec-compliance-reviewer</code> (per-task mode, advisory)</li>
       </ul>
     </td>
@@ -320,6 +322,7 @@ In the gated experience, ARCUS pauses at each gate and waits for your confirmati
             <li><strong>Code quality</strong> (holistic): Clean structure, maintainability, cognitive complexity, test proportionality?</li>
             <li><strong>Security</strong>: Any exploitable vulnerabilities?</li>
             <li><strong>Performance</strong>: Any concrete regressions?</li>
+            <li><strong>History/Context</strong>: Any load-bearing complexity removed, silently-reverted fixes, or re-added previously-reverted code? (skipped on docs-only diffs and shallow history)</li>
           </ul>
         </li>
         <li>Consolidates findings</li>
@@ -341,6 +344,7 @@ In the gated experience, ARCUS pauses at each gate and waits for your confirmati
         <li><code>code-quality-reviewer</code> (holistic mode)</li>
         <li><code>security-reviewer</code></li>
         <li><code>performance-reviewer</code></li>
+        <li><code>history-context-reviewer</code></li>
       </ul>
     </td>
     <td>
