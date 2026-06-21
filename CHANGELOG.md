@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-06-21
+
+### Added
+
+- **Refactor gate in the task loop (ARCUS-0004).** `arcus:code-simplifier` is now an ARCUS-native,
+  language-agnostic refactor gate wired into `arcus:subagent-task-dispatcher` between the TDD verify
+  step and the spec-compliance check. It mutates changed files toward simplicity, re-runs the test
+  suite, and returns `SIMPLIFIED` (green) or `REVERTED` (red — mutations rolled back). Skipped on
+  `light`-complexity tasks. Completes the red-green-**refactor** cycle inside the ARCUS task loop.
+- **`arcus:history-context-reviewer` specialist (ARCUS-0004).** New git blame/log reviewer added to
+  the `arcus:code-reviewer` Stage 3 fan-out. Flags only on concrete git signal: prior fix/revert
+  commits on touched lines, removed deliberate-marker annotations, or re-added previously-reverted
+  code. Conditionally skipped on docs-only diffs and shallow history (< 3 commits on changed files).
+  Pairs with the refactor gate as a guardrail against deleting load-bearing complexity.
+
+### Changed
+
+- **`arcus:subagent-task-dispatcher` step sequence (ARCUS-0004).** Steps renumbered: verify (5) →
+  refactor gate (6, skipped on `light`) → spec-check (7) → commit (8). Retry Protocol updated to
+  document the no-retry refactor gate; Success Criteria updated.
+- **`arcus:implementation-runner` Step 5 narrative (ARCUS-0004).** Updated to reflect the new
+  RED→GREEN→refactor→spec-check→commit order.
+- **`arcus:code-reviewer` Step 3 fan-out and Step 4 consolidation (ARCUS-0004).** Added
+  `history-context-reviewer` row to the fan-out table; added confidence filter (drop findings < 80)
+  and an explicit false-positive drop-list (linter-catchable, lint-ignore'd, pre-existing) to the
+  consolidation step; added `## History/Context` section to the review report template.
+- **`arcus:code-quality-reviewer` Test Quality checklist (ARCUS-0004).** Added critical-path
+  coverage framing: flag as `warning` missing tests for behaviors whose failure would produce a
+  `critical`/`warning` finding; flag as `suggestion` gaps on purely internal helpers.
+
+### Removed
+
+- **`arcus:code-reviewer-claude` orphan skill (ARCUS-0004).** Deleted. Confidence scoring (0–100,
+  drop < 80) and false-positive drop-list ideas harvested into `arcus:code-reviewer` Step 4.
+- **`arcus:pr-test-analyzer` orphan skill (ARCUS-0004).** Deleted. Critical-path coverage criticality
+  framing and DAMP-principles ideas harvested into `arcus:code-quality-reviewer` Section 4.
+
 ## [1.1.0] - 2026-06-19
 
 ### Added
