@@ -26,6 +26,7 @@ export default withMermaid({
         text: 'Core Concepts',
         items: [
           { text: 'The ARCUS Pipeline', link: '/concepts/pipeline' },
+          { text: 'Context Engineering', link: '/concepts/context-engineering' },
           { text: 'Gated vs AFK Mode', link: '/concepts/modes' }
         ]
       }
