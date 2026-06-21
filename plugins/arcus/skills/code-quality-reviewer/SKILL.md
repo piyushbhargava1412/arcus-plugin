@@ -41,6 +41,7 @@ Only report findings with confidence ≥ 80; drop anything below that threshold 
 
 - The branch diff / set of files changed by this story
 - Architecture patterns from `context-pack.md` (relevant section only)
+- Design & coding conventions from `.context/design-and-coding-patterns.md` (patterns in use, layering/structure, naming/idioms, error-handling, and **Avoid** rules)
 - Repo conventions / guidelines (if present in `AGENTS.md` or `CLAUDE.md`)
 
 ## Review Checklist

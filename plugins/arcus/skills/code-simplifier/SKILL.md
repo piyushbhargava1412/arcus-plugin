@@ -34,7 +34,7 @@ The following inputs are provided in the subagent prompt by the dispatcher:
 
 1. **Changed files** — the exact set of files modified by the task implementation.
 2. **Repository conventions** — read at runtime from `AGENTS.md`, `CLAUDE.md`,
-   `context-pack.md`, and `.context/testing-patterns.md`. Never hard-code language or
+   `context-pack.md`, `.context/testing-patterns.md`, and `.context/design-and-coding-patterns.md`. Never hard-code language or
    framework rules; conventions are always sourced from repository artifacts.
 3. **Task DoD** — the Definition of Done for this task, sourced from `blueprint.md`. Used
    to guard test pruning: no test that directly asserts a named DoD requirement may be removed.
@@ -73,7 +73,7 @@ hard-code rules for any specific language, runtime, or framework.
 
 **Step 1 — Read inputs**
 Load the changed files and read repository conventions from `AGENTS.md`, `CLAUDE.md`,
-`context-pack.md`, and `.context/testing-patterns.md`. Load the task DoD from `blueprint.md`.
+`context-pack.md`, `.context/testing-patterns.md`, and `.context/design-and-coding-patterns.md`. Load the task DoD from `blueprint.md`.
 
 **Step 2 — Identify opportunities**
 List simplification candidates briefly (one line each) before applying any mutations. Do not
@@ -114,6 +114,6 @@ dispatcher.
 - **No `context: fork`** — runs as a standard subagent within the dispatcher loop.
 - **No self-certification of spec compliance** — spec compliance is owned exclusively by the
   subsequent `arcus:spec-compliance-reviewer` step.
-- **Read conventions at runtime** from `AGENTS.md`, `CLAUDE.md`, `context-pack.md`, and
-  `.context/testing-patterns.md`; never hard-code language or framework rules.
+- **Read conventions at runtime** from `AGENTS.md`, `CLAUDE.md`, `context-pack.md`,
+  `.context/testing-patterns.md`, and `.context/design-and-coding-patterns.md`; never hard-code language or framework rules.
 - **DoD guard** — always load the task DoD from `blueprint.md` before pruning any tests.
