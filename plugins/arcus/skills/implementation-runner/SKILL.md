@@ -124,7 +124,7 @@ For each task **in order**, skipping any whose checkpoint status is already `com
    - `COMPLEXITY` = the task's `complexity` field, default `medium`
    - `COMMIT_MESSAGE` = `"Task N: <short description>"`
 
-   The dispatcher owns per-task TDD (RED → GREEN), the single lightweight spec-compliance check, and
+   The dispatcher owns per-task TDD (RED → GREEN), the refactor gate (skipped on `light` complexity), the spec-compliance check, and
    the commit via `commit.sh`. This loop does not commit directly.
 3. On a `DONE` outcome: `<BIN>/checkpoint.sh complete <STORY_ID> task_<N>`, then proceed to the next task.
 4. On a `BLOCKED` outcome the dispatcher could not resolve: stop the loop and surface it (in gated
