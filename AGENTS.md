@@ -50,6 +50,7 @@ is not in use.
 | Data ownership | [repo_scope.md#major-implementation-areas](.context/repo_scope.md#major-implementation-areas) |
 | Dependencies | [repo_map.md#tech-stack](.context/repo_map.md#tech-stack) |
 | Testing conventions | [testing-patterns.md](.context/testing-patterns.md) |
+| Design & coding patterns | [design-and-coding-patterns.md](.context/design-and-coding-patterns.md) |
 
 ## Business Flows
 

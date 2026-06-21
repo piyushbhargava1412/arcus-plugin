@@ -33,6 +33,7 @@ need for the task at hand; do not read everything up front.
 | Data ownership | [repo_scope.md#data-ownership](.context/repo_scope.md#data-ownership) |
 | Dependencies | [repo_scope.md#dependencies](.context/repo_scope.md#dependencies) |
 | Testing conventions | [testing-patterns.md](.context/testing-patterns.md) |
+| Design & coding patterns | [design-and-coding-patterns.md](.context/design-and-coding-patterns.md) |
 
 ## Business Flows
 

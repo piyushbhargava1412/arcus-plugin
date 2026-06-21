@@ -382,7 +382,7 @@ In the gated experience, ARCUS pauses at each gate and waits for your confirmati
   <tr>
     <td>
       <ul>
-        <li>Strictly assesses whether the approved branch diff materially changed any <code>.context/</code> artifact (business flows, <code>repo_map.md</code>, <code>repo_scope.md</code>, <code>testing-patterns.md</code>)</li>
+        <li>Strictly assesses whether the approved branch diff materially changed any <code>.context/</code> artifact (business flows, <code>repo_map.md</code>, <code>repo_scope.md</code>, <code>testing-patterns.md</code>, <code>design-and-coding-patterns.md</code>)</li>
         <li>Surgically syncs <strong>only the affected</strong> artifacts, refreshing their context-meta; updates <code>AGENTS.md</code> only when a flow file is added or removed</li>
         <li><strong>Facts-only and diff-driven</strong> — no full repository rescan</li>
         <li><strong>Gated:</strong> shows a drift assessment plus a single consolidated yes/no</li>
@@ -411,6 +411,9 @@ In the gated experience, ARCUS pauses at each gate and waits for your confirmati
 **What to check:**
 - The drift assessment correctly identifies which `.context/` artifacts the diff touched
 - Only materially-affected artifacts were synced (no over-reach)
+
+For the full picture of how the shared `.context/` artifacts are built, scoped, and kept current, see
+[Context Engineering](/concepts/context-engineering).
 
 ---
 

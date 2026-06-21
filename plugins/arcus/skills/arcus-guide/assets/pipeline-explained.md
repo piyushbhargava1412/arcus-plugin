@@ -279,7 +279,7 @@ approved branch diff materially drifted — *before* the PR is opened.
 
 **What happens:**
 - Strictly assesses whether the approved branch diff materially changed any `.context/` artifact
-  (business flows, `repo_map.md`, `repo_scope.md`, `testing-patterns.md`)
+  (business flows, `repo_map.md`, `repo_scope.md`, `testing-patterns.md`, `design-and-coding-patterns.md`)
 - Surgically syncs **only the affected** artifacts (refreshing their context-meta); updates
   `AGENTS.md` only when a flow file is added or removed
 - **Facts-only and diff-driven** — no full repository rescan
@@ -295,6 +295,9 @@ approved branch diff materially drifted — *before* the PR is opened.
   commit body (no new artifact, no `plan.md` subsection)
 
 **Handoff:** No user decision gate — auto-continues to `closure` once the reconciliation is decided.
+
+> See the **`context-engineering.md`** guide module for how the five shared `.context/` artifacts are
+> built once, scoped per story, and synced on drift.
 
 ---
 

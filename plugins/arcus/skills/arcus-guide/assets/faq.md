@@ -231,6 +231,7 @@ You can resume anytime with `"yes"`.
 - `repo_map.md` — Navigation index
 - `flows/*.md` — Business flows
 - `testing-patterns.md` — Test conventions
+- `design-and-coding-patterns.md` — Design patterns, coding conventions + "Avoid" list
 
 Created by `agentify this repo`, used by all stories.
 

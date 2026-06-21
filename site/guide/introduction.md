@@ -17,10 +17,13 @@ Prepares your repository for agent-driven development by scanning its structure 
   - `repo_map.md` — Navigation map of key directories and files
   - `flows/*.md` — Discovered business flows and patterns
   - `testing-patterns.md` — Captured test conventions and frameworks
+  - `design-and-coding-patterns.md` — Captured design patterns, coding conventions, and a curated "Avoid" list
 - **`AGENTS.md`** — Navigation index for agent sessions
 - **`CLAUDE.md`** — Import directive to activate the context
 
 This is a one-time setup per repository, re-run only after major restructuring or tech stack changes.
+See [Context Engineering](/concepts/context-engineering) for how these five artifacts are built once,
+scoped per story, and synced on drift.
 
 ### Gated experience — `solution-architect` + a self-handoff chain
 

@@ -33,6 +33,7 @@ generate context
 - Analyzes repository structure → `repo_scope.md` and `repo_map.md`
 - Discovers business flows → `flows/*.md` files
 - Captures test patterns → `testing-patterns.md`
+- Captures design & coding patterns → `design-and-coding-patterns.md`
 - Generates `AGENTS.md` navigation index
 - Creates `CLAUDE.md` to import it
 

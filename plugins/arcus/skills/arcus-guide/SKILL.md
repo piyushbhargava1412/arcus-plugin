@@ -1,7 +1,7 @@
 ---
 name: arcus-guide
 version: 1.0.0
-description: Comprehensive help and onboarding for ARCUS plugin. Provides context-aware guidance on getting started, command reference, pipeline explanation, mode selection, artifact interpretation, troubleshooting, and FAQs. Activates on "what is arcus", "how do I use arcus", "arcus help", "help with arcus", "show arcus commands", "I'm new to arcus", "getting started with arcus", "where am I", "what stage am I in", "check pipeline status", "what can I do", "show me commands", "what are my options", "explain the pipeline", "how does arcus work", "gated or afk", "should I use afk mode", "when to use gated mode", "what's in .arcus", "explain artifacts", "what files does arcus create", "arcus troubleshooting", "arcus isn't working", "stuck in arcus".
+description: Comprehensive help and onboarding for ARCUS plugin. Provides context-aware guidance on getting started, command reference, pipeline explanation, mode selection, artifact interpretation, context engineering, troubleshooting, and FAQs. Activates on "what is arcus", "how do I use arcus", "arcus help", "help with arcus", "show arcus commands", "I'm new to arcus", "getting started with arcus", "where am I", "what stage am I in", "check pipeline status", "what can I do", "show me commands", "what are my options", "explain the pipeline", "how does arcus work", "gated or afk", "should I use afk mode", "when to use gated mode", "what's in .arcus", "explain artifacts", "what files does arcus create", "what is context engineering", "explain the .context artifacts", "design and coding patterns", "arcus troubleshooting", "arcus isn't working", "stuck in arcus".
 ---
 
 # ARCUS Guide — Your Helper and Onboarding Assistant
@@ -49,6 +49,10 @@ Parse the user's trigger phrase to determine what they need:
 - "what's in .arcus", "explain artifacts", "what files does arcus create"
 - **Action:** Show file system map with explanations
 
+**Context Engineering:**
+- "what is context engineering", "explain the .context artifacts", "design and coding patterns"
+- **Action:** Load `context-engineering.md` — the scan-once / scope-per-story / sync-on-drift model and the five `.context/` artifacts
+
 **Troubleshooting:**
 - "arcus troubleshooting", "arcus isn't working", "stuck in arcus"
 - **Action:** Display troubleshooting guide
@@ -65,6 +69,7 @@ Before showing content, check the user's current state:
    - Check if `.context/repo_map.md` exists
    - Check if `.context/flows/` directory exists with files
    - Check if `.context/testing-patterns.md` exists
+   - Check if `.context/design-and-coding-patterns.md` exists
    - Display ✅ for present, ⚠️ for missing
 
 2. **Pipeline Position** (for "Where am I?"):
@@ -87,7 +92,7 @@ Before showing content, check the user's current state:
 
 ## Asset Files
 
-You have 8 curated content modules in `./assets/`:
+You have 9 curated content modules in `./assets/`:
 
 - `welcome.md` — Welcome screen with menu
 - `getting-started.md` — Onboarding checklist + guided setup
@@ -95,6 +100,7 @@ You have 8 curated content modules in `./assets/`:
 - `pipeline-explained.md` — ten-stage breakdown with diagrams
 - `modes-explained.md` — Gated vs AFK decision guide
 - `artifacts-guide.md` — File system map and editing guidance
+- `context-engineering.md` — The five `.context/` artifacts and the scan-once / scope-per-story / sync-on-drift model
 - `troubleshooting.md` — Common issues and solutions
 - `faq.md` — Quick Q&A
 

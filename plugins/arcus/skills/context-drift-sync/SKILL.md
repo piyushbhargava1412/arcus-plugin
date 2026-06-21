@@ -45,6 +45,7 @@ The `.context/` artifacts in scope:
 - `.context/repo_map.md`
 - `.context/repo_scope.md`
 - `.context/testing-patterns.md`
+- `.context/design-and-coding-patterns.md`
 
 ## Helper Scripts
 
@@ -121,7 +122,8 @@ Union these into the artifact's candidate changed-file set.
 
 Map each changed file to candidate artifacts using each artifact's **own listed file scopes** (a flow
 file's Entry Points / Core Path / Scope; `repo_map`'s module/script/config/test listings; `repo_scope`'s
-ownership/integration listings; `testing-patterns`' framework/layer/command listings), applying the
+ownership/integration listings; `testing-patterns`' framework/layer/command listings; `design-and-coding-patterns`'
+pattern/convention/idiom listings), applying the
 strict triggers in [`references/drift-triggers.md`](references/drift-triggers.md).
 
 After mapping to existing artifacts, run a **new-flow completeness check**:
@@ -188,7 +190,8 @@ For each **flagged** artifact:
 4. **Flow add/remove → also update `AGENTS.md`.** If the change introduces a **new flow file** or
    **removes** one (the set of flow files changes), regenerate the `AGENTS.md` **Business Flows index**
    and **Navigation table** per the AGENTS.md Flow-Index Rule in `references/drift-triggers.md`. In-place
-   edits to the body of an existing flow file, `repo_map.md`, `repo_scope.md`, or `testing-patterns.md`
+   edits to the body of an existing flow file, `repo_map.md`, `repo_scope.md`, `testing-patterns.md`, or
+   `design-and-coding-patterns.md`
    do **NOT** touch `AGENTS.md`.
 
 ### Commit — the body is the sole audit record

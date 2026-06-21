@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-06-21
+
+### Added
+
+- **Context Engineering: `design-and-coding-patterns` artifact + dedicated docs (ARCUS-0005).** A new,
+  fifth shared `.context/` artifact — `design-and-coding-patterns.md` — captures the repository's design
+  patterns, layering/structure conventions, naming idioms, and error-handling conventions, plus a
+  curated **Avoid** list of anti-patterns. It is **static by design**: discovered once during
+  agentification and maintained thereafter only by `arcus:context-drift-sync` when a genuinely new,
+  team-level pattern is adopted (not on routine diffs).
+- **`arcus:design-pattern-discovery` skill (ARCUS-0005).** New evidence-only discovery skill (3-step
+  flow, recurrence ≥3, `context-meta` header) that mirrors `arcus:test-pattern-discovery` and produces
+  `.context/design-and-coding-patterns.md`. Wired into `arcus:repo-agentifier` as a parallel `heavy`
+  **Stage 2c** subagent (alongside flow + test-pattern discovery), with a new
+  `design-pattern-prompt.md` and an `AGENTS.md` navigation row.
+- **Context Engineering documentation (ARCUS-0005).** New `site/concepts/context-engineering.md` Core
+  Concepts page (scan-once / scope-per-story / sync-on-drift, the five `.context/` artifacts, role of
+  `AGENTS.md`/`CLAUDE.md`, a Mermaid lifecycle, and re-agentify vs. trust-sync), mirrored as the
+  `arcus:arcus-guide` `context-engineering.md` module, with cross-links from the introduction, pipeline,
+  and artifacts guides.
+
+### Changed
+
+- **Planning, implementation, and review now consume `design-and-coding-patterns.md` (ARCUS-0005).**
+  `arcus:context-pack-builder` reads it and templates a `## Design & Coding Patterns` section;
+  `arcus:implementation-planner` and the blueprint template point pattern guidance at it; and
+  `arcus:code-quality-reviewer` + `arcus:code-simplifier` add it to their runtime convention sources.
+  `arcus:context-drift-sync` adds it to the drift scope with a static-doc drift trigger that fires only
+  on newly-adopted patterns.
+
 ## [1.2.0] - 2026-06-21
 
 ### Added

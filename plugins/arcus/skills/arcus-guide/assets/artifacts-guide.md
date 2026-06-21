@@ -36,7 +36,8 @@ ARCUS creates two main directory structures:
 │   ├── user-registration.md
 │   ├── payment-processing.md
 │   └── ...
-└── testing-patterns.md                # Test framework conventions
+├── testing-patterns.md                # Test framework conventions
+└── design-and-coding-patterns.md      # Design patterns, coding conventions + "Avoid" list
 
 .arcus/                                # Session workspace (git-ignored)
 ├── bin/                               # Helper scripts
@@ -217,6 +218,30 @@ ARCUS creates two main directory structures:
 - Location: tests/e2e/**/*.spec.ts
 - Run: `npm run test:e2e`
 ```
+
+---
+
+### `design-and-coding-patterns.md`
+
+**Created by:** `design-pattern-discovery` (via `repo-agentifier`)
+
+**Purpose:** Capture the repository's design patterns, coding conventions, naming idioms, and
+error-handling style, plus a curated **Avoid** list of anti-patterns
+
+**When to refresh:** Only when a genuinely new, team-level pattern/convention is adopted — this
+artifact is **static by design** and is otherwise maintained automatically by `context_sync`
+
+**Safe to edit:** ✅ Yes, but keep it to settled conventions (it is not regenerated on routine diffs)
+
+**Contains:**
+- Design patterns actually in use (Strategy, Factory, Adapter, Repository, etc.)
+- Layering & structure conventions
+- Naming & idiom conventions
+- Error-handling & logging conventions
+- An **Anti-patterns to Avoid** table (prescriptive rules, not a file inventory)
+
+See the **`context-engineering.md`** guide module for how this fits the five-artifact `.context/`
+snapshot.
 
 ---
 
@@ -446,7 +471,8 @@ skill reads them anymore.
 **Run by:** `context-drift-sync` (the `context_sync` stage, after `code_review` approves)
 
 **Purpose:** Reconcile only the shared `.context/` artifacts the approved branch diff materially
-drifted (business flows, `repo_map.md`, `repo_scope.md`, `testing-patterns.md`) — facts-only and
+drifted (business flows, `repo_map.md`, `repo_scope.md`, `testing-patterns.md`,
+`design-and-coding-patterns.md`) — facts-only and
 diff-driven (no full rescan); updates `AGENTS.md` only when a flow file is added or removed.
 
 **Produces no new artifact.** It edits the existing `.context/` files in place (refreshing their

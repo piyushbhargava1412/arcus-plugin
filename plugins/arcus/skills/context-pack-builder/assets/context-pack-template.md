@@ -16,5 +16,8 @@
 ## Testing Patterns
 [Summary of the relevant testing patterns and conventions from .context/testing-patterns.md that should be applied to this story.]
 
+## Design & Coding Patterns
+[Summary of the relevant design & coding conventions from .context/design-and-coding-patterns.md that this story must follow — applicable patterns/idioms, layering/structure conventions, and any "Avoid" rules that constrain the implementation.]
+
 ## Assumptions / Gaps
 [List any missing information, ambiguous mappings, or areas requiring further discovery]
