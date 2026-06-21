@@ -113,13 +113,13 @@ FINDINGS:
 
 ## Output Format
 
-Use the canonical ARCUS severity taxonomy. Only report findings with confidence >= 80.
+Use the canonical ARCUS severity taxonomy. Only report findings with confidence ≥ 80.
 
 ```
 SUMMARY: <one-line overall assessment>
 FINDINGS:
-- [warning] <description of the concrete signal found> — <file:line> (confidence: <N>/100)
-- [suggestion] <description> — <file:line> (confidence: <N>/100)
+- [warning] <description of the concrete signal found> — <file:line> (confidence: N/100)
+- [suggestion] <description> — <file:line> (confidence: N/100)
 ```
 
 ### Severity rules
