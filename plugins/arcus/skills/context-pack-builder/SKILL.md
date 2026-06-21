@@ -33,7 +33,7 @@ This skill runs a bundled helper script (`match_flows.py`) via shell. Because th
 
 ### Step 3: Gather Context
 - Read the full content of the **selected flow files** from `.context/flows/`.
-- Read `.context/repo_scope.md`, `.context/repo_map.md`, and `.context/testing-patterns.md` for high-level grounding.
+- Read `.context/repo_scope.md`, `.context/repo_map.md`, `.context/testing-patterns.md`, and `.context/design-and-coding-patterns.md` for high-level grounding.
 - **Rules:** Do NOT perform a full repository scan. Rely only on these shared artifacts.
 
 ### Step 4: Synthesize & Generate
