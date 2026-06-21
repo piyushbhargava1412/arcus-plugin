@@ -31,7 +31,7 @@
   - [ ] [X] integrated with [Y]
 
 ## Architecture & Safety
-- **Design Patterns**: [List patterns used, e.g., Strategy, Factory]
+- **Design Patterns**: [List patterns used, e.g., Strategy, Factory — aligned with `.context/design-and-coding-patterns.md`, and honoring its **Avoid** rules]
 - **Security Considerations**: [Data handling, Auth check]
 - **Cleanup / Technical Debt**: [Any specific cleanups required after implementation]
 

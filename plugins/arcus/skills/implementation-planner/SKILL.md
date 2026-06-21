@@ -84,7 +84,7 @@ The user's answer is authoritative and overrides the highest-scoring pick. Recor
 ### Step 4: Design the Approach
 For the chosen approach:
 - Map out the **Impacted Files**. Identify which existing files need modification and which new files are required, drawing on the Entry Points, Core Path, and Scope sections of the flow files linked under Relevant Flows in `context-pack.md`.
-- Identify the core design patterns to be applied (e.g., matching existing repository patterns).
+- Identify the core design patterns to be applied, drawing on `.context/design-and-coding-patterns.md` (design patterns in use, layering/structure, naming/idioms, error-handling conventions, and its **Avoid** rules) so the design matches established repository conventions.
 - Synthesize the "How" — explain the logic flow from entry point to data persistence.
 
 Record the impacted-file map and design notes into `plan.md`'s `## Design / Impacted Files`.
