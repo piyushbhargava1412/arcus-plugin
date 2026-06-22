@@ -7,13 +7,7 @@ description: >
   reviewers across the whole change set. Deduplicates, filters noise, judges severity,
   and writes a single review report with a verdict. Trigger on "review <STORY>" or
   "code review <STORY>".
-metadata:
-  version: "1.1.0"
-  team: krill
-  type:
-    - reviewer
-    - coordinator
-    - qa
+argument-hint: <STORY>
 ---
 
 # Code Reviewer (Holistic Review Coordinator)

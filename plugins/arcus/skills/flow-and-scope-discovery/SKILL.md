@@ -1,16 +1,6 @@
 ---
 name: flow-and-scope-discovery
 description: Identify business flows and persist each as a separate file in .context/flows. Use when user says "discover and persist flows", "generate context flows", or "what does this repo actually do".
-metadata: 
-  version: "1.0.0"
-  team: krill
-  type:
-    - agents
-  inputs:
-    - repo_scope
-    - repo_map
-  outputs:
-    - flow_files in .context/flows/
 ---
 
 # Flow and Scope Discovery

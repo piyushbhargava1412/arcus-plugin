@@ -9,12 +9,8 @@ description: >
   "run afk on <STORY>". The gated, one-stage-at-a-time flow lives elsewhere
   (the per-stage skills + the `arcus:solution-architect` brainstorm coordinator) —
   this controller never runs gated.
-metadata:
-  version: "4.0.0"
-  team: krill
-  type:
-    - orchestrator
-    - meta-skill
+argument-hint: <STORY>
+disallowed-tools: AskUserQuestion
 ---
 
 # ARCUS Controller (Autonomous / AFK Orchestrator Meta-Skill)

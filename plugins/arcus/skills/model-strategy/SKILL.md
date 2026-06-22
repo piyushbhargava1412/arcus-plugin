@@ -7,12 +7,6 @@ description: >
   and platform model string. Not invoked directly by users.
 user-invocable: false
 disable-model-invocation: true
-metadata:
-  version: "0.1.0"
-  team: krill
-  type:
-    - reference
-    - shared
 ---
 
 # Model-Tiered Strategy

@@ -1,12 +1,6 @@
 ---
 name: pull-request-builder
 description: Finalize the development workflow by summarizing changes and creating a pull request. Use when all tasks in the blueprint are completed and verified. Trigger on "finalize workflow", "create pull request", or "submit changes".
-metadata:
-  version: "1.0.0"
-  team: krill
-  type:
-    - agents
-    - engineering
 ---
 
 # Pull Request Builder

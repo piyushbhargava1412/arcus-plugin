@@ -4,12 +4,9 @@ description: >
   Review implementation code for quality: pattern fidelity, clean structure, test coverage,
   and maintainability. Returns severity-tagged findings. Dispatched holistically by the
   code-reviewer coordinator over the whole branch diff — not invoked per task.
-metadata:
-  version: "2.1.0"
-  team: krill
-  type:
-    - reviewer
-    - qa
+user-invocable: false
+disable-model-invocation: true
+disallowed-tools: Edit, Write, MultiEdit
 ---
 
 # Code Quality Reviewer

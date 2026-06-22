@@ -1,12 +1,6 @@
 ---
 name: test-spec-compiler
 description: Act as a QA Lead to design a comprehensive test matrix and verification plan for a story. Use when you have an implementation blueprint and need to define verification metrics before code is written. Trigger on "compile test plan", "design test suite", or "create test matrix".
-metadata:
-  version: "1.0.0"
-  team: krill
-  type:
-    - agents
-    - qa
 ---
 
 # Test Spec Compiler

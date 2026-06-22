@@ -5,12 +5,9 @@ description: >
   receives scoped context (single task + relevant tests + constraints) to prevent
   token bleed between tasks. Used by the afk-skill-router orchestrator during the
   Code stage.
-metadata:
-  version: "2.1.0"
-  team: krill
-  type:
-    - orchestrator
-    - protocol
+user-invocable: false
+disable-model-invocation: true
+disallowed-tools: AskUserQuestion
 ---
 
 # Subagent Task Dispatcher

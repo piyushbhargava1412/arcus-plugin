@@ -1,16 +1,6 @@
 ---
 name: repository-context-builder
 description: Build or refresh baseline repository context by analyzing structure and generating repo_scope and repo_map artifacts. Use when user says "build shared repository context", "update the context", or "refresh the context" or "sync the repo context".
-metadata:
-   version: "1.2.0"
-   team: krill
-   type:
-      - agents
-   inputs:
-      - repository_root
-   outputs:
-      - repo_scope in .context/repo_scope.md
-      - repo_map in .context/repo_map.md
 ---
 
 # Repository Context Builder

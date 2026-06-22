@@ -7,12 +7,7 @@ description: >
   and commit. Reused by both the gated flow and the afk controller. Activates on
   "implement <STORY>" or "code <STORY>"; resumes after a changes_requested review
   via the loopback protocol.
-metadata:
-  version: "1.0.0"
-  team: krill
-  type:
-    - orchestrator
-    - protocol
+argument-hint: <STORY>
 ---
 
 # Implementation Runner (Gated Loop Driver)
