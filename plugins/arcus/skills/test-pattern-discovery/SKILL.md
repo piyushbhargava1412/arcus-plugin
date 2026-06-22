@@ -1,17 +1,6 @@
 ---
 name: test-pattern-discovery
 description: Analyze existing tests and persist shared repository testing conventions. Use when user says "how do we write tests?", "discover and persist testing patterns", or "baseline the testing style".
-metadata:
-  version: "1.1.0"
-  team: krill
-  type:
-    - agents
-  inputs:
-    - repository_root
-    - repo_scope
-    - repo_map
-  outputs:
-    - testing_patterns in .context/testing-patterns.md
 ---
 
 # Test Pattern Discovery

@@ -1,12 +1,6 @@
 ---
 name: context-pack-builder
 description: Build a minimal, story-specific context pack from shared artifacts. Use when starting a new story, building context for a specific story ID, or performing pre-specification planning. Trigger on "start a new story", "build context for story", or "prepare context pack".
-metadata:
-  version: "1.1.0"
-  team: krill
-  type:
-    - agents
-    - context-management
 ---
 
 # Feature Context Pack Builder

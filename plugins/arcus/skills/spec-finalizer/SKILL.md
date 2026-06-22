@@ -4,12 +4,6 @@ description: >
   Analyze a user story for completeness and resolve all ambiguities by generating
   options grounded in repository patterns and selecting the best choice autonomously.
   Trigger on "finalize spec", "resolve ambiguities", or "ground the story".
-metadata:
-   version: "2.2.0"
-   team: krill
-   type:
-    - agents
-    - tech-lead
 ---
 
 # Spec Finalizer (Story Completeness + Ambiguity Resolution)

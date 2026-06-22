@@ -1,17 +1,6 @@
 ---
 name: design-pattern-discovery
 description: Analyze existing source and persist shared repository design & coding patterns — conventions, idioms, layering/structure, naming, error-handling & logging, plus a curated "Avoid" list. Use when user says "what are our coding conventions?", "discover and persist design patterns", or "baseline the coding style".
-metadata:
-  version: "1.0.0"
-  team: krill
-  type:
-    - agents
-  inputs:
-    - repository_root
-    - repo_scope
-    - repo_map
-  outputs:
-    - design_and_coding_patterns in .context/design-and-coding-patterns.md
 ---
 
 # Design Pattern Discovery
