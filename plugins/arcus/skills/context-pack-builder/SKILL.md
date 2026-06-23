@@ -55,3 +55,22 @@ This skill runs a bundled helper script (`match_flows.py`) via shell. Because th
 - **Template**: `./assets/context-pack-template.md`
 - **Matching Script**: `./scripts/match_flows.py` (resolve via `$ARCUS_HOME` for execution)
 - **Design Patterns**: `./references/design-patterns.md`
+
+## Contract
+
+> Layer: **capability** — atomic, stateless, given declared inputs → produce one output. No checkpoint reads/writes, no branch ops, no ARCUS path construction.
+
+### Inputs
+| Input | Type | Description | Typical source |
+|-------|------|-------------|----------------|
+| `story` | markdown or text | The user story requirement describing what needs to be built | orchestrator passes it / standalone user supplies it |
+| `repo_context` | directory path | Path to shared repository context artifacts (flows, scope, map, patterns) | orchestrator passes it / standalone user supplies it |
+
+### Outputs
+- **`context_pack`** (markdown) — Story-to-code correlations: relevant business flows (linked), likely working areas, repository patterns, testing conventions, and identified gaps or assumptions.
+  Output convention: pipeline caller sets the path; standalone default `.arcus/outputs/context-pack-builder/<story-id-or-timestamp>.md`. The capability never asks the user where to write.
+
+### Clarification Policy
+1. **Output path** — never ask. Default to `.arcus/outputs/context-pack-builder/<story-id-or-timestamp>.md`; orchestrators override with an explicit path.
+2. **Optional inputs** — never ask. Proceed without them; note the omission in the output.
+3. **Required inputs with no sensible default** — ask once, clearly. Cannot proceed without these.

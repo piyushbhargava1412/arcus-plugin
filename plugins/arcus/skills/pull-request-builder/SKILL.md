@@ -68,3 +68,25 @@ handoff**. Once the pull request is created and `closure` is marked complete, th
 [Complete] Pipeline complete for <STORY_ID> → PR: <link>
 ```
 
+## Contract
+
+> Layer: **capability** — atomic, stateless, given declared inputs → produce one output. No checkpoint reads/writes, no branch ops, no ARCUS path construction.
+
+### Inputs
+| Input | Type | Description | Typical source |
+|-------|------|-------------|----------------|
+| `story` | markdown or text | The original user story requirement | orchestrator passes it / standalone user supplies it |
+| `change_set` | git diff output | The full branch diff showing all changes | orchestrator passes it / standalone user supplies it |
+| `spec_grounding` | markdown | Technical decisions (optional) | orchestrator passes it / standalone user supplies it |
+| `implementation_plan` | markdown | Task breakdown (optional) | orchestrator passes it / standalone user supplies it |
+| `test_matrix` | markdown | Verification evidence (optional) | orchestrator passes it / standalone user supplies it |
+
+### Outputs
+- **`pull_request_description`** (markdown) — Professional PR summary with high-level overview, categorized changes (features/fixes/tests), context updates (if any), and verification evidence.
+  Output convention: pipeline caller sets the path; standalone default `.arcus/outputs/pull-request-builder/<story-id-or-timestamp>.md`. The capability never asks the user where to write.
+
+### Clarification Policy
+1. **Output path** — never ask. Default to `.arcus/outputs/pull-request-builder/<story-id-or-timestamp>.md`; orchestrators override with an explicit path.
+2. **Optional inputs** — never ask. Proceed without them; note the omission in the output.
+3. **Required inputs with no sensible default** — ask once, clearly. Cannot proceed without these.
+

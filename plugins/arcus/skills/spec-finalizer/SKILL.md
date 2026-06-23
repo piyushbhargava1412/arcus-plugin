@@ -197,3 +197,31 @@ orchestrator — not this skill — decides whether to pause and ask the user.
 
 - **Plan Template**: `./assets/plan-template.md`
 - **Decision Heuristics**: `./references/decision-heuristics.md`
+
+## Contract
+
+> Layer: **capability** — atomic, stateless, given declared inputs → produce one output. No checkpoint reads/writes, no branch ops, no ARCUS path construction.
+
+### Inputs
+| Input | Type | Description | Typical source |
+|-------|------|-------------|----------------|
+| `story` | markdown or text | The user story requirement to be analyzed for completeness | orchestrator passes it / standalone user supplies it |
+| `context_pack` | markdown | Story-to-code correlations including flows, patterns, constraints (optional) | orchestrator passes it / standalone user supplies it |
+| `mode` | string | Execution mode: `dialogue` (interview user on low-confidence items) or `autonomous` (auto-resolve everything) | orchestrator passes it / standalone user supplies it |
+
+### Outputs
+- **`spec_grounding`** (markdown) — Resolved ambiguities with selected options and rationale, implementation boundary (included/excluded), guardrail check, and dialogue answers (if mode=dialogue). Written as owned sections in a shared plan document.
+  Output convention: pipeline caller sets the path; standalone default `.arcus/outputs/spec-finalizer/<story-id-or-timestamp>.md`. The capability never asks the user where to write.
+
+### Mode
+| Mode | Behaviour |
+|------|-----------|
+| `dialogue` | Interview the user one question at a time on low-confidence / open items; each question presents one **Recommended** option + rationale + a custom-answer option; fold answers in before proceeding. |
+| `autonomous` | Never block. Auto-resolve with the safest option, flag weak picks, proceed. |
+
+The caller passes `mode` explicitly (full explicit-parameter wiring is finalized in a later task).
+
+### Clarification Policy
+1. **Output path** — never ask. Default to `.arcus/outputs/spec-finalizer/<story-id-or-timestamp>.md`; orchestrators override with an explicit path.
+2. **Optional inputs** — never ask. Proceed without them; note the omission in the output.
+3. **Required inputs with no sensible default** — ask once, clearly. Cannot proceed without these.

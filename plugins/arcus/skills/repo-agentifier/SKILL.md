@@ -204,6 +204,14 @@ After successful execution, the repository must contain:
 - `AGENTS.md` (repository root — agent navigation index)
 - `CLAUDE.md` (repository root — imports `AGENTS.md`)
 
+## Layer Rules
+
+> Layer: **coordinator** — a thin, **stateless** sequencer of capabilities. Owns **no** pipeline state: no checkpoint reads/writes, no branch ops, no stage gates. Its only job is to call capabilities in a fan-out/consolidate or chained pattern and pass each one explicit inputs.
+
+- **Owned state**: none.
+- **Sequences**: Stage 1 (repository-context-builder → produces `repo_scope.md` + `repo_map.md`) → Stage 2 parallel fan-out (flow-and-scope-discovery → produces `.context/flows/*.md`, test-pattern-discovery → produces `testing-patterns.md`, design-pattern-discovery → produces `design-and-coding-patterns.md`, each injected with Stage 1 outputs) → Stage 3 inline (read all `.context/` artifacts, populate the `agents-template.md`, write `AGENTS.md` + `CLAUDE.md` at repo root).
+- **Delegation**: Sequential Stage 1, then parallel fan-out Stage 2 (all 3 discovery subagents dispatched concurrently), then inline agentify logic (no subagent — reads, indexes, writes navigation files). Each discovery subagent receives scoped prompt with injected repo context.
+
 ## Completion
 
 Output only:

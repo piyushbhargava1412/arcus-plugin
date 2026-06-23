@@ -106,3 +106,23 @@ ISSUES:
 - **No style opinions**: This review is about correctness against spec, not code style. Leave style to the code-quality-reviewer.
 - **Binary outcome**: PASS means zero issues. Any issue = FAIL.
 - **Scope-bound**: Only review against THIS task's DoD. Don't review against the entire story or other tasks.
+
+## Contract
+
+> Layer: **capability** — atomic, stateless, given declared inputs → produce one output. No checkpoint reads/writes, no branch ops, no ARCUS path construction.
+
+### Inputs
+| Input | Type | Description | Typical source |
+|-------|------|-------------|----------------|
+| `acceptance_criteria` | markdown or text | Definition of Done for the task being verified | orchestrator passes it / standalone user supplies it |
+| `claimed_files` | list of file paths | Files the implementer reports as modified | orchestrator passes it / standalone user supplies it |
+| `change_set` | git diff or file contents | The actual code changes to review | orchestrator passes it / standalone user supplies it |
+
+### Outputs
+- **`compliance_verdict`** (structured text) — Binary verdict (PASS or FAIL) with issue list categorized as MISSING, EXTRA, or WRONG requirements; each issue includes file:line references.
+  Output convention: pipeline caller sets the path; standalone default `.arcus/outputs/spec-compliance-reviewer/<story-id-or-timestamp>.md`. The capability never asks the user where to write.
+
+### Clarification Policy
+1. **Output path** — never ask. Default to `.arcus/outputs/spec-compliance-reviewer/<story-id-or-timestamp>.md`; orchestrators override with an explicit path.
+2. **Optional inputs** — never ask. Proceed without them; note the omission in the output.
+3. **Required inputs with no sensible default** — ask once, clearly. Cannot proceed without these.

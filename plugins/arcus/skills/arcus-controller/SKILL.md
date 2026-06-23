@@ -254,6 +254,14 @@ When a checkpoint already exists:
 3. Read the relevant existing artifacts (`context-pack.md`, `plan.md`, `blueprint.md`,
    `test-plan.md`, `review.md`) to restore context before running the resumed stage.
 
+## Layer Rules
+
+> Layer: **orchestrator** — the **stateful** pipeline driver. Owns the checkpoint, the git branch, and the stage gates. It resolves all ARCUS paths and artifact filenames and passes capabilities/coordinators explicit, pre-resolved inputs — so the capabilities themselves stay path-free and reusable.
+
+- **Owned state**: Session checkpoint (`session-checkpoint.json`, via `checkpoint.sh`), stage gates (the canonical ordered stage list: `scaffold → context_pack → spec_finalizer → blueprint → test_plan → branch → task_1..N → code_review → context_sync → closure`), mode (`afk` only — this controller never runs gated), review_round (loopback counter).
+- **Calls**: `scaffold.sh` (workspace + checkpoint init), `context-pack-builder` (one-shot, explicit Story ID), `spec-finalizer` (one-shot non-interview, auto-resolve ambiguities), `implementation-planner` (one-shot non-interview, auto-select highest-scoring approach), `test-spec-compiler` (one-shot), **delegated implementation** (branches to `implementation-runner` with mode=afk — runner owns branch realization via `branch.sh` + per-task loop), `code-reviewer` (one-shot, verdict), `context-drift-sync` (one-shot, facts-only sync), `pull-request-builder` + `pr.sh` (closure). Each coordinator/capability receives explicit Story ID + pre-resolved artifact paths.
+- **Framework-conventions boundary**: All ARCUS artifact paths (`.arcus/specs/<STORY_ID>/*.md`, checkpoint JSON, stage keys, helper scripts resolution `.arcus/bin/` → `$ARCUS_HOME/scripts/`) live HERE. Stage skills and capabilities receive only domain inputs (Story ID, diff, spec sections) — no raw artifact filenames.
+
 ## Error Handling
 
 - If a helper script fails (non-zero exit): retry once. If it still fails, output

@@ -27,6 +27,26 @@ for materiality — this skill **references** it and does not restate its trigge
 changed, files moved without altering entry points, steps, integrations, structure, scope, or tests)
 crosses no trigger and is a NO-OP. When in doubt, do not flag.
 
+## Contract
+
+> Layer: **capability** — atomic, stateless, given declared inputs → produce one output. No checkpoint reads/writes, no branch ops, no ARCUS path construction.
+
+### Inputs
+| Input | Type | Description | Typical source |
+|-------|------|-------------|----------------|
+| `approved_change_set` | git diff | Code-review-approved branch diff (committed + working tree) | orchestrator passes it / standalone computes from branch |
+| `repo_context` | markdown artifacts | Existing shared repository context (repo_map, repo_scope, flows, testing conventions, design conventions) | orchestrator passes paths / standalone reads from `.context/` |
+| `drift_baseline` | git ref | Baseline commit to diff against (merge-base for story scope, per-artifact hash for standalone) | orchestrator passes it / standalone computes per mode |
+
+### Outputs
+- **`context_drift_assessment`** (structured report) — Per-artifact assessment: which triggers crossed, which artifacts flagged, which skipped, and the surgical edits applied.
+  Output convention: pipeline caller sets the path; standalone default `.arcus/outputs/context-drift-sync/<story-id-or-timestamp>.md`. The capability never asks the user where to write.
+
+### Clarification Policy
+1. **Output path** — never ask. Default to `.arcus/outputs/context-drift-sync/<story-id-or-timestamp>.md`; orchestrators override with an explicit path (in-pipeline this is commit-body-only, no file).
+2. **Optional inputs** — never ask. Proceed without them; note the omission in the output.
+3. **Required inputs with no sensible default** — ask once, clearly. Cannot proceed without these.
+
 ## Inputs
 
 - `STORY_ID` (from the orchestrator / resume phrase). **Optional** in standalone "sync context" mode.

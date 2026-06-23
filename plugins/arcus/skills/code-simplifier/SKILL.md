@@ -107,6 +107,14 @@ dispatcher.
 
 ---
 
+## Layer Rules
+
+> Layer: **coordinator** — a thin, **stateless** sequencer of capabilities. Owns **no** pipeline state: no checkpoint reads/writes, no branch ops, no stage gates. Its only job is to call capabilities in a fan-out/consolidate or chained pattern and pass each one explicit inputs.
+
+- **Owned state**: none.
+- **Sequences**: Read repository conventions (from `AGENTS.md`, `CLAUDE.md`, `context-pack.md`, `.context/testing-patterns.md`, `.context/design-and-coding-patterns.md`) + task DoD (from `blueprint.md`) + changed files → identify simplification candidates → apply mutations in place → re-run test suite → on GREEN return SIMPLIFIED, on RED revert mutations and return REVERTED.
+- **Delegation**: Linear chain — this is a DoD-guarded refactor mutator, not a fan-out coordinator. No subagents dispatched; runs inline as a self-contained simplification pass.
+
 ## Constraints
 
 - **Model tier:** `medium` (dispatched by coordinator via `arcus:model-strategy`; resolves to `sonnet`).

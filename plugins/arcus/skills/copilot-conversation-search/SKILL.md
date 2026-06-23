@@ -141,3 +141,23 @@ For **keyword searches**:
 - `checkpoints.work_done` and `checkpoints.technical_details` often have the best summaries of what was accomplished.
 - Sessions without checkpoints may only have raw `turns` data.
 - Use `substr(text, 1, 200)` to keep query output readable.
+
+## Contract
+
+> Layer: **capability** — atomic, stateless, given declared inputs → produce one output. No checkpoint reads/writes, no branch ops, no ARCUS path construction.
+
+### Inputs
+| Input | Type | Description | Typical source |
+|-------|------|-------------|----------------|
+| `query` | text or keywords | Search query describing what to find in conversation history | orchestrator passes it / standalone user supplies it |
+| `time_filter` | string | Optional time range filter (e.g., "today", "yesterday", "last 7 days") | orchestrator passes it / standalone user supplies it |
+| `repository_filter` | string | Optional repository filter to narrow search scope | orchestrator passes it / standalone user supplies it |
+
+### Outputs
+- **`search_results`** (structured text) — Matching conversation sessions with excerpts, including session ID, date, repository, branch, problem/solution summaries, and relevant file paths.
+  Output convention: pipeline caller sets the path; standalone default `.arcus/outputs/copilot-conversation-search/<story-id-or-timestamp>.md`. The capability never asks the user where to write.
+
+### Clarification Policy
+1. **Output path** — never ask. Default to `.arcus/outputs/copilot-conversation-search/<story-id-or-timestamp>.md`; orchestrators override with an explicit path.
+2. **Optional inputs** — never ask. Proceed without them; note the omission in the output.
+3. **Required inputs with no sensible default** — ask once, clearly. Cannot proceed without these.

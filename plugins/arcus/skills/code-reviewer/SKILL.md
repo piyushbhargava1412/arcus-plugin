@@ -229,6 +229,14 @@ VERDICT: changes_requested
 - **Loopback awareness**: On a re-review (round > 1), confirm previously-reported critical/warning
   items and gate failures are resolved; only re-emit ones that still apply, plus any new ones.
 
+## Layer Rules
+
+> Layer: **coordinator** — a thin, **stateless** sequencer of capabilities. Owns **no** pipeline state: no checkpoint reads/writes, no branch ops, no stage gates. Its only job is to call capabilities in a fan-out/consolidate or chained pattern and pass each one explicit inputs.
+
+- **Owned state**: none.
+- **Sequences**: Deterministic gate (typecheck, full test suite, build/startup smoke, secret scan, lint/format, static analysis — via shell commands resolved from CI workflows and `.context/` tables) → fan-out to 5 specialist reviewers (security, performance, code-quality, spec-compliance, history-context), passing each the branch diff, relevant spec sections, and repo conventions → consolidate findings into one severity-tagged report with verdict.
+- **Delegation**: Deterministic gate runs first (fail-fast on critical failures); on pass, fan out semantic reviewers in parallel → deduplicate, re-categorize, filter noise, and judge severity → produce single `review.md` + verdict.
+
 ## Handoff Protocol
 
 On finish, this skill marks its own checkpoint key complete:

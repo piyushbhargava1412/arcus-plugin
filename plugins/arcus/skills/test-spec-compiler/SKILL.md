@@ -70,3 +70,23 @@ Artifacts: .arcus/specs/<STORY_ID>/test-plan.md
 Proceed? Reply "yes" to run Implementation, or "no" to pause.
 Resume later with: "implement <STORY_ID>"
 ```
+
+## Contract
+
+> Layer: **capability** — atomic, stateless, given declared inputs → produce one output. No checkpoint reads/writes, no branch ops, no ARCUS path construction.
+
+### Inputs
+| Input | Type | Description | Typical source |
+|-------|------|-------------|----------------|
+| `implementation_plan` | markdown | Task breakdown with Definition of Done per task | orchestrator passes it / standalone user supplies it |
+| `spec_grounding` | markdown | Technical decisions including error-handling choices (optional) | orchestrator passes it / standalone user supplies it |
+| `context_pack` | markdown | Testing patterns and relevant flows (optional) | orchestrator passes it / standalone user supplies it |
+
+### Outputs
+- **`test_matrix`** (markdown) — Multi-layered test plan categorized by functional, edge case, and error handling; each test case mapped to a specific task ID with complexity classification and pattern alignment.
+  Output convention: pipeline caller sets the path; standalone default `.arcus/outputs/test-spec-compiler/<story-id-or-timestamp>.md`. The capability never asks the user where to write.
+
+### Clarification Policy
+1. **Output path** — never ask. Default to `.arcus/outputs/test-spec-compiler/<story-id-or-timestamp>.md`; orchestrators override with an explicit path.
+2. **Optional inputs** — never ask. Proceed without them; note the omission in the output.
+3. **Required inputs with no sensible default** — ask once, clearly. Cannot proceed without these.
