@@ -7,6 +7,68 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-06-23
+
+### Added
+
+- **Three-tier capability library (ARC-0006).** Every `SKILL.md` now declares a `layer:`
+  (`capability | coordinator | orchestrator | substrate | utility`) and `standalone:` flag, making the
+  taxonomy machine-readable. **Capabilities** are atomic, stateless, plug-n-play building blocks (given
+  declared inputs → one output; no checkpoint/branch ops); **Coordinators** are thin stateless
+  sequencers of capabilities; **Orchestrators** own the checkpoint, branch, and stage gates.
+- **Explicit `## Contract` sections on all 16 existing capabilities** (Inputs / Outputs / Mode /
+  Clarification Policy) and **`## Layer Rules`** on every coordinator and orchestrator. Contracts use
+  **domain concept names** (`implementation_plan`, `spec_grounding`, `context_pack`,
+  `acceptance_criteria`, `change_set`) instead of ARCUS artifact filenames, so each capability is
+  reusable **standalone** by a developer who has never used ARCUS.
+- **`kick-off` coordinator (new).** A brainstorm-only coordinator (context-pack-builder →
+  spec-finalizer); inherits the `"brainstorm / kick off / architect <STORY>"` triggers. It does **not**
+  scaffold, touch the checkpoint, create a branch, or run implementation-planner — those belong to the
+  orchestrator and to the separate planning stage.
+- **`review-consolidator` capability (new).** Extracted from `code-reviewer`: given structured
+  specialist findings, produces a calibrated, deduplicated verdict and the review artifact.
+- **`simplify-and-verify` capability (new).** Extracted from `code-simplifier`: given a file set and a
+  test command, mutates toward simplicity, re-runs the tests, and returns `SIMPLIFIED` or `REVERTED`.
+- **Substrate schemas under `plugins/arcus/schemas/`.** `plan.md.schema.yaml` (section-ownership
+  manifest for the shared `plan.md`, split between spec-finalizer and implementation-planner) and
+  `output-convention.md` (the hybrid output rule). Shipped inside the plugin (not the git-ignored
+  `.arcus/`) so they are version-controlled and distributed with every install.
+- **`## Standalone Invocation` sections + standalone triggers** on the specialist reviewers
+  (security / performance / code-quality / history-context — `disable-model-invocation: true`
+  preserved, so organic firing stays blocked), plus `code-reviewer`, `pull-request-builder`, and
+  `simplify-and-verify`.
+- **`site/concepts/capability-library.md` (new docs page).** Explains the three tiers, the plug-n-play
+  idea, and a concrete standalone-usage example; wired into the VitePress sidebar and cross-linked from
+  the pipeline and modes pages. A matching three-tier section was added to the `arcus:arcus-guide`.
+
+### Changed
+
+- **Unified `arcus-controller` orchestrator (ARC-0006).** A single orchestrator now drives **both**
+  experiences over the identical canonical stage sequence: **interactive** mode (default; triggers
+  `"implement <STORY>"` / `"plan <STORY>"`; dialogue stages run in the main thread with a handoff gate
+  after each phase group) and **autonomous** mode (triggers `"forge <STORY>"` / `"afk <STORY>"`;
+  one-shot subagents, no gates, milestone-only output). The brainstorm phase delegates to the new
+  `kick-off` coordinator.
+- **`spec-finalizer` and `implementation-planner` decoupled.** Their bodies no longer read hard-coded
+  `.arcus/specs/…` paths; they receive named inputs (`story`, `context_pack`, `spec_grounding`) and an
+  explicit `mode: dialogue | autonomous` parameter that the body branches on (no more caller-inferred
+  behavior). Each gained a `## Caller Guidance` section for pipeline-vs-standalone sourcing.
+- **Medium capabilities parameterized + terminology-decoupled.** `context-pack-builder`,
+  `test-spec-compiler` (`blueprint` → `implementation_plan`), `spec-compliance-reviewer` (`DoD` →
+  `acceptance_criteria`, plus `claimed_files`), and `pull-request-builder` (`change_set` + `story`) now
+  take named inputs and no longer read ARCUS paths from their bodies.
+- **`code-reviewer` and `code-simplifier` thinned into coordinators** that delegate to the new
+  `review-consolidator` and `simplify-and-verify` capabilities, respectively.
+- **`AGENTS.md` navigation index** updated with the three-tier taxonomy table, the new skill entries,
+  and the unified `arcus-controller` triggers; the documentation site and `arcus:arcus-guide` reframe
+  the old "Gated vs AFK" language as "Interactive vs Autonomous" (two modes of one orchestrator).
+
+### Removed
+
+- **`solution-architect` skill.** Superseded by the `kick-off` coordinator (which inherits its
+  brainstorm triggers) and the unified `arcus-controller` interactive mode (which now owns the gated,
+  full-pipeline driving). All references across skills, docs, and the navigation index were updated.
+
 ## [1.3.0] - 2026-06-21
 
 ### Added
