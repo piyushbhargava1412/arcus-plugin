@@ -4,7 +4,8 @@ description: >
   Performance specialist for the ARCUS Code Review stage. Reviews a branch diff for
   concrete performance and resource regressions in the changed code only. Returns
   severity-tagged findings for the code-reviewer coordinator to consolidate. Dispatched
-  by the code-reviewer skill — not invoked directly by users.
+  by the code-reviewer skill — not invoked directly by users. Standalone: trigger on
+  "performance review this diff" / "review this diff for performance" / "performance review <branch> vs <base>".
 layer: capability
 standalone: true
 user-invocable: false
@@ -86,3 +87,9 @@ Only report findings with confidence ≥ 80; drop anything below that threshold 
 - **Changed code only**: Review what the diff introduces or modifies, not the whole repo.
 - **Verify before flagging**: Confirm the path is actually hot or the data set realistically large.
 - **Measurable over speculative**: If the impact is negligible at expected scale, don't flag it.
+
+## Standalone Invocation
+
+A developer can invoke this reviewer directly by supplying the `change_set` (a diff, or "the changes on my branch vs <base>") and optionally the `repo_conventions` / `repo_context`. The reviewer returns its severity-tagged findings as described in the Output Format section above.
+
+Note that organic/automatic invocation remains disabled — this reviewer only runs when explicitly asked or dispatched by the code-reviewer coordinator.

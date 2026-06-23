@@ -100,3 +100,7 @@ This capability receives **named inputs**, not file paths. How they arrive depen
 The skill body below is written in terms of the named inputs; it never reads a hard-coded ARCUS
 workspace path.
 
+## Standalone Invocation
+
+A developer can invoke this capability standalone by supplying the `change_set` (the full branch diff showing all changes) and the `story` (the original user story requirement). Optionally, they can provide `spec_grounding`, `implementation_plan`, and `test_matrix` for richer PR context. The capability generates a professional PR description/summary with a high-level overview, categorized changes (features/fixes/tests), context updates (if any), and verification evidence, and writes it to the output path (default `.arcus/outputs/pull-request-builder/<story-id-or-timestamp>.md`).
+

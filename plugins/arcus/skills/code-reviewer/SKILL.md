@@ -219,6 +219,10 @@ that lives only in the afk `arcus:arcus-controller`.
   (`"sync context for <STORY_ID>"` or `"fix <STORY_ID>"`), which re-activates the successor by
   description-matching + the checkpoint.
 
+## Standalone Invocation
+
+A developer can run the whole review standalone by supplying the `change_set` (the changes on their branch vs <base>) and optionally the story artifacts (blueprint, plan, test-plan, context-pack). The reviewer runs the full gate (deterministic tooling checks) followed by the specialist fan-out (security, performance, code-quality, spec-compliance, history-context) and consolidates the findings into a single severity-tagged report with a verdict (approved or changes_requested).
+
 Emit the block matching the verdict.
 
 On `approved`:

@@ -5,6 +5,7 @@ description: >
   against git blame/log to detect load-bearing complexity removals: silently-reverted
   prior fixes, removed deliberate workarounds, and re-added previously-reverted code.
   Dispatched by arcus:code-reviewer in the Step 3 fan-out — not invoked directly by users.
+  Standalone: trigger on "history review this diff" / "check git history for this change" / "history review <branch> vs <base>".
 layer: capability
 standalone: true
 user-invocable: false
@@ -139,6 +140,12 @@ FINDINGS:
 - **Changed code only** — never flag pre-existing issues in untouched files.
 - **No binary verdict** — let the `code-reviewer` coordinator judge.
 - **Model tier**: `medium`
+
+## Standalone Invocation
+
+A developer can invoke this reviewer directly by supplying the `change_set` (a diff, or "the changes on my branch vs <base>"), the `base_ref` (the base branch or commit to compare against), and optionally the `context_pack` (story-to-code correlations including architecture context). The reviewer returns its severity-tagged findings as described in the Output Format section above.
+
+Note that organic/automatic invocation remains disabled — this reviewer only runs when explicitly asked or dispatched by the code-reviewer coordinator.
 
 ## Contract
 

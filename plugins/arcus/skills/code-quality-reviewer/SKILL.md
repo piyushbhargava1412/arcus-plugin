@@ -3,7 +3,8 @@ name: code-quality-reviewer
 description: >
   Review implementation code for quality: pattern fidelity, clean structure, test coverage,
   and maintainability. Returns severity-tagged findings. Dispatched holistically by the
-  code-reviewer coordinator over the whole branch diff — not invoked per task.
+  code-reviewer coordinator over the whole branch diff — not invoked per task. Standalone:
+  trigger on "code quality review this diff" / "quality review this diff" / "code quality review <branch> vs <base>".
 layer: capability
 standalone: true
 user-invocable: false
@@ -126,3 +127,9 @@ A test that meaningfully guards behaviour is never "excessive" — only redundan
 - **Signal over noise**: Style preferences are `suggestion` at most, and usually dropped. Only surface things that would cause real problems as `critical`/`warning`.
 - **Be specific**: Every finding must include a file:line reference.
 - **No manufactured findings**: If the code is clean, return an empty FINDINGS list. Don't invent issues.
+
+## Standalone Invocation
+
+A developer can invoke this reviewer directly by supplying the `change_set` (a diff, or "the changes on my branch vs <base>"), optionally the `repo_conventions` / `repo_context`, and optionally the `acceptance_criteria`. The reviewer returns its severity-tagged findings as described in the Output section above.
+
+Note that organic/automatic invocation remains disabled — this reviewer only runs when explicitly asked or dispatched by the code-reviewer coordinator.

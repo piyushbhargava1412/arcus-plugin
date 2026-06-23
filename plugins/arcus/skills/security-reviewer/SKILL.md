@@ -4,7 +4,8 @@ description: >
   Security specialist for the ARCUS Code Review stage. Reviews a branch diff for
   exploitable or concretely dangerous vulnerabilities in the changed code only. Returns
   severity-tagged findings for the code-reviewer coordinator to consolidate. Dispatched
-  by the code-reviewer skill — not invoked directly by users.
+  by the code-reviewer skill — not invoked directly by users. Standalone: trigger on
+  "security review this diff" / "review this diff for vulnerabilities" / "security review <branch> vs <base>".
 layer: capability
 standalone: true
 user-invocable: false
@@ -86,3 +87,9 @@ Only report findings with confidence ≥ 80; drop anything below that threshold 
 - **Changed code only**: Don't audit the whole repo; review what the diff introduces or modifies.
 - **Verify before flagging**: Read the surrounding source to confirm the issue is real and reachable.
 - **Concrete over speculative**: If you can't describe how it's exploited, don't flag it.
+
+## Standalone Invocation
+
+A developer can invoke this reviewer directly by supplying the `change_set` (a diff, or "the changes on my branch vs <base>") and optionally the `repo_conventions` / `repo_context`. The reviewer returns its severity-tagged findings as described in the Output Format section above.
+
+Note that organic/automatic invocation remains disabled — this reviewer only runs when explicitly asked or dispatched by the code-reviewer coordinator.
