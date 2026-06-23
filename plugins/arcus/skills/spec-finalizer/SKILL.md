@@ -16,12 +16,12 @@ Acts as a Senior Tech Lead performing a completeness audit on a user story. Iden
 
 ## Execution Modes
 
-This skill runs in one of two modes. The caller (the `arcus:arcus-controller`) decides which:
+This skill receives `mode` as an explicit input parameter. It branches on the `mode` value:
 
-| Mode | Context | Behaviour |
-|------|---------|-----------|
-| **dialogue** (gated) | Runs in the **main thread** | Auto-resolve what you confidently can, then **ask the user** the highest-impact open questions **one at a time**, folding each answer in before asking the next. Record answers in the `## Dialogue Answers` section of the `spec_grounding` output. |
-| **one-shot** (afk / subagent) | Runs as an isolated subagent | Never block for input. Auto-resolve every ambiguity (safest option, flagged `⚠️ LOW CONFIDENCE` where weak), and surface unresolved items via the Step 7 `NEEDS_INPUT` block. Skip / leave empty the `## Dialogue Answers` section. |
+| Mode | Behaviour |
+|------|-----------|
+| **dialogue** | Auto-resolve what you confidently can, then **ask the user** the highest-impact open questions **one at a time**, folding each answer in before asking the next. Each question presents **exactly one Recommended option** with a **one-line rationale** plus an explicit custom-answer option. Record answers in the `## Dialogue Answers` section of the `spec_grounding` output. |
+| **autonomous** (afk) | Never block for input. Auto-resolve every ambiguity with the safest option, flagging weak picks `⚠️ LOW CONFIDENCE`. Surface unresolved items via the Step 7 `NEEDS_INPUT` escalation block. Skip / leave empty the `## Dialogue Answers` section. |
 
 In **both** modes you must still produce a complete `spec_grounding` output (spec-finalizer's owned
 sections — see Output). In dialogue mode, the user's answers are authoritative and override your
@@ -61,6 +61,8 @@ To avoid clobbering:
 - spec-finalizer must only ever write or replace its OWN sections.
 
 ## Workflow
+
+**Read the `mode` input.** If `mode == dialogue`, follow the dialogue branch (interview the user on low-confidence items). If `mode == autonomous`, follow the autonomous branch (never block for input; auto-resolve everything).
 
 ### Step 1: Completeness Analysis
 
@@ -150,7 +152,7 @@ template at `./assets/plan-template.md`. Respect the **section ownership contrac
 create the record if it does not exist; if it already exists, replace only spec-finalizer's owned
 sections in place and leave any `implementation-planner` design sections intact — never overwrite the
 whole record. In dialogue mode, fill the `## Dialogue Answers` section from the recorded Q&A; in
-one-shot mode, leave it empty or omit it.
+autonomous mode, leave it empty or omit it.
 
 ### Step 7: Emit Escalation Signal (return message)
 
@@ -180,10 +182,10 @@ orchestrator — not this skill — decides whether to pause and ask the user.
 
 ## Constraints
 
-- **User interaction is mode-dependent**: In **one-shot** mode you cannot talk to the user — never
+- **User interaction is mode-dependent**: In **autonomous** mode you cannot talk to the user — never
   block for input; resolve every ambiguity autonomously and surface weak items via the Step 7
   `NEEDS_INPUT` block. In **dialogue** mode you may ask the user directly (one question at a time)
-  about `zero-option` / `⚠️ LOW CONFIDENCE` items only. Either way, `plan.md` must end up fully
+  about `zero-option` / `⚠️ LOW CONFIDENCE` items only. Either way, the `spec_grounding` output must end up fully
   resolved: where no answer is available, select the safest option and flag it `⚠️ LOW CONFIDENCE`,
   or mark it `zero-option` if no option can be formed.
 - **Maximum 15 ambiguities**: If more than 15 gaps are found, the story is likely too large. Note this in the output and proceed with the top 15 by severity.

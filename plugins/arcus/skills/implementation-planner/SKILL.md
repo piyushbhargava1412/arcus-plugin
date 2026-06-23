@@ -12,12 +12,12 @@ Acts as the **Tech Lead** to bridge the gap between requirements and execution. 
 
 ## Execution Modes
 
-This skill runs in one of two modes. The caller (the `arcus:arcus-controller`) decides which:
+This skill receives `mode` as an explicit input parameter. It branches on the `mode` value:
 
-| Mode | Context | Behaviour |
-|------|---------|-----------|
-| **dialogue** (gated) | Runs in the **main thread** | Generate and score the candidate approaches, then **ask the user** to choose the design approach as an interview question (one option marked **Recommended**), folding their answer in before designing. Record the Q&A in the `## Design Dialogue Answers` section of the `implementation_plan` output. |
-| **one-shot** (afk / subagent) | Runs as an isolated subagent | Never block for input. Auto-select the **highest-scoring** candidate approach and record it. Skip the interview and leave the `## Design Dialogue Answers` section empty or omit it. |
+| Mode | Behaviour |
+|------|-----------|
+| **dialogue** | Generate and score the candidate approaches, then **ask the user** to choose the design approach as an interview question (one option marked **Recommended** with a one-line rationale, plus an explicit custom-answer option), folding their answer in before designing. Record the Q&A in the `## Design Dialogue Answers` section of the `implementation_plan` output. |
+| **autonomous** (afk) | Never block for input. Auto-select the **highest-scoring** candidate approach and record it. Skip the interview and leave the `## Design Dialogue Answers` section empty or omit it. |
 
 In **both** modes you must still produce the design sections **and** the atomic task list — together the `implementation_plan` output (see Output). In dialogue mode the user's choice is authoritative and overrides the highest-scoring pick. If the `implementation_plan` output already has a populated `## Design Dialogue Answers` section, reuse it and do NOT re-ask the design question.
 
@@ -46,6 +46,8 @@ The shared deliberation record is co-owned with `spec_grounding` from `spec-fina
 
 ## Workflow
 
+**Read the `mode` input.** If `mode == dialogue`, follow the dialogue branch (interview the user on the design approach). If `mode == autonomous`, follow the autonomous branch (never block for input; auto-select the highest-scoring approach).
+
 ### Step 1: Input Analysis
 Use the `story`, `context_pack`, and `spec_grounding` inputs (see Inputs). Treat the `spec_grounding` input's `## Resolved Ambiguities`, `## Dialogue Answers`, and `## Implementation Boundary` as authoritative grounded constraints — the design must honor them, not relitigate them.
 
@@ -63,7 +65,7 @@ Record the scored comparison into the `## Approach Evaluation` section of the sh
 
 ### Step 3: Select the Chosen Approach
 
-**Dialogue (gated) mode — design interview — HARD REQUIREMENT:** After scoring, present the approach choice to the user as an INTERVIEW QUESTION. The question MUST list the candidate approaches, mark **EXACTLY ONE** option **Recommended** with a **one-line rationale** for why it is recommended, AND offer an explicit custom-answer option ("or propose your own approach"). This is mandatory in dialogue mode — no exceptions. Example shape:
+**Dialogue mode — design interview — HARD REQUIREMENT:** After scoring, present the approach choice to the user as an INTERVIEW QUESTION. The question MUST list the candidate approaches, mark **EXACTLY ONE** option **Recommended** with a **one-line rationale** for why it is recommended, AND offer an explicit custom-answer option ("or propose your own approach"). This is mandatory in dialogue mode — no exceptions. Example shape:
 
 ```
 Q: Which approach should we take for <the design decision>?
@@ -75,7 +77,7 @@ Q: Which approach should we take for <the design decision>?
 
 The user's answer is authoritative and overrides the highest-scoring pick. Record the chosen approach + reasoning into the `## Chosen Approach & Reasoning` section of the shared deliberation record, and record the question, the options presented (including which was marked Recommended), and the user's answer into its `## Design Dialogue Answers` section.
 
-**One-shot (afk / subagent) mode:** NO interview — never block for input. Auto-select the **highest-scoring** candidate from Step 2 (break ties by lowest blast radius, then simplest). Record it into `## Chosen Approach & Reasoning` with the score-based rationale. Leave `## Design Dialogue Answers` empty or omit it.
+**Autonomous mode:** NO interview — never block for input. Auto-select the **highest-scoring** candidate from Step 2 (break ties by lowest blast radius, then simplest). Record it into `## Chosen Approach & Reasoning` with the score-based rationale. Leave `## Design Dialogue Answers` empty or omit it.
 
 ### Step 4: Design the Approach
 For the chosen approach:
