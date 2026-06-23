@@ -1,8 +1,8 @@
 # Repository Scope: arcus-plugin
 
 <!-- context-meta
-verification-commit: 9107e6a1b19abee4250ef8d3df6e47ac13fa5ddf
-generated-at: 2026-06-18T03:01:42Z
+verification-commit: 5e94b2daba4bc8ee312c55334bfca39f18194fec
+generated-at: 2026-06-23T16:43:54Z
 confidence: high
 -->
 
@@ -12,16 +12,16 @@ It provides orchestrator skills, supporting skills, and deterministic helper scr
 
 ## Core Responsibilities
 - Package the `arcus-plugin` marketplace artifact and plugin manifest.
-- Define orchestration behavior in skill specifications (`SKILL.md`) for the SDLC pipeline and repository agentification. The pipeline runs as two experiences over one ordered set of stage keys: a **gated** self-handoff chain (entry `solution-architect`; no router, no shared pipeline file) and an **AFK-only** `arcus-controller`; the `implementation-runner` skill is the shared Implementation loop.
+- Define orchestration behavior in skill specifications (`SKILL.md`), organized as a three-tier capability library (Capabilities / Coordinators / Orchestrators via `layer:` frontmatter). The **single** `arcus-controller` orchestrator drives both experiences over one identical ordered set of stage keys: **interactive** (gated, user-driven) and **autonomous** (AFK); the `kick-off` coordinator runs the brainstorm phase and the `implementation-runner` skill is the shared Implementation loop.
 - Provide deterministic shell helpers for workspace scaffolding (`scaffold.sh`, **deferred branch** — no git branch at scaffold), branch realization (`branch.sh` + shared `lib/branch_name.sh`), checkpoint state (`checkpoint.sh`, incl. `set-branch`), commits, PR creation, and story ID extraction.
-- Consolidate planning deliberation into a single `plan.md` artifact (replacing the former separate assumptions and clarifications files); keep the machine-parsed task list in `blueprint.md`.
+- Split planning artifacts by owner: `spec-finalizer` writes a self-contained `grounded-spec.md` (grounded story decisions); `implementation-planner` writes a self-contained `plan.md` (design deliberation plus the atomic task list, folding in the former `blueprint.md`).
 - Publish and maintain end-user documentation through a VitePress site under `site/`.
 
 ## Major Implementation Areas
 | Area | Scope | Evidence |
 |---|---|---|
 | Marketplace + plugin metadata | Marketplace catalog and plugin manifest metadata/versioning | `.claude-plugin/marketplace.json`, `plugins/arcus/.claude-plugin/plugin.json` |
-| Skill catalog | Orchestrators (gated `solution-architect` entry + self-handoff chain, AFK-only `arcus-controller`, shared `implementation-runner` loop) and specialist skills in markdown specs | `plugins/arcus/skills/*/SKILL.md` |
+| Skill catalog | Three-tier library: Orchestrators (unified `arcus-controller`, shared `implementation-runner` loop, `subagent-task-dispatcher`), Coordinators (`kick-off`, `code-reviewer`, `code-simplifier`, `repo-agentifier`), and Capabilities in markdown specs | `plugins/arcus/skills/*/SKILL.md` |
 | Hook + script runtime | Session bootstrap hook and deterministic bash utilities (incl. `scaffold.sh`, `branch.sh`, and the shared `lib/branch_name.sh`) | `plugins/arcus/hooks/hooks.json`, `plugins/arcus/scripts/*.sh`, `plugins/arcus/scripts/lib/branch_name.sh` |
 | Script test coverage | Shell-based checkpoint test harness | `plugins/arcus/scripts/tests/checkpoint.test.sh` |
 | Documentation site | VitePress docs content and config | `site/.vitepress/config.ts`, `site/guide/*.md`, `site/concepts/*.md` |
@@ -29,10 +29,10 @@ It provides orchestrator skills, supporting skills, and deterministic helper scr
 ## Key Entry Surfaces
 | Surface | Type | Path |
 |---|---|---|
-| `solution-architect` | Orchestrator skill entry (gated pipeline entry; drives Scaffold + Brainstorm) | `plugins/arcus/skills/solution-architect/SKILL.md` |
-| `arcus-controller` | Orchestrator skill entry (AFK-only autonomous pipeline driver) | `plugins/arcus/skills/arcus-controller/SKILL.md` |
+| `arcus-controller` | Orchestrator skill entry (unified pipeline driver — interactive `implement`/`plan <STORY>`, autonomous `forge`/`afk <STORY>`) | `plugins/arcus/skills/arcus-controller/SKILL.md` |
+| `kick-off` | Coordinator skill entry (brainstorm only — context-pack → spec-finalizer; `brainstorm`/`kick off`/`architect <STORY>`) | `plugins/arcus/skills/kick-off/SKILL.md` |
 | `implementation-runner` | Orchestrator skill entry (shared Implementation loop: deferred branch + task loop) | `plugins/arcus/skills/implementation-runner/SKILL.md` |
-| `repo-agentifier` | Orchestrator skill entry (context + agentification) | `plugins/arcus/skills/repo-agentifier/SKILL.md` |
+| `repo-agentifier` | Coordinator skill entry (context + agentification) | `plugins/arcus/skills/repo-agentifier/SKILL.md` |
 | `SessionStart` hook | Plugin lifecycle entry | `plugins/arcus/hooks/hooks.json` -> `plugins/arcus/scripts/bootstrap.sh` |
 | Docs build/deploy workflow | CI entry for documentation artifact | `.github/workflows/docs.yml` |
 | Docs local dev/build commands | Developer execution entry | `site/package.json` |
