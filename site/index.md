@@ -27,8 +27,8 @@ features:
     details: Provides orchestration of Spec → Code → Pull Request flow through human-gated SDLC phases (Brainstorming, Test Planning, Implementation, Code Review, Closure).
   - title: "Context Engineering - the Edge !"
     details: Scans your repository to build the context snapshot (one-time) to make it "AI Ready" and also helps refresh and keep the context always in sync with the evolving code during each SDD cycle.
-  - title: "Human-gated + AFK (I am feeling lucky)"
-    details: A self-handing-off 5-phase chain of skills (entry `solution-architect`). AFK (Away From Keyboard) mode (the `arcus-controller`) runs the entire pipeline end-to-end unattended.
+  - title: "Interactive + Autonomous (I am feeling lucky)"
+    details: One `arcus-controller` orchestrator, two modes. Interactive (default) runs the pipeline gated, pausing at each phase to talk to you (`implement <STORY>` / `plan <STORY>`). Autonomous AFK (Away From Keyboard) mode runs the entire pipeline end-to-end unattended.
   - title: "Multi-tool (Copilot CLI / Claude Code / VS Code)"
     details: One plugin format serves GitHub Copilot CLI, Claude Code, and VS Code from the same marketplace. Install once, use everywhere.
 ---

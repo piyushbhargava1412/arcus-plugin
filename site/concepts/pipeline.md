@@ -12,8 +12,15 @@ Understanding ARCUS's full Spec → Code → Pull Request stage map
 ---
 
 ::: tip Where the canonical list lives
-This page is the **single human-readable enumeration** of the ARCUS pipeline. In the gated experience, the human is the orchestrator with session-checkpoint being the glue between the 6 phases: each phase skill knows only its own checkpoint key(s) and names only its immediate
-successor (see [Modes](/concepts/modes)).
+This page is the **single human-readable enumeration** of the ARCUS pipeline. The stateful
+`arcus-controller` orchestrator owns the session checkpoint and stage gates, driving the 6 phases by
+handing each capability its explicit inputs (see [Modes](/concepts/modes)).
+:::
+
+::: info Built from reusable capabilities
+Each stage below is built from the three-tier capability library — atomic capabilities, thin
+coordinators, and the stateful orchestrator. See [The Capability Library](/concepts/capability-library)
+for how the pipeline's stages are assembled from reusable, plug-n-play building blocks.
 :::
 
 ## The Pipeline at a Glance
@@ -47,11 +54,11 @@ flowchart LR
 ```
 
 Stages produce specific artifacts. In the **gated** experience the pipeline pauses at each handoff
-gate, where the just-finished stage skill names only its immediate successor; you reply "yes" (same
-session) or use the successor's explicit resume phrase (cold resume). Within Brainstorm the
-`scaffold`, `context_pack`, `spec_finalizer`, and `blueprint` stages run back-to-back under the
-`solution-architect` skill before the first gate (GATE A). The Code Review stage can loop back to
-Implementation up to 3 times if changes are requested.
+gate, where the orchestrator presents the just-finished stage's output; you reply "yes" (same
+session) or use the stage's explicit resume phrase (cold resume). Within Brainstorm the
+`scaffold`, `context_pack`, `spec_finalizer`, and `blueprint` stages run back-to-back — the
+`kick-off` coordinator runs context-pack-builder → spec-finalizer — before the first gate (GATE A).
+The Code Review stage can loop back to Implementation up to 3 times if changes are requested.
 
 ## What The Gates Mean
 
@@ -67,8 +74,9 @@ Gates are explicit pause points where you review outputs before the pipeline mov
 
 Context Sync → Closure is an **automatic continuation** (no user decision gate — like Test Plan auto-running): once the `.context/` reconciliation is decided, the pipeline proceeds straight to Closure.
 
-In the gated experience, ARCUS pauses at each gate and waits for your confirmation. In AFK, the
-`arcus-controller` auto-confirms every gate and runs end-to-end.
+In **interactive** mode (the gated default), ARCUS pauses at each gate and waits for your
+confirmation. In **autonomous** (AFK) mode, the `arcus-controller` auto-confirms every gate and runs
+end-to-end.
 
 ---
 
@@ -99,7 +107,7 @@ In the gated experience, ARCUS pauses at each gate and waits for your confirmati
       <ul>
         <li><code>scaffold.sh</code> (deterministic script)</li>
         <li>Branch naming via <code>scripts/lib/branch_name.sh</code></li>
-        <li>Driven by <code>solution-architect</code> (gated) or <code>arcus-controller</code> (afk)</li>
+        <li>Driven by <code>arcus-controller</code> (orchestrator; interactive or autonomous)</li>
       </ul>
     </td>
     <td>
@@ -145,10 +153,11 @@ In the gated experience, ARCUS pauses at each gate and waits for your confirmati
     </td>
     <td>
       <ul>
+        <li><code>kick-off</code> coordinator (sequences context-pack-builder → spec-finalizer)</li>
         <li><code>context-pack-builder</code></li>
-        <li><code>spec-finalizer</code> (dialogue in gated, one-shot in afk)</li>
-        <li><code>implementation-planner</code> (dialogue in gated, one-shot in afk)</li>
-        <li>Driven by <code>solution-architect</code> (gated) or <code>arcus-controller</code> (afk)</li>
+        <li><code>spec-finalizer</code> (dialogue in interactive, one-shot in autonomous)</li>
+        <li><code>implementation-planner</code> (dialogue in interactive, one-shot in autonomous)</li>
+        <li>Driven by <code>arcus-controller</code> (orchestrator; interactive or autonomous)</li>
       </ul>
     </td>
     <td>
@@ -507,7 +516,7 @@ If Code Review returns `changes_requested`:
 
 | Phase | Stage key(s) | Gated entry / resume phrase | Exit condition |
 |-------|--------------|-----------------------------|----------------|
-| Brainstorm | `scaffold`, `context_pack`, `spec_finalizer`, `blueprint` | `architect <STORY>` / `plan <STORY>` / `brainstorm <STORY>`| Workspace + planned branch ready; `plan.md` and `blueprint.md` complete |
+| Brainstorm | `scaffold`, `context_pack`, `spec_finalizer`, `blueprint` | `plan <STORY>` / `implement <STORY>` (interactive); `kick-off <STORY>` / `brainstorm <STORY>` (brainstorm-only) | Workspace + planned branch ready; `plan.md` and `blueprint.md` complete |
 | Test Plan | `test_plan` | `generate test plan for <STORY>` | `test-plan.md` complete |
 | Implementation | `branch`, `task_1..N` | `implement <STORY>` / `code <STORY>` | Branch created, all tasks done, tests pass |
 | Code Review | `code_review` | `review <STORY>` | Verdict: approved / changes_requested |

@@ -1,34 +1,45 @@
-# Gated vs AFK Experiences
+# Interactive vs Autonomous Mode
 
-Choosing between the Gated and AFK experiences
+Choosing between the Interactive (gated) and Autonomous (AFK) modes
 
 ---
 
-## Two Experiences, One Pipeline
+::: info One orchestrator, two modes
+Both modes are run by the **same** `arcus:arcus-controller` orchestrator — they are two ways the one
+orchestrator drives the pipeline, **not** two separate skills. See
+[The Capability Library](/concepts/capability-library) for how the orchestrator wires reusable
+capabilities into the pipeline it runs in either mode.
+:::
 
-ARCUS runs the same [stage pipeline](/concepts/pipeline) two different ways:
+## Two Modes, One Pipeline
 
-- **Gated (default, user-driven)** is a **chain of self-handing-off skills**. There is **no router**
-  and **no shared pipeline file**. You enter at `arcus:solution-architect` (say
-  `solution-architect <STORY>` or `plan <STORY>`). Each stage skill embeds a small **Handoff
-  Protocol** that names **only its immediate successor**. In the same session a `"yes"` loads the
-  next stage directly; on a cold resume you type the next stage's explicit phrase and the checkpoint
-  picks up where you left off.
-- **AFK (autonomous)** is the `arcus:arcus-controller` meta-skill. It activates **only** on AFK
-  phrases (`afk`, `--afk`, `forge`, `run afk on <STORY>`), runs every stage back-to-back as one-shot
-  subagents with milestone-only output, and holds the **single canonical ordered stage list** in its
-  body. It never stops at a gate and never conducts an interview.
+ARCUS runs the same [stage pipeline](/concepts/pipeline) two different ways. Both are driven by the
+single stateful `arcus:arcus-controller` orchestrator, which owns the session checkpoint, branch, and
+stage gates:
 
-Both experiences share the same checkpoint stage keys, the same helper scripts, and the same
-`implementation-runner` loop driver — they differ only in who drives the chain and whether it pauses.
+- **Interactive (default, user-driven)** — the gated mode. Trigger it with `implement <STORY>` or
+  `plan <STORY>`. The orchestrator pauses at each handoff gate, running the dialogue stages
+  (spec-finalizer, implementation-planner) **in the main thread** so it can interview you. In the
+  same session a `"yes"` advances to the next stage; on a cold resume you type the next stage's
+  explicit phrase and the checkpoint picks up where you left off. (For brainstorming only — context
+  pack + finalized spec, no implementation — use the `kick-off` coordinator via
+  `brainstorm <STORY>` / `kick off <STORY>` / `architect <STORY>`.)
+- **Autonomous (AFK)** — the hands-off mode. Trigger it with the AFK phrases (`afk`, `--afk`,
+  `forge`, `run afk on <STORY>`). The same orchestrator runs every stage back-to-back as one-shot
+  subagents with milestone-only output, auto-confirming every gate. It never stops and never
+  conducts an interview.
+
+Both modes share the same checkpoint stage keys, the same helper scripts, and the same
+`implementation-runner` loop driver — they differ only in whether the orchestrator pauses at gates and
+interviews you.
 
 ---
 
 ## Side-by-Side Comparison
 
-| Aspect | Gated (Default) | AFK (Autonomous) |
+| Aspect | Interactive (Default) | Autonomous (AFK) |
 |--------|---------------------|----------------------|
-| **Driver** | Self-handoff chain of stage skills; entry `arcus:solution-architect` | `arcus:arcus-controller` meta-skill |
+| **Driver** | `arcus:arcus-controller` orchestrator, pausing at gates | `arcus:arcus-controller` orchestrator, running uninterrupted |
 | **Control** | Pauses at each handoff gate | Runs all stages back-to-back |
 | **User Role** | Review artifacts, say "yes" to proceed | Hands-off until PR ready |
 | **Best For** | Novel domains, high-risk changes, learning | Familiar codebases, simple features |
@@ -123,29 +134,31 @@ AFK mode is faster (no handoff pauses)
 
 ---
 
-## How to Trigger Each Experience
+## How to Trigger Each Mode
 
-### Gated (Default)
+### Interactive (Default)
 
-Start planning at the solution architect:
+Start the pipeline in interactive mode:
 
 ```
-solution-architect story.md
+implement story.md
 plan story.md
 ```
 
-No flags needed — gated is the default. (Note: `forge` and `run afk on …` are **AFK** triggers, not
-gated ones.)
+No flags needed — interactive is the default. (Note: `forge` and `run afk on …` are **autonomous**
+triggers, not interactive ones. To brainstorm only — context pack + finalized spec, no
+implementation — use `brainstorm story.md` / `kick off story.md` / `architect story.md`, which runs
+the `kick-off` coordinator.)
 
 **What happens:**
-- `arcus:solution-architect` runs Scaffold then Brainstorm in the main thread
+- `arcus:arcus-controller` runs Scaffold then Brainstorm in the main thread
 - Scaffold flows directly into Brainstorm (no scaffold handoff gate)
 - First explicit handoff is **GATE A** after Brainstorm
-- At each gate you say `yes` (same session → loads the next stage) or `no` (pause)
+- At each gate you say `yes` (same session → advances to the next stage) or `no` (pause)
 - On a cold resume, type the next stage's phrase — `generate test plan for <STORY>`,
   `implement <STORY>`, `review <STORY>`, `close <STORY>`
 
-### AFK (Opt-In)
+### Autonomous (Opt-In)
 
 Use an AFK-specific trigger or the `--afk` flag:
 
@@ -156,7 +169,7 @@ implement story.md --afk
 ```
 
 **What happens:**
-- `arcus:arcus-controller` runs every stage back-to-back
+- The same `arcus:arcus-controller` runs every stage back-to-back
 - No pauses (all gates auto-confirm)
 - Milestone output only (less verbose)
 - Returns when PR is ready

@@ -249,7 +249,7 @@ snapshot.
 
 ### `session-checkpoint.json`
 
-**Created by:** `scaffold.sh` (the `scaffold` stage)
+**Created by:** `scaffold.sh` (the `scaffold` stage, invoked by `arcus-controller`)
 
 **Purpose:** Track pipeline state for resumability across sessions. Also records the
 **planned** `branch_name` / `base_branch` (the git branch itself is created later, by the
@@ -262,7 +262,7 @@ snapshot.
 ```json
 {
   "story_id": "STORY-123",
-  "mode": "gated",
+  "mode": "interactive",
   "branch_name": "arcus/STORY-123",
   "base_branch": "main",
   "stages": {
@@ -333,7 +333,7 @@ skill reads them anymore.
 - Architecture decisions (layering, patterns to use)
 - Validation rules and error handling approach
 - Performance constraints, security considerations, integration decisions
-- **In gated mode:** the recorded Q&A from the recommendation-first interview (each
+- **In interactive mode:** the recorded Q&A from the recommendation-first interview (each
   question carried one **Recommended** option + rationale plus a custom-answer option)
 
 **Example excerpt:**
@@ -511,7 +511,7 @@ in a new file or a `plan.md` subsection.
 - **`test-plan.md`** — Add missing test cases before coding
 - **`context-pack.md`** — Add missing context before planning
 
-**Best practice:** In gated mode, edit at a handoff before saying "yes" to proceed
+**Best practice:** In interactive mode, edit at a handoff before saying "yes" to proceed
 
 ---
 
@@ -553,7 +553,7 @@ graph LR
 
 ```mermaid
 graph LR
-    A[Run: solution-architect story.md] --> B[scaffold: folder + checkpoint<br/>NO branch yet]
+    A[Run: implement story.md] --> B[scaffold: folder + checkpoint<br/>NO branch yet]
     B --> C[context_pack + spec_finalizer: plan.md]
     C --> D[blueprint: blueprint.md]
     D --> E[test_plan: test-plan.md]
@@ -595,5 +595,5 @@ A: `.context/` is reused automatically. `.arcus/specs/` is per-story.
 
 - **Understand the pipeline:** Ask "explain the pipeline"
 - **See all commands:** Ask "command reference"
-- **Choose a mode:** Ask "gated or afk?"
+- **Choose a mode:** Ask "interactive or autonomous?"
 - **Get help:** Ask "troubleshooting"

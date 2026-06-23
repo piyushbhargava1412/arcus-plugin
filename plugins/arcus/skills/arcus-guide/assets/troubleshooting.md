@@ -27,17 +27,17 @@ Self-service solutions for common ARCUS issues
 **If status is corrupted:**
 - Manually edit `.arcus/session-checkpoint.json`
 - Set stage status back to `pending` or `complete`
-- Resume with the stage's explicit phrase (e.g., `"solution-architect story.md"`)
+- Resume with the stage's explicit phrase (e.g., `"implement story.md"`)
 
-**Recovery commands (gated resume phrases):**
+**Recovery commands (interactive mode resume phrases):**
 ```
 # Check current status
 where am I?
 
 # Resume a specific stage if needed
-solution-architect story.md             # Planning (entry)
+implement story.md                      # Full pipeline (interactive)
+plan story.md                           # Alternative for full pipeline
 generate test plan for story.md         # Test plan
-implement story.md                      # Implementation
 review story.md                         # Code review
 create pull request for story.md        # Closure
 ```
@@ -66,7 +66,7 @@ create pull request for story.md        # Closure
 
 **2. Restart planning:**
 ```
-solution-architect story.md
+implement story.md
 ```
 
 **Story quality checklist:**
@@ -189,14 +189,14 @@ code .arcus/session-checkpoint.json
 rm -rf .arcus/specs/[STORY-ID]/
 
 # Restart from the scaffold stage
-solution-architect story.md
+implement story.md
 ```
 
 **3. Manual checkpoint repair:**
 ```json
 {
   "story_id": "STORY-123",
-  "mode": "gated",
+  "mode": "interactive",
   "branch_name": "arcus/STORY-123",
   "base_branch": "main",
   "stages": {
@@ -277,7 +277,7 @@ build shared repository context
 
 **1. Reinitialize workspace:**
 ```
-solution-architect story.md
+implement story.md
 ```
 This triggers the `scaffold` stage (`scaffold.sh`), which creates `.arcus/`.
 
@@ -381,16 +381,16 @@ yes
 
 ---
 
-## Issue: AFK mode started but I want to intervene
+## Issue: Autonomous mode started but I want to intervene
 
-**Symptoms:** AFK mode running, realized spec has issues, need to pause
+**Symptoms:** Autonomous mode running, realized spec has issues, need to pause
 
-**Root Cause:** AFK mode has no handoff gates (by design)
+**Root Cause:** Autonomous mode has no handoff gates (by design)
 
 **Solutions:**
 
 **Option 1: Let it complete**
-- AFK mode will run to completion
+- Autonomous mode will run to completion
 - Review outputs after it finishes
 - Fix issues in a follow-up story or manual edits
 
@@ -398,12 +398,12 @@ yes
 - Interrupt the session (Ctrl+C if applicable)
 - Delete `.arcus/specs/[STORY-ID]/`
 - Fix story file
-- Restart in gated mode: `solution-architect story.md`
+- Restart in interactive mode: `implement story.md`
 
 **Prevention:**
-- Only use AFK mode when spec is solid
-- Use gated mode if any uncertainty
-- Review story quality before starting AFK
+- Only use autonomous mode when spec is solid
+- Use interactive mode if any uncertainty
+- Review story quality before starting autonomous mode
 
 ---
 
@@ -515,10 +515,10 @@ When stuck, try this sequence:
 
 4. **Try recovery commands:**
    ```
-   # Resume current or previous stage (gated resume phrases)
-   solution-architect story.md
-   generate test plan for story.md
+   # Resume current or previous stage (interactive mode resume phrases)
    implement story.md
+   plan story.md
+   generate test plan for story.md
    review story.md
    create pull request for story.md
    ```
@@ -526,7 +526,7 @@ When stuck, try this sequence:
 5. **If all else fails, restart:**
    ```bash
    rm -rf .arcus/specs/[STORY-ID]/
-   solution-architect story.md
+   implement story.md
    ```
 
 ---
@@ -547,7 +547,7 @@ If you're still stuck:
 
 **Avoid common issues:**
 - ✅ Write clear, unambiguous stories
-- ✅ Use gated mode for first 2-3 stories per repo
+- ✅ Use interactive mode for first 2-3 stories per repo
 - ✅ Review artifacts at each gate before proceeding
 - ✅ Keep `.context/` fresh (refresh after major changes)
 - ✅ Don't manually edit checkpoint unless necessary
