@@ -12,7 +12,7 @@ Triggers are evaluated **only** from two inputs:
 1. The **git diff** of the implemented branch against its base.
 2. The **affected artifacts' own current content** (the `.context/` files themselves).
 
-There is **NO** dependency on `blueprint.md`, `plan.md`, or `context-pack.md`. Planning-stage
+There is **NO** dependency on `plan.md`, `grounded-spec.md`, or `context-pack.md`. Planning-stage
 intent is irrelevant here — only what the diff actually changed and what the artifacts actually say
 matters. If a fact cannot be established from the diff or the artifact content, it does not exist
 for the purposes of this check.

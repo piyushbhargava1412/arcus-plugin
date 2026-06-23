@@ -9,16 +9,16 @@ Understanding ARCUS's Spec → Code → PR workflow
 ARCUS runs an ordered list of stages. The keys (in order) are:
 
 ```
-scaffold → context_pack → spec_finalizer → blueprint → test_plan
+scaffold → context_pack → spec_finalizer → plan → test_plan
         → branch → task_1..N → code_review → context_sync → closure
 ```
 
 ```mermaid
 graph TD
     Scaffold[scaffold<br/>Folder + Checkpoint] --> ContextPack[context_pack<br/>Story-specific context]
-    ContextPack --> SpecFinalizer[spec_finalizer<br/>Resolve ambiguities → plan.md]
-    SpecFinalizer --> Blueprint[blueprint<br/>Atomic task list]
-    Blueprint --> TestPlan[test_plan<br/>Design test matrix]
+    ContextPack --> SpecFinalizer[spec_finalizer<br/>Resolve ambiguities → grounded-spec.md]
+    SpecFinalizer --> Plan[plan<br/>Design + atomic task list]
+    Plan --> TestPlan[test_plan<br/>Design test matrix]
     TestPlan --> Branch[branch<br/>Create git branch NOW]
     Branch --> Tasks[task_1..N<br/>Implement & verify each task]
     Tasks --> CodeReview[code_review<br/>Holistic quality gate]
@@ -29,7 +29,7 @@ graph TD
     style Scaffold fill:#e1f5ff
     style ContextPack fill:#e1f5ff
     style SpecFinalizer fill:#fff4e1
-    style Blueprint fill:#fff4e1
+    style Plan fill:#fff4e1
     style TestPlan fill:#f0e1ff
     style Branch fill:#e8e8ff
     style Tasks fill:#e1ffe8
@@ -148,24 +148,24 @@ snapshot.
   exactly one option marked Recommended (with a one-line rationale) plus a custom-answer
   option** — so you can accept the recommendation fast or steer.
 - **Autonomous mode:** auto-resolves ambiguities one-shot, grounded in repo patterns
-- Consolidates all planning deliberation into a single **`plan.md`**
+- Consolidates all grounded story decisions into a single **`grounded-spec.md`**
 
 **Skills invoked:**
 - `spec-finalizer`
 
 **Artifacts created:**
-- `plan.md` — consolidated planning deliberation (technical decisions, constraints,
-  error handling, and — in gated mode — the recorded Q&A). *This single file replaces the
-  two separate planning files used by earlier versions of ARCUS.*
+- `grounded-spec.md` — grounded story decisions (context grounding, resolved ambiguities,
+  dialogue answers, implementation boundary, guardrail check). *Written by spec-finalizer;
+  the design deliberation and task list live separately in `plan.md`.*
 
-**💡 Tip:** This is your chance to course-correct before implementation. Review `plan.md`
+**💡 Tip:** This is your chance to course-correct before implementation. Review `grounded-spec.md`
 carefully!
 
 ---
 
-### blueprint 🗂️
+### plan 🗂️
 
-**Purpose:** Decompose the story into atomic implementation tasks.
+**Purpose:** Design the technical approach and decompose the story into atomic implementation tasks.
 
 **What happens:**
 - Acts as a Tech Lead: designs the technical approach and breaks the story into
@@ -173,13 +173,13 @@ carefully!
 - **Interactive mode:** the `implementation-planner` runs the same recommendation-first
   interview style — every question carries one **Recommended** option + rationale and a
   custom-answer option
-- Writes the **machine-parsed task list** to `blueprint.md`
+- Writes the **design deliberation + machine-parsed task list** to `plan.md`
 
 **Skills invoked:**
 - `implementation-planner`
 
 **Artifacts created:**
-- `blueprint.md` — atomic task list with IDs, complexity, affected files, Definition of Done
+- `plan.md` — design deliberation plus the atomic task list with IDs, complexity, affected files, Definition of Done
 
 ---
 
@@ -188,9 +188,9 @@ carefully!
 **Purpose:** Design a comprehensive test matrix before writing code (TDD).
 
 **What happens:**
-- Reviews `blueprint.md` and `plan.md`
+- Reviews `plan.md` and `grounded-spec.md`
 - Designs test cases across **Functional / Edge Case / Error Handling**
-- Maps each test to a blueprint task ID
+- Maps each test to a `plan.md` task ID
 - Follows patterns from `.context/testing-patterns.md`
 
 **Skills invoked:**
@@ -342,7 +342,7 @@ approved branch diff materially drifted — *before* the PR is opened.
 
 **What happens:**
 - Runs the final test suite, gathers evidence of completion
-- Synthesizes the PR description from: original story, `plan.md`, `blueprint.md`, test
+- Synthesizes the PR description from: original story, `grounded-spec.md`, `plan.md`, test
   results, and review findings
 - Creates the pull request (if `gh` CLI configured)
 

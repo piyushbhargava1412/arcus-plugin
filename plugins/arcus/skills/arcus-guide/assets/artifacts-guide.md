@@ -52,8 +52,8 @@ ARCUS creates two main directory structures:
     └── [STORY-ID]/
         ├── story.md                   # Original story (copy)
         ├── context-pack.md            # Story-specific context
-        ├── plan.md                    # Consolidated planning deliberation
-        ├── blueprint.md               # Machine-parsed atomic task list
+        ├── grounded-spec.md           # Grounded story decisions (spec-finalizer)
+        ├── plan.md                    # Design deliberation + atomic task list (implementation-planner)
         ├── test-plan.md               # Test matrix
         ├── review.md                  # Review findings
         └── PR_DESCRIPTION.md          # Final PR body
@@ -269,7 +269,7 @@ snapshot.
     "scaffold":       {"status": "complete"},
     "context_pack":   {"status": "complete"},
     "spec_finalizer": {"status": "in_progress"},
-    "blueprint":      {"status": "pending"},
+    "plan":           {"status": "pending"},
     "test_plan":      {"status": "pending"},
     "branch":         {"status": "pending"},
     "task_1":         {"status": "pending"},
@@ -318,21 +318,21 @@ snapshot.
 
 ---
 
-### `specs/[STORY-ID]/plan.md`
+### `specs/[STORY-ID]/grounded-spec.md`
 
 **Created by:** `spec-finalizer` (the `spec_finalizer` stage)
 
-**Purpose:** Single consolidated home for **all planning deliberation**. It consolidates
-the two separate planning files used by earlier versions of ARCUS (technical decisions
-and the gated-mode clarifications) into one file — those older files are gone, and no
-skill reads them anymore.
+**Purpose:** Home for the **grounded story decisions** — context grounding, resolved
+ambiguities, the gated-mode dialogue answers, the implementation boundary, and the
+guardrail check. Written solely by spec-finalizer.
 
-**Safe to edit:** ✅ Yes, refine decisions before the `blueprint` stage
+**Safe to edit:** ✅ Yes, refine grounded decisions before the `plan` stage
 
 **Contains:**
 - Architecture decisions (layering, patterns to use)
 - Validation rules and error handling approach
 - Performance constraints, security considerations, integration decisions
+- Implementation boundary (what's in / out of scope)
 - **In interactive mode:** the recorded Q&A from the recommendation-first interview (each
   question carried one **Recommended** option + rationale plus a custom-answer option)
 
@@ -356,22 +356,23 @@ skill reads them anymore.
 - Q: Where should validation live? → A: Controller layer (Recommended)
 ```
 
-> The **machine-parsed task list** lives separately in `blueprint.md` (below) — `plan.md`
-> holds the human-readable deliberation, `blueprint.md` holds the structured tasks.
-
 ---
 
-### `specs/[STORY-ID]/blueprint.md`
+### `specs/[STORY-ID]/plan.md`
 
-**Created by:** `implementation-planner` (the `blueprint` stage)
+**Created by:** `implementation-planner` (the `plan` stage)
 
-**Purpose:** Break story into atomic tasks with Definition of Done. This is the
-**machine-parsed task list** the implementation loop reads.
+**Purpose:** Home for the implementation-planner's **design deliberation** (approach
+evaluation, chosen approach & reasoning, design / impacted files, design dialogue answers)
+**plus** the atomic task list the implementation loop reads. Written solely by
+implementation-planner.
 
-**Safe to edit:** ✅ Yes, refine tasks before Implementation runs
+**Safe to edit:** ✅ Yes, refine the design or tasks before Implementation runs
 
 **Contains:**
-- Task list with IDs
+- Approach evaluation and chosen approach & reasoning
+- Design / impacted files
+- **Machine-parsed task list** (`### Task N:` headings) with IDs
 - Complexity per task (heavy/medium/light) for model selection
 - Affected files per task
 - Definition of Done (how to verify completion)
@@ -379,6 +380,9 @@ skill reads them anymore.
 
 **Example excerpt:**
 ```markdown
+## Chosen Approach
+- Extend AuthController with a dedicated EmailValidator
+
 ## Task 1: Add email validation [MEDIUM]
 
 **Affected files:**
@@ -409,7 +413,7 @@ skill reads them anymore.
 - **Functional tests:** Happy path verification
 - **Edge case tests:** Boundary conditions, null handling
 - **Error handling tests:** Validation failures, exceptions
-- Each test mapped to blueprint task ID
+- Each test mapped to a `plan.md` task ID
 
 **Example excerpt:**
 ```markdown
@@ -491,7 +495,7 @@ in a new file or a `plan.md` subsection.
 
 **Contains:**
 - Story summary
-- Key decisions (from `plan.md`)
+- Key decisions (from `grounded-spec.md`)
 - Implementation approach
 - Test coverage
 - Review status
@@ -506,8 +510,8 @@ in a new file or a `plan.md` subsection.
 **These files are meant to be reviewed and improved:**
 
 - **All `.context/` files** — Improve documentation quality anytime
-- **`plan.md`** — Refine decisions before the `blueprint` stage
-- **`blueprint.md`** — Adjust task breakdown before Implementation
+- **`grounded-spec.md`** — Refine grounded decisions before the `plan` stage
+- **`plan.md`** — Adjust design and task breakdown before Implementation
 - **`test-plan.md`** — Add missing test cases before coding
 - **`context-pack.md`** — Add missing context before planning
 
@@ -554,8 +558,8 @@ graph LR
 ```mermaid
 graph LR
     A[Run: implement story.md] --> B[scaffold: folder + checkpoint<br/>NO branch yet]
-    B --> C[context_pack + spec_finalizer: plan.md]
-    C --> D[blueprint: blueprint.md]
+    B --> C[context_pack + spec_finalizer: grounded-spec.md]
+    C --> D[plan: plan.md]
     D --> E[test_plan: test-plan.md]
     E --> Br[branch: git branch created NOW]
     Br --> F[task_1..N: code + tests]

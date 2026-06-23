@@ -44,7 +44,7 @@ problems block; a clean change with one or two minor nits is still an approval.
 |-------|------|-------------|----------------|
 | `specialist_findings` | list of structured findings | The collected outputs of the specialist reviewers — each finding carries a severity, a file (file:line where possible), a description, and a confidence score | the code-reviewer coordinator passes the specialists' outputs / standalone user supplies a findings list |
 | `change_set` | git diff or file contents | The diff under review, used for anchoring and verification (does a flagged file:line really belong to this change?) | coordinator passes it / standalone user supplies the branch or diff |
-| `acceptance_criteria` | markdown or text (optional) | Definition of Done for the change, to weight spec-compliance findings | coordinator passes the relevant blueprint section / standalone user supplies it, or omits |
+| `acceptance_criteria` | markdown or text (optional) | Definition of Done for the change, to weight spec-compliance findings | coordinator passes the relevant plan section / standalone user supplies it, or omits |
 
 ### Outputs
 - **`review_report`** (markdown) — A consolidated, severity-tagged review with a calibrated verdict

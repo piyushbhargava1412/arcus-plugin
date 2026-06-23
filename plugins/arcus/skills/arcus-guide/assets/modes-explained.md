@@ -120,7 +120,7 @@ No flags needed — interactive is the default.
 
 **What happens:**
 - `arcus-controller` runs in interactive mode
-- Pipeline walks `scaffold → context_pack → spec_finalizer → blueprint → test_plan → branch → task_1..N → code_review → context_sync → closure`
+- Pipeline walks `scaffold → context_pack → spec_finalizer → plan → test_plan → branch → task_1..N → code_review → context_sync → closure`
 - You advance with `yes` / `proceed` at each handoff (or `no` to pause)
 - Cold-resuming a later stage uses that stage's explicit phrase — e.g.
   `generate test plan for story.md`, `review story.md`,
@@ -156,7 +156,7 @@ afk story.md
 **Why:**
 - ARCUS needs to learn your patterns
 - You need to verify it understood your conventions
-- Review `plan.md` and blueprint before code is written
+- Review `grounded-spec.md` and `plan.md` before code is written
 - Catch misalignments early
 
 **Command:**

@@ -3,10 +3,8 @@ name: kick-off
 description: >
   The brainstorm coordinator for ARCUS — a thin, stateless two-step sequencer: context-pack-builder
   → spec-finalizer. It builds a context pack for a story and finalizes/grounds the spec (in dialogue
-  or autonomous mode), then stops. It does NOT scaffold the workspace, touch the checkpoint, create a
-  branch, or plan the implementation — those belong to the orchestrator and to implementation-planner.
-  Standalone entry point for planning. Activates on "brainstorm <STORY>", "kick off <STORY>", or
-  "architect <STORY>".
+  or autonomous mode), then stops. Standalone entry point for planning. Activates on
+  "brainstorm <STORY>", "kick off <STORY>", or "architect <STORY>".
 layer: coordinator
 standalone: true
 argument-hint: <STORY>
@@ -19,13 +17,6 @@ argument-hint: <STORY>
 kick-off is a **thin, stateless two-step brainstorm coordinator**. It sequences exactly two
 capabilities — `arcus:context-pack-builder` then `arcus:spec-finalizer` — and then stops. Its only
 products are a `context_pack` and a `spec_grounding`.
-
-It is deliberately **narrower** than a full planning driver. kick-off does **NOT**:
-
-- scaffold the workspace (that belongs to the orchestrator),
-- touch / init / read / advance the checkpoint (no owned state — the orchestrator owns it),
-- create a git branch (deferred-branch design; the orchestrator / implementation-runner owns it),
-- run `arcus:implementation-planner` (that is a **separate** stage, not part of brainstorm).
 
 When in `dialogue` mode, kick-off runs **in the MAIN THREAD** so `arcus:spec-finalizer` can
 interview the user directly (a forked/isolated subagent cannot hold a conversation with the user).
@@ -56,7 +47,7 @@ interview the user directly (a forked/isolated subagent cannot hold a conversati
    - In **`autonomous`** mode it asks no questions and auto-resolves every ambiguity from the
      grounded options.
 
-After step 2 completes, kick-off stops. It does not advance to implementation planning.
+After step 2 completes, kick-off stops and returns its outputs.
 
 ## Mode
 
@@ -76,9 +67,6 @@ unchanged. kick-off itself makes no mode-dependent decisions beyond this pass-th
   inputs and receives explicit domain outputs.
 - **Sequences**: `arcus:context-pack-builder` → `arcus:spec-finalizer`, passing each its explicit
   inputs (`story`, `repo_context` to the builder; `story`, `context_pack`, `mode` to the finalizer).
-- **Explicitly NOT its responsibility**: scaffold, checkpoint, branch, and
-  `arcus:implementation-planner`. Scaffold and the checkpoint belong to the orchestrator; the branch
-  is deferred to implementation; implementation planning is a separate downstream stage.
 - **Domain inputs/outputs only**: kick-off refers to artifacts by domain name (`story`,
   `repo_context`, `context_pack`, `spec_grounding`). It does not resolve or name framework artifact
   paths — the orchestrator does that.

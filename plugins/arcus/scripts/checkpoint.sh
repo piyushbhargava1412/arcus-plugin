@@ -91,7 +91,7 @@ case "$ACTION" in
     "scaffold": "pending",
     "context_pack": "pending",
     "spec_finalizer": "pending",
-    "blueprint": "pending",
+    "plan": "pending",
     "test_plan": "pending",
     "branch": "pending",
     "task_1": "pending",

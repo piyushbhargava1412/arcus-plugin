@@ -32,7 +32,7 @@ inputs, not ARCUS files**:
 
 - Inputs and outputs are named in domain terms — `story`, `change_set`, `implementation_plan`,
   `spec_grounding`, `acceptance_criteria` — **never** ARCUS artifact filenames like
-  `blueprint.md` or `session-checkpoint.json`.
+  `plan.md` or `session-checkpoint.json`.
 - A capability does **no** checkpoint reads/writes, **no** branch operations, and resolves **no**
   ARCUS-specific paths. Those concerns belong to the orchestrator.
 - As a result, a developer who has **never used ARCUS** can invoke a single capability standalone,

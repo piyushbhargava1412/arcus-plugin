@@ -96,7 +96,7 @@ Gated mode asks clarifying questions interactively
 Review each stage to catch misunderstandings early
 
 **Want to review each stage's output before proceeding**  
-See assumptions, test plan, and implementation incrementally
+See the grounded spec, test plan, and implementation incrementally
 
 **Need to pause and resume across multiple sessions**  
 Real work isn't always uninterrupted - gated mode respects that
@@ -187,7 +187,7 @@ implement story.md --afk
 **Why:**
 - ARCUS needs to learn your patterns
 - You need to verify it understood your conventions
-- Review the plan and blueprint before code is written
+- Review the grounded spec and plan before code is written
 - Catch misalignments early
 
 **Command:**
@@ -226,7 +226,7 @@ run afk on bug-fix-story.md
 
 **Why:**
 - Ambiguities need resolution (interactive dialogue helps)
-- Review assumptions before implementation starts
+- Review the grounded spec before implementation starts
 - Verify test coverage before code is written
 - High-risk area (authentication)
 

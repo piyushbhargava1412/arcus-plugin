@@ -29,13 +29,13 @@ ARCUS transforms a written user story into a reviewed, test-backed pull request 
 stages, tracked in the session checkpoint by these ordered **stage keys**:
 
 ```
-scaffold → context_pack → spec_finalizer → blueprint → test_plan → branch → task_1..N → code_review → context_sync → closure
+scaffold → context_pack → spec_finalizer → plan → test_plan → branch → task_1..N → code_review → context_sync → closure
 ```
 
 The ten stages group into **six human-facing phases**:
 
 1. **Brainstorm** — Scaffold the workspace, build the context pack, finalize the spec, and produce
-   the implementation plan (`scaffold`, `context_pack`, `spec_finalizer`, `blueprint`; GATE A)
+   the implementation plan (`scaffold`, `context_pack`, `spec_finalizer`, `plan`; GATE A)
 2. **Test Plan** — Design the verification matrix (`test_plan`; GATE B)
 3. **Implementation** — Create the branch, then implement & verify each task (`branch`, `task_1..N`; GATE C)
 4. **Code Review** — Two-tier holistic gate over the whole branch diff (`code_review`; GATE D)
@@ -44,7 +44,7 @@ The ten stages group into **six human-facing phases**:
 
 ```mermaid
 flowchart LR
-  S1["Brainstorm<br/><code>scaffold · context_pack · spec_finalizer · blueprint</code>"]
+  S1["Brainstorm<br/><code>scaffold · context_pack · spec_finalizer · plan</code>"]
   S1 -->|"GATE A"| S2["Test Plan<br/><code>test_plan</code>"]
   S2 -->|"GATE B"| S3["Implementation<br/><code>branch · task_1..N</code>"]
   S3 -->|"GATE C"| S4["Code Review<br/><code>code_review</code>"]
@@ -56,7 +56,7 @@ flowchart LR
 Stages produce specific artifacts. In the **gated** experience the pipeline pauses at each handoff
 gate, where the orchestrator presents the just-finished stage's output; you reply "yes" (same
 session) or use the stage's explicit resume phrase (cold resume). Within Brainstorm the
-`scaffold`, `context_pack`, `spec_finalizer`, and `blueprint` stages run back-to-back — the
+`scaffold`, `context_pack`, `spec_finalizer`, and `plan` stages run back-to-back — the
 `kick-off` coordinator runs context-pack-builder → spec-finalizer — before the first gate (GATE A).
 The Code Review stage can loop back to Implementation up to 3 times if changes are requested.
 
@@ -67,7 +67,7 @@ Gates are explicit pause points where you review outputs before the pipeline mov
 
 | Gate | Between Stages | Meaning |
 |------|----------------|---------|
-| Gate A | Brainstorm → Test Plan | Plan and blueprint are ready for test design. |
+| Gate A | Brainstorm → Test Plan | Grounded spec and plan are ready for test design. |
 | Gate B | Test Plan → Implementation | Test strategy is approved; the branch can be created and implementation can begin. |
 | Gate C | Implementation → Code Review | Code and tests are complete; ready for holistic review. |
 | Gate D | Code Review → Context Sync (or loopback) | Review decision point: approve (advances to Context Sync, which then auto-continues to Closure), or send fixes back to Implementation. |
@@ -148,7 +148,7 @@ end-to-end.
         <li>Analyzes the story for completeness and resolves ambiguity (stage key <code>spec_finalizer</code>)</li>
         <li><strong>Gated:</strong> spec-finalizer and implementation-planner run as <strong>dialogues in the main thread</strong>; every interview question presents exactly one <strong>Recommended</strong> option + one-line rationale + a custom-answer option</li>
         <li><strong>AFK:</strong> both run one-shot inside subagents, auto-resolving every ambiguity / auto-selecting the highest-scoring approach</li>
-        <li>Produces the implementation plan and task list (stage key <code>blueprint</code>)</li>
+        <li>Produces the implementation plan and task list (stage key <code>plan</code>)</li>
       </ul>
     </td>
     <td>
@@ -163,8 +163,8 @@ end-to-end.
     <td>
       <ul>
         <li><code>context-pack.md</code> — Story-specific context bundle</li>
-        <li><code>plan.md</code> — <strong>Single</strong> planning deliberation record (grounded decisions, dialogue answers, design choices) — consolidates what used to be split across two files</li>
-        <li><code>blueprint.md</code> — Machine-parsed implementation plan with atomic <code>### Task N:</code> headings</li>
+        <li><code>grounded-spec.md</code> — Grounded story decisions (context grounding, resolved ambiguities, dialogue answers, implementation boundary) — written by spec-finalizer</li>
+        <li><code>plan.md</code> — Design deliberation (approach evaluation, chosen approach, impacted files) plus the atomic <code>### Task N:</code> task list — written by implementation-planner</li>
       </ul>
     </td>
   </tr>
@@ -175,12 +175,12 @@ end-to-end.
 </table>
 
 **What to check:**
-- Decisions in `plan.md` align with your intent
+- Grounded decisions in `grounded-spec.md` align with your intent
 - No missing technical constraints; error handling makes sense
-- Blueprint tasks are atomic and correctly ordered
+- Tasks in `plan.md` are atomic and correctly ordered
 
-**Tip:** This is the place where "make-or-break" decisions are taken before implementation. Review `plan.md` and
-`blueprint.md` carefully.
+**Tip:** This is the place where "make-or-break" decisions are taken before implementation. Review `grounded-spec.md` and
+`plan.md` carefully.
 
 ---
 
@@ -199,7 +199,7 @@ end-to-end.
   <tr>
     <td>
       <ul>
-        <li>Reviews <code>blueprint.md</code> and the decisions in <code>plan.md</code></li>
+        <li>Reviews the task list in <code>plan.md</code> and the grounded decisions in <code>grounded-spec.md</code></li>
         <li>Designs test cases across three categories:
           <ul>
             <li><strong>Functional:</strong> Happy path verification</li>
@@ -207,7 +207,7 @@ end-to-end.
             <li><strong>Error Handling:</strong> Validation failures, exception paths</li>
           </ul>
         </li>
-        <li>Maps each test to blueprint task IDs</li>
+        <li>Maps each test to <code>plan.md</code> task IDs</li>
         <li>Follows patterns from <code>.context/testing-patterns.md</code></li>
       </ul>
     </td>
@@ -253,7 +253,7 @@ end-to-end.
     <td>
       <ul>
         <li><strong>Branch stage (<code>branch</code>):</strong> realizes the git branch that was only <em>planned</em> at scaffold — <code>branch.sh</code> creates <code>arcus/[STORY-ID]-N</code> from the base, bumps the index on collision, and calls <code>checkpoint.sh set-branch</code> if the realized name differs from the plan</li>
-        <li>Parses <code>### Task N:</code> headings from <code>blueprint.md</code> (stage keys <code>task_1</code>..<code>task_N</code>)</li>
+        <li>Parses <code>### Task N:</code> headings from <code>plan.md</code> (stage keys <code>task_1</code>..<code>task_N</code>)</li>
         <li>Dispatches each task to an isolated subagent. Each task includes:
           <ul>
             <li>Implementation</li>
@@ -294,7 +294,7 @@ end-to-end.
 - Implementation feels complete; no obvious gaps
 - Commits are clean and atomic
 
-**Tip:** You can edit `blueprint.md` at Gate A or Gate B before implementation begins.
+**Tip:** You can edit the task list in `plan.md` at Gate A or Gate B before implementation begins.
 
 ---
 
@@ -446,8 +446,8 @@ For the full picture of how the shared `.context/` artifacts are built, scoped, 
         <li>Synthesizes PR description from:
           <ul>
             <li>Original story</li>
-            <li>Decisions in <code>plan.md</code></li>
-            <li>Blueprint</li>
+            <li>Grounded decisions in <code>grounded-spec.md</code></li>
+            <li>Plan and task list (<code>plan.md</code>)</li>
             <li>Test results</li>
             <li>Review findings</li>
           </ul>
@@ -501,7 +501,7 @@ This keeps planning entirely on the base branch and only branches once there is 
 
 If Code Review returns `changes_requested`:
 
-1. **Fix-tasks generated** from review findings (appended to `blueprint.md`)
+1. **Fix-tasks generated** from review findings (appended to `plan.md`)
 2. **Loop back to Implementation** (re-enters `implementation-runner`)
 3. **Subagents address issues** following the fix-tasks
 4. **Return to Code Review** for re-review
@@ -516,7 +516,7 @@ If Code Review returns `changes_requested`:
 
 | Phase | Stage key(s) | Gated entry / resume phrase | Exit condition |
 |-------|--------------|-----------------------------|----------------|
-| Brainstorm | `scaffold`, `context_pack`, `spec_finalizer`, `blueprint` | `plan <STORY>` / `implement <STORY>` (interactive); `kick-off <STORY>` / `brainstorm <STORY>` (brainstorm-only) | Workspace + planned branch ready; `plan.md` and `blueprint.md` complete |
+| Brainstorm | `scaffold`, `context_pack`, `spec_finalizer`, `plan` | `plan <STORY>` / `implement <STORY>` (interactive); `kick-off <STORY>` / `brainstorm <STORY>` (brainstorm-only) | Workspace + planned branch ready; `grounded-spec.md` and `plan.md` complete |
 | Test Plan | `test_plan` | `generate test plan for <STORY>` | `test-plan.md` complete |
 | Implementation | `branch`, `task_1..N` | `implement <STORY>` / `code <STORY>` | Branch created, all tasks done, tests pass |
 | Code Review | `code_review` | `review <STORY>` | Verdict: approved / changes_requested |
@@ -534,8 +534,8 @@ Each story produces a working area under `.arcus/specs/[STORY-ID]/` with the fol
 | `session-checkpoint.json` | Resumable per-stage execution state (ordered stage keys + status enum), including the planned/realized `branch_name` and `base_branch` |
 | `story.md` | Canonical copy of the input story |
 | `context-pack.md` | Compact, token-efficient context bundle |
-| `plan.md` | Consolidated planning deliberation: grounded decisions, dialogue answers, and design choices (written by spec-finalizer + implementation-planner) |
-| `blueprint.md` | Machine-parsed implementation plan and task list |
+| `grounded-spec.md` | Grounded story decisions: context grounding, resolved ambiguities, dialogue answers, implementation boundary (written by spec-finalizer) |
+| `plan.md` | Design deliberation plus the atomic task list (written by implementation-planner) |
 | `test-plan.md` | Generated verification matrix and test cases |
 | `review.md` | Deterministic gate results + holistic code-review findings + verdict |
 | `PR_DESCRIPTION.md` | Final PR body |

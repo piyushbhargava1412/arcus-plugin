@@ -50,8 +50,8 @@ But keep the two axes separate:
 
 - `STORY_ID` (provided by the orchestrator)
 - The branch diff against base: `git diff <base_branch>...HEAD` (base from `session-checkpoint.json` in the story workspace)
-- The story's `blueprint.md` — what was supposed to be built
-- The story's `plan.md` — the agreed decisions/scope
+- The story's `plan.md` — the implementation plan (design + tasks) of what was supposed to be built
+- The story's `grounded-spec.md` — the agreed decisions/scope
 - The story's `test-plan.md` — expected test coverage
 - The story's `context-pack.md` — architecture + repo patterns
 - Repo conventions / guidelines (if present in `AGENTS.md` or `CLAUDE.md`)
@@ -124,7 +124,7 @@ changed files plus the relevant spec section — not the full conversation. Reso
 
 | Reviewer | Skill | Complexity | Scope |
 |----------|-------|------------|-------|
-| Spec compliance | `arcus:spec-compliance-reviewer` (holistic mode) | medium | Whole diff vs. blueprint DoD + assumptions |
+| Spec compliance | `arcus:spec-compliance-reviewer` (holistic mode) | medium | Whole diff vs. plan DoD + grounded spec |
 | Code quality | `arcus:code-quality-reviewer` (holistic mode) | medium | Whole diff vs. repo patterns, incl. **test proportionality** (excessive/over-engineered tests, slow integration tests that bloat the build) |
 | Security | `arcus:security-reviewer` | medium | Whole diff |
 | Performance | `arcus:performance-reviewer` | medium | Whole diff |
@@ -144,7 +144,7 @@ capability, passing it:
   severity, file:line, description, confidence), plus any deterministic-gate failures from Step 2
   pre-tagged as `critical` findings.
 - `change_set` — the branch diff from Step 1, for anchoring and scope-guarding.
-- `acceptance_criteria` — the relevant blueprint Definition of Done, to weight spec-compliance findings.
+- `acceptance_criteria` — the relevant plan Definition of Done, to weight spec-compliance findings.
 - An explicit `output_path` of `<STORY_DIR>/review.md`, plus the `review_round`.
 
 The capability deduplicates overlapping findings, calibrates severity against the canonical taxonomy,
@@ -221,7 +221,7 @@ that lives only in the afk `arcus:arcus-controller`.
 
 ## Standalone Invocation
 
-A developer can run the whole review standalone by supplying the `change_set` (the changes on their branch vs <base>) and optionally the story artifacts (blueprint, plan, test-plan, context-pack). The reviewer runs the full gate (deterministic tooling checks) followed by the specialist fan-out (security, performance, code-quality, spec-compliance, history-context) and consolidates the findings into a single severity-tagged report with a verdict (approved or changes_requested).
+A developer can run the whole review standalone by supplying the `change_set` (the changes on their branch vs <base>) and optionally the story artifacts (plan, grounded-spec, test-plan, context-pack). The reviewer runs the full gate (deterministic tooling checks) followed by the specialist fan-out (security, performance, code-quality, spec-compliance, history-context) and consolidates the findings into a single severity-tagged report with a verdict (approved or changes_requested).
 
 Emit the block matching the verdict.
 

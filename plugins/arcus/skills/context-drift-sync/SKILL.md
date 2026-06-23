@@ -18,7 +18,7 @@ the approved branch diff **materially** changed any shared `.context/` artifact,
 sync only the affected sections** — never regenerate.
 
 This stage is deliberately **FACTS-ONLY** and **token-efficient**. It reads **no story artifacts** —
-no `blueprint.md`, no `plan.md`, no `context-pack.md`, no `test-plan.md`. Planning intent is irrelevant;
+no `plan.md`, no `grounded-spec.md`, no `context-pack.md`, no `test-plan.md`. Planning intent is irrelevant;
 only what the diff actually changed and what the `.context/` artifacts actually say matter. The strict
 trigger catalog in [`references/drift-triggers.md`](references/drift-triggers.md) is the sole authority
 for materiality — this skill **references** it and does not restate its triggers.
@@ -312,7 +312,7 @@ Resume later with: "create pull request for <STORY_ID>"
 
 ## Success Criteria
 
-- **FACTS-ONLY**: no `blueprint.md` / `plan.md` / `context-pack.md` / `test-plan.md` read — drift is
+- **FACTS-ONLY**: no `plan.md` / `grounded-spec.md` / `context-pack.md` / `test-plan.md` read — drift is
   established only from the diff and the artifacts' own content.
 - **Strict gate with a clean NO-OP path**: artifacts are flagged only when a trigger in
   `references/drift-triggers.md` is crossed; in a story run, "No material context drift" produces no

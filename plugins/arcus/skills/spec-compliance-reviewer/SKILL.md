@@ -2,7 +2,7 @@
 name: spec-compliance-reviewer
 description: >
   Review whether an implementation matches its specification. Verifies code against
-  the task's Definition of Done from the blueprint. Returns PASS or structured issue list.
+  the task's Definition of Done from the implementation plan. Returns PASS or structured issue list.
   Used by the orchestrator after each task implementation.
 layer: capability
 standalone: true
@@ -24,7 +24,7 @@ Verifies that an implementation matches its specification — nothing more, noth
 | Mode | Caller | Scope | Output |
 |------|--------|-------|--------|
 | **per-task** (default) | `subagent-task-dispatcher` | One task's acceptance criteria | Binary `VERDICT: PASS \| FAIL` |
-| **holistic** | `code-reviewer` coordinator | The whole branch diff vs. the full implementation plan + assumptions | Severity-tagged findings (canonical taxonomy below) |
+| **holistic** | `code-reviewer` coordinator | The whole branch diff vs. the full implementation plan + grounded spec | Severity-tagged findings (canonical taxonomy below) |
 
 The **per-task** pass is an early, advisory correctness check (one retry, then commit-and-carry-forward
 — see the dispatcher's Step 6), focused on catching gamed/missing tests and `[EXTRA]` scope creep while

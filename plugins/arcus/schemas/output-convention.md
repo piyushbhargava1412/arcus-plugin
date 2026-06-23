@@ -48,7 +48,7 @@ When a capability is invoked directly without orchestration context:
 
 | Context                          | Output Path                                      |
 |----------------------------------|--------------------------------------------------|
-| Pipeline (spec-finalizer)        | `.arcus/specs/ARCUS-0006/plan.md`               |
+| Pipeline (spec-finalizer)        | `.arcus/specs/ARCUS-0006/grounded-spec.md`      |
 | Standalone (spec-finalizer)      | `.arcus/outputs/spec-finalizer/ARCUS-0006.md`   |
 | Standalone (no STORY_ID)         | `.arcus/outputs/spec-finalizer/2026-06-23T14-30-00.md` |
 | Explicit override                | `/tmp/custom-output.md` (caller-specified)       |

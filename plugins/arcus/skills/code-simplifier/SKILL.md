@@ -40,7 +40,7 @@ The following inputs are provided in the subagent prompt by the dispatcher:
 3. **Repository conventions** — sourced at runtime from `AGENTS.md`, `CLAUDE.md`, `context-pack.md`,
    `.context/testing-patterns.md`, and `.context/design-and-coding-patterns.md`. Never hard-code
    language or framework rules; conventions are always sourced from repository artifacts.
-4. **Task DoD** — the Definition of Done for this task, sourced from `blueprint.md`. Used to guard
+4. **Task DoD** — the Definition of Done for this task, sourced from `plan.md`. Used to guard
    test pruning: no test that directly asserts a named DoD requirement may be removed.
 
 ---
@@ -52,7 +52,7 @@ If the task's complexity is `light`, do nothing and return without invoking the 
 refactor gate is skipped on `light` tasks.
 
 **Step 2 — DoD guard**
-Load the task DoD from `blueprint.md`. This is the acceptance criteria that the simplification must
+Load the task DoD from `plan.md`. This is the acceptance criteria that the simplification must
 not violate (in particular, no test asserting a named DoD requirement may be pruned). Pass it through
 to the capability so its DoD-safe test-pruning rule is enforced.
 
@@ -90,7 +90,7 @@ dispatcher.
 > Layer: **coordinator** — a thin, **stateless** sequencer of capabilities. Owns **no** pipeline state: no checkpoint reads/writes, no branch ops, no stage gates. Its only job is to call capabilities in a fan-out/consolidate or chained pattern and pass each one explicit inputs.
 
 - **Owned state**: none.
-- **Sequences**: Skip-on-`light` guard → load task DoD (from `blueprint.md`) as the DoD guard → call the `arcus:simplify-and-verify` capability with the changed `file_set` + the `test_command` + repository conventions (+ the task DoD as `acceptance_criteria`) → relay its `SIMPLIFIED`/`REVERTED` result back to the dispatcher.
+- **Sequences**: Skip-on-`light` guard → load task DoD (from `plan.md`) as the DoD guard → call the `arcus:simplify-and-verify` capability with the changed `file_set` + the `test_command` + repository conventions (+ the task DoD as `acceptance_criteria`) → relay its `SIMPLIFIED`/`REVERTED` result back to the dispatcher.
 - **Delegation**: Linear chain — guards the refactor gate, then delegates the mutate/verify/revert mechanics to the `arcus:simplify-and-verify` capability and surfaces its result under the dispatcher contract.
 
 ## Constraints
@@ -101,5 +101,5 @@ dispatcher.
   subsequent `arcus:spec-compliance-reviewer` step.
 - **Read conventions at runtime** from `AGENTS.md`, `CLAUDE.md`, `context-pack.md`,
   `.context/testing-patterns.md`, and `.context/design-and-coding-patterns.md`; never hard-code language or framework rules.
-- **DoD guard** — always load the task DoD from `blueprint.md` and pass it to the capability before any test pruning can occur.
+- **DoD guard** — always load the task DoD from `plan.md` and pass it to the capability before any test pruning can occur.
 - **Skip on `light`** — the refactor gate does not run for `light` complexity tasks.

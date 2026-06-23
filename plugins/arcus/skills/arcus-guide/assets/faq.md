@@ -88,8 +88,8 @@ architect path/to/story.md
 
 **✅ Safe to edit:**
 - All `.context/` files (repo_scope.md, flows/*.md, etc.)
-- `plan.md` (refine decisions before the `blueprint` stage)
-- `blueprint.md` (adjust tasks before Implementation)
+- `grounded-spec.md` (refine grounded decisions)
+- `plan.md` (adjust design + tasks before Implementation)
 - `test-plan.md` (add tests before Implementation)
 
 **⚠️ Edit with caution:**
@@ -173,14 +173,14 @@ See **Modes Explained** for detailed decision framework.
 
 ### Q: What are the pipeline stages?
 
-**A:** In order: `scaffold → context_pack → spec_finalizer → blueprint → test_plan →
+**A:** In order: `scaffold → context_pack → spec_finalizer → plan → test_plan →
 branch → task_1..N → code_review → context_sync → closure`.
 
 1. **scaffold** — Creates the story folder + checkpoint (records the *planned* branch
    name). **No git branch yet.**
 2. **context_pack** — Story-specific context → `context-pack.md`
-3. **spec_finalizer** — Resolve ambiguities → consolidated `plan.md`
-4. **blueprint** — Atomic task list → `blueprint.md`
+3. **spec_finalizer** — Resolve ambiguities → grounded `grounded-spec.md`
+4. **plan** — Design deliberation + atomic task list → `plan.md`
 5. **test_plan** — Test matrix → `test-plan.md`
 6. **branch** — **Creates the git branch now**, at the start of Implementation
 7. **task_1..N** — Implement tasks → committed code + tests
@@ -242,7 +242,7 @@ Created by `agentify this repo`, used by all stories.
 
 **A:** Session workspace (git-ignored), per-story working data:
 - `session-checkpoint.json` — Pipeline state
-- `specs/[STORY-ID]/` — Story artifacts (`plan.md`, `blueprint.md`, `test-plan.md`, `review.md`, `PR_DESCRIPTION.md`)
+- `specs/[STORY-ID]/` — Story artifacts (`grounded-spec.md`, `plan.md`, `test-plan.md`, `review.md`, `PR_DESCRIPTION.md`)
 - `bin/` — Helper scripts
 
 Not committed to git, safe to delete after PR merged.
@@ -311,12 +311,12 @@ ARCUS adapts to your patterns rather than enforcing its own.
 
 ---
 
-### Q: What if I disagree with the blueprint?
+### Q: What if I disagree with the plan?
 
 **A:** 
-1. Pause at the handoff before Implementation (after `blueprint` / `test_plan`)
+1. Pause at the handoff before Implementation (after `plan` / `test_plan`)
 2. Say `"no"` to pause
-3. Edit `.arcus/specs/[STORY-ID]/blueprint.md` to adjust tasks
+3. Edit `.arcus/specs/[STORY-ID]/plan.md` to adjust tasks
 4. Say `"yes"` when ready to proceed with your changes
 
 ---

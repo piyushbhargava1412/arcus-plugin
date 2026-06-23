@@ -203,7 +203,7 @@ implement story.md
     "scaffold":       {"status": "complete"},
     "context_pack":   {"status": "pending"},
     "spec_finalizer": {"status": "pending"},
-    "blueprint":      {"status": "pending"},
+    "plan":           {"status": "pending"},
     "test_plan":      {"status": "pending"},
     "branch":         {"status": "pending"},
     "task_1":         {"status": "pending"},
@@ -302,7 +302,7 @@ ls -ld .
 
 ## Issue: Can't find my story artifacts
 
-**Symptoms:** Can't locate `plan.md`, `blueprint.md`, `test-plan.md`, etc.
+**Symptoms:** Can't locate `grounded-spec.md`, `plan.md`, `test-plan.md`, etc.
 
 **Diagnosis:**
 - Story artifacts live in `.arcus/specs/[STORY-ID]/`
@@ -346,20 +346,20 @@ This shows active story ID and current stage.
 **Symptoms:** Same task fails during Implementation across multiple attempts
 
 **Diagnosis:**
-1. Check if task definition in `blueprint.md` is clear
-2. Check if task has conflicting constraints in `plan.md`
+1. Check if task definition in `plan.md` is clear
+2. Check if task has conflicting constraints in `grounded-spec.md`
 3. Review task complexity (might be too heavy)
 4. Check if dependent tasks completed successfully
 
 **Solutions:**
 
-**1. Pause and refine blueprint:**
+**1. Pause and refine plan:**
 ```
 # Pause at next gate
 no
 
-# Edit blueprint
-code .arcus/specs/[STORY-ID]/blueprint.md
+# Edit plan
+code .arcus/specs/[STORY-ID]/plan.md
 
 # Clarify task description
 # Split into smaller tasks if too complex
@@ -369,7 +369,7 @@ code .arcus/specs/[STORY-ID]/blueprint.md
 yes
 ```
 
-**2. Check `plan.md`:**
+**2. Check `grounded-spec.md`:**
 - Verify constraints don't conflict
 - Ensure patterns referenced actually exist in codebase
 - Check if architecture decision is feasible

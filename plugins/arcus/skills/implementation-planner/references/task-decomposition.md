@@ -1,6 +1,6 @@
 # Reference: Task Decomposition Patterns
 
-When acting as the **Tech Lead** to break down a story into an Implementation Blueprint, follow these task decomposition patterns.
+When acting as the **Tech Lead** to break down a story into an implementation plan, follow these task decomposition patterns.
 
 ## Goal: Atomic Tasks
 Each task should ideally target a single concern. If a task takes more than 5-10 minutes of manual human-equivalent coding, it should probably be split.

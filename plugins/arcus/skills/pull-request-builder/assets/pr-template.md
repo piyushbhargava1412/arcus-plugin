@@ -20,7 +20,7 @@ Omit this entire section when no context artifacts changed.]
 - [ ] No regression detected in core flows
 
 ## Implementation Stats
-- **Total Tasks**: [Count from blueprint.md]
+- **Total Tasks**: [Count from plan.md]
 - **Files Modified**: [List of files]
 - **Agent Metrics**: [Token usage or time estimates if available]
 

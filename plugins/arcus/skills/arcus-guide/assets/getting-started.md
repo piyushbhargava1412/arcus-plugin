@@ -105,8 +105,8 @@ plan path/to/story.md
 1. **scaffold** — Creates `.arcus/specs/[STORY-ID]/`, copies the story, and inits the
    checkpoint (recording the *planned* branch name). **No git branch is created yet.**
 2. **context_pack** — Builds story-specific context → `context-pack.md`
-3. **spec_finalizer** — Resolves ambiguities → consolidated `plan.md`
-4. **blueprint** — Decomposes into atomic tasks → `blueprint.md`
+3. **spec_finalizer** — Resolves ambiguities → `grounded-spec.md`
+4. **plan** — Captures design deliberation and decomposes into atomic tasks → `plan.md`
 5. **test_plan** — Designs the test matrix → `test-plan.md`
 6. **branch** — **Creates the git branch `arcus/[STORY-ID]` now**, at the start of
    Implementation (bumps the name on collision)

@@ -22,17 +22,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `acceptance_criteria`, `change_set`) instead of ARCUS artifact filenames, so each capability is
   reusable **standalone** by a developer who has never used ARCUS.
 - **`kick-off` coordinator (new).** A brainstorm-only coordinator (context-pack-builder →
-  spec-finalizer); inherits the `"brainstorm / kick off / architect <STORY>"` triggers. It does **not**
-  scaffold, touch the checkpoint, create a branch, or run implementation-planner — those belong to the
-  orchestrator and to the separate planning stage.
+  spec-finalizer); inherits the `"brainstorm / kick off / architect <STORY>"` triggers. It sequences
+  exactly those two capabilities and stops, returning a `context_pack` and a `spec_grounding`.
 - **`review-consolidator` capability (new).** Extracted from `code-reviewer`: given structured
   specialist findings, produces a calibrated, deduplicated verdict and the review artifact.
 - **`simplify-and-verify` capability (new).** Extracted from `code-simplifier`: given a file set and a
   test command, mutates toward simplicity, re-runs the tests, and returns `SIMPLIFIED` or `REVERTED`.
-- **Substrate schemas under `plugins/arcus/schemas/`.** `plan.md.schema.yaml` (section-ownership
-  manifest for the shared `plan.md`, split between spec-finalizer and implementation-planner) and
-  `output-convention.md` (the hybrid output rule). Shipped inside the plugin (not the git-ignored
-  `.arcus/`) so they are version-controlled and distributed with every install.
+- **Split planning artifacts, one owner each.** `spec-finalizer` writes a self-contained
+  `grounded-spec.md` (grounded story decisions) and `implementation-planner` writes a single `plan.md`
+  (design deliberation + atomic task list); the former separate `blueprint.md` is folded into `plan.md`
+  and the checkpoint stage key `blueprint` is renamed to `plan`. Each capability owns exactly one file,
+  so no section-ownership manifest is needed. **Substrate convention under `plugins/arcus/schemas/`:**
+  `output-convention.md` (the hybrid output-path rule), shipped inside the plugin (not the git-ignored
+  `.arcus/`) so it is version-controlled and distributed with every install.
 - **`## Standalone Invocation` sections + standalone triggers** on the specialist reviewers
   (security / performance / code-quality / history-context — `disable-model-invocation: true`
   preserved, so organic firing stays blocked), plus `code-reviewer`, `pull-request-builder`, and

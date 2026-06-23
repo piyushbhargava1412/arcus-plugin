@@ -1,6 +1,6 @@
 ---
 name: implementation-planner
-description: Act as a Tech Lead to design a technical approach and decompose a user story into atomic implementation tasks. Generates and scores at least two candidate approaches, and in dialogue (gated) mode interviews the user on the design decision before producing the blueprint. Use when you have a context pack and a grounded plan and need to generate a blueprint. Trigger on "plan the implementation", "generate implementation blueprint", or "break down the story".
+description: Act as a Tech Lead to design a technical approach and decompose a user story into atomic implementation tasks. Generates and scores at least two candidate approaches, and in dialogue (gated) mode interviews the user on the design decision before producing the plan. Use when you have a grounded spec (and optionally a context pack) and need to generate the implementation plan. Trigger on "plan the implementation", "generate implementation plan", or "break down the story".
 layer: capability
 standalone: true
 ---
@@ -8,7 +8,7 @@ standalone: true
 # Implementation Planner
 
 ## Overview
-Acts as the **Tech Lead** to bridge the gap between requirements and execution. It absorbs the context-specific artifacts and the grounded plan to design a concrete technical approach and a sequence of atomic, testable tasks. It generates **at least two** scored candidate approaches, deliberates on the chosen one (interviewing the user in dialogue mode), records the design deliberation into the shared deliberation record, and emits a machine-parsed atomic task list — together these form the `implementation_plan` output.
+Acts as the **Tech Lead** to bridge the gap between requirements and execution. It absorbs the context-specific artifacts and the grounded spec to design a concrete technical approach and a sequence of atomic, testable tasks. It generates **at least two** scored candidate approaches, deliberates on the chosen one (interviewing the user in dialogue mode), and writes a single self-contained plan — the design deliberation plus a machine-parsed atomic task list — as the `implementation_plan` output.
 
 ## Execution Modes
 
@@ -23,26 +23,20 @@ In **both** modes you must still produce the design sections **and** the atomic 
 
 ## Inputs
 
-This skill runs **after** `spec-finalizer`, so the shared deliberation record already exists. Use the following named inputs:
+This skill runs **after** `spec-finalizer`, which supplies the grounded spec. Use the following named inputs:
 
 1. The `story` input — The original User Story / Requirements.
 2. The `context_pack` input — The repository subset relevant to the story (optional). Follow its **Relevant Flows** links into `.context/flows/*` for flow detail (Entry Points, Core Path, Data Touchpoints, Integrations, Tests).
-3. The `spec_grounding` input — The grounded decisions from `spec-finalizer` (`## Context Grounding`, `## Resolved Ambiguities`, `## Dialogue Answers`, `## Implementation Boundary`, `## Guardrail Check`). These are the authoritative grounded choices that constrain the design.
+3. The `spec_grounding` input — The grounded spec from `spec-finalizer` (`## Context Grounding`, `## Resolved Ambiguities`, `## Dialogue Answers`, `## Implementation Boundary`, `## Guardrail Check`). These are the authoritative grounded choices that constrain the design.
 
 ## Output
 
-This skill produces the following — nothing else, together forming the `implementation_plan` output (written to the caller-provided output path; standalone default `.arcus/outputs/implementation-planner/<story-id-or-timestamp>.md`):
+This skill produces a single self-contained plan — nothing else — as the `implementation_plan` output (written to the caller-provided output path; standalone default `.arcus/outputs/implementation-planner/<story-id-or-timestamp>.md`), structured from `./assets/plan-template.md`. The plan contains:
 
-- The shared deliberation record — appends this skill's **owned** design sections (see ownership contract below): `## Approach Evaluation`, `## Chosen Approach & Reasoning`, `## Design / Impacted Files`, and `## Design Dialogue Answers` (**dialogue mode only**).
-- The machine-parsed atomic task list (blueprint), structured from `./assets/blueprint-template.md`.
+- The design deliberation: `## Approach Evaluation`, `## Chosen Approach & Reasoning`, `## Design / Impacted Files`, and `## Design Dialogue Answers` (**dialogue mode only**).
+- The machine-parsed atomic task list (`### Task N:` headings), consumed by `test-spec-compiler` and the Code stage.
 
-### Shared deliberation record — Section Ownership Contract
-
-The shared deliberation record is co-owned with `spec_grounding` from `spec-finalizer`, which runs **before** this skill and owns the requirements half: `# Plan: [STORY-ID]` title, `## Context Grounding`, `## Resolved Ambiguities`, `## Dialogue Answers`, `## Implementation Boundary`, `## Guardrail Check`. The concrete write target is the output path the caller provides; this skill constructs no path itself. To avoid clobbering:
-
-- The shared deliberation record (the `spec_grounding` content) will already exist when this skill runs. **Append** this skill's owned design sections to the existing record; do NOT recreate or overwrite the whole record.
-- implementation-planner OWNS and writes ONLY: `## Approach Evaluation`, `## Chosen Approach & Reasoning`, `## Design / Impacted Files`, and `## Design Dialogue Answers`.
-- Leave all of `spec-finalizer`'s owned sections intact. Never overwrite them.
+The grounded spec (`spec_grounding`) from `spec-finalizer` is an **input** to this skill, read but never modified; the plan is a separate file this skill owns end to end.
 
 ## Workflow
 
@@ -54,14 +48,14 @@ Use the `story`, `context_pack`, and `spec_grounding` inputs (see Inputs). Treat
 ### Step 2: Generate & Score ≥2 Candidate Approaches
 Generate **AT LEAST 2** distinct candidate approaches for implementing the story (e.g. extend an existing component vs. introduce a new one; in-process vs. queued; reuse vs. rewrite). Each candidate must be grounded in evidence from the `context_pack` input and consistent with the `spec_grounding` input's grounded decisions.
 
-Score each candidate on the following axes, **1–5** (5 = best for that axis), in the spirit of the blueprint template's Architecture & Safety section:
+Score each candidate on the following axes, **1–5** (5 = best for that axis), in the spirit of the plan template's Architecture & Safety section:
 
 - **Blast radius** — how contained the change is (5 = minimal surface area touched).
 - **Backward-compat** — preservation of existing behavior and contracts (5 = fully backward-compatible).
 - **Complexity** — implementation/maintenance simplicity (5 = simplest).
 - **Security** — where relevant; data handling, authz, exposure (5 = no new risk). Include this axis only when the story has a security dimension.
 
-Record the scored comparison into the `## Approach Evaluation` section of the shared deliberation record as a table (one row per candidate, one column per axis, plus a total/notes column).
+Record the scored comparison into the `## Approach Evaluation` section of the plan as a table (one row per candidate, one column per axis, plus a total/notes column).
 
 ### Step 3: Select the Chosen Approach
 
@@ -75,7 +69,7 @@ Q: Which approach should we take for <the design decision>?
   Or propose your own approach.
 ```
 
-The user's answer is authoritative and overrides the highest-scoring pick. Record the chosen approach + reasoning into the `## Chosen Approach & Reasoning` section of the shared deliberation record, and record the question, the options presented (including which was marked Recommended), and the user's answer into its `## Design Dialogue Answers` section.
+The user's answer is authoritative and overrides the highest-scoring pick. Record the chosen approach + reasoning into the `## Chosen Approach & Reasoning` section of the plan, and record the question, the options presented (including which was marked Recommended), and the user's answer into its `## Design Dialogue Answers` section.
 
 **Autonomous mode:** NO interview — never block for input. Auto-select the **highest-scoring** candidate from Step 2 (break ties by lowest blast radius, then simplest). Record it into `## Chosen Approach & Reasoning` with the score-based rationale. Leave `## Design Dialogue Answers` empty or omit it.
 
@@ -85,7 +79,7 @@ For the chosen approach:
 - Identify the core design patterns to be applied, drawing on `.context/design-and-coding-patterns.md` (design patterns in use, layering/structure, naming/idioms, error-handling conventions, and its **Avoid** rules) so the design matches established repository conventions.
 - Synthesize the "How" — explain the logic flow from entry point to data persistence.
 
-Record the impacted-file map and design notes into the `## Design / Impacted Files` section of the shared deliberation record.
+Record the impacted-file map and design notes into the `## Design / Impacted Files` section of the plan.
 
 ### Step 5: Decompose into Atomic Tasks
 - Break down the implementation into a sequence of small, manageable tasks.
@@ -97,9 +91,8 @@ Record the impacted-file map and design notes into the `## Design / Impacted Fil
 - For every task, write a clear **Definition of Done (DoD)**.
 - Ensure the DoD includes specific functional checks and verification metrics (unit/integration tests).
 
-### Step 7: Persist Design Deliberation + Blueprint
-- **Shared deliberation record**: Append this skill's owned design sections — `## Approach Evaluation`, `## Chosen Approach & Reasoning`, `## Design / Impacted Files`, and (dialogue mode only) `## Design Dialogue Answers`. Honor the section ownership contract: append to the existing record and leave `spec-finalizer`'s sections intact.
-- **Blueprint (atomic task list)**: Use `./assets/blueprint-template.md` to structure the atomic task list. Together with the design sections this constitutes the `implementation_plan` output, written to the caller-provided output path (standalone default `.arcus/outputs/implementation-planner/<story-id-or-timestamp>.md`); this skill constructs no ARCUS path itself. This machine-parsed task list is consumed by `test-spec-compiler` and the Code stage.
+### Step 7: Write the Plan
+Write a single self-contained plan using `./assets/plan-template.md`, containing both the design sections — `## Approach Evaluation`, `## Chosen Approach & Reasoning`, `## Design / Impacted Files`, and (dialogue mode only) `## Design Dialogue Answers` — and the machine-parsed atomic task list (`### Task N:` headings). This constitutes the `implementation_plan` output, written to the caller-provided output path (standalone default `.arcus/outputs/implementation-planner/<story-id-or-timestamp>.md`); this skill constructs no ARCUS path itself. The task list is consumed by `test-spec-compiler` and the Code stage.
 
 ## Success Criteria
 - **Actionable**: A junior agent should be able to pick up any task and execute it without further planning.
@@ -108,18 +101,17 @@ Record the impacted-file map and design notes into the `## Design / Impacted Fil
 - **Deliberated**: At least two candidate approaches were scored, and the chosen approach is recorded with reasoning (and, in dialogue mode, with the recorded user interview).
 
 ## Resources
-- **Blueprint Template**: `./assets/blueprint-template.md`
-- **Shared deliberation record (owned design sections)**: the `implementation_plan` output at the caller-provided output path
+- **Plan Template**: `./assets/plan-template.md`
 - **Task Decomposition Guide**: `./references/task-decomposition.md`
 
 ## Contract
 
 > Layer: **capability** — atomic, stateless, given declared inputs → produce one output. No checkpoint reads/writes, no branch ops, no ARCUS path construction.
 
-> **Section ownership**: governed by the manifest at `plugins/arcus/schemas/plan.md.schema.yaml`
-> (resolve via the plugin / `ARCUS_HOME` path, never a hard-coded `.arcus/` path). implementation-planner
-> owns and writes ONLY: `## Approach Evaluation`, `## Chosen Approach & Reasoning`, `## Design / Impacted Files`,
-> `## Design Dialogue Answers` (dialogue mode). It never writes spec-finalizer's requirements sections.
+> **Output**: a single self-contained `plan` that this skill owns end to end — the design sections
+> (`## Approach Evaluation`, `## Chosen Approach & Reasoning`, `## Design / Impacted Files`,
+> `## Design Dialogue Answers` in dialogue mode) plus the atomic `### Task N:` list. The grounded spec
+> is an input, read but never modified.
 
 ### Inputs
 | Input | Type | Description | Typical source |
@@ -130,14 +122,14 @@ Record the impacted-file map and design notes into the `## Design / Impacted Fil
 | `mode` | string | Execution mode: `dialogue` (interview user on design approach choice) or `autonomous` (auto-select highest-scoring approach) | orchestrator passes it / standalone user supplies it |
 
 ### Outputs
-- **`implementation_plan`** (markdown) — Atomic task breakdown with Definition of Done per task, scored candidate approaches with chosen approach and rationale, impacted files map, and design dialogue answers (if mode=dialogue). Structured as blueprint and design sections in a shared plan document.
+- **`implementation_plan`** (markdown) — Atomic task breakdown with Definition of Done per task, scored candidate approaches with chosen approach and rationale, impacted files map, and design dialogue answers (if mode=dialogue). Structured as a single self-contained plan document (design sections + task list).
   Output convention: pipeline caller sets the path; standalone default `.arcus/outputs/implementation-planner/<story-id-or-timestamp>.md`. The capability never asks the user where to write.
 
 ### Mode
 | Mode | Behaviour |
 |------|-----------|
-| `dialogue` | Interview the user one question at a time on low-confidence / open items; each question presents one **Recommended** option + rationale + a custom-answer option; fold answers in before proceeding. |
-| `autonomous` | Never block. Auto-resolve with the safest option, flag weak picks, proceed. |
+| `dialogue` | Interview the user on the design-approach choice: present the scored candidate approaches with one **Recommended** option + rationale + a custom-answer option; the user's pick is authoritative and overrides the highest score; fold it in before decomposing into tasks. |
+| `autonomous` | Never block. Auto-select the highest-scoring candidate approach (break ties by lowest blast radius, then simplest), record the score-based rationale, and proceed. |
 
 The caller passes `mode` explicitly (full explicit-parameter wiring is finalized in a later task).
 

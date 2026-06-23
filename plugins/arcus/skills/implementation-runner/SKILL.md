@@ -2,7 +2,7 @@
 name: implementation-runner
 description: >
   The canonical ARCUS implementation loop. Creates the git branch at entry
-  (deferred-branch design), parses the blueprint tasks, and drives each task
+  (deferred-branch design), parses the plan's tasks, and drives each task
   through the subagent-task-dispatcher protocol with per-task TDD, spec-check,
   and commit. Reused by both the gated flow and the afk controller. Activates on
   "implement <STORY>" or "code <STORY>"; resumes after a changes_requested review
@@ -23,7 +23,7 @@ stage. It is reused verbatim by **both** entry paths:
 - the **afk controller** — which delegates the Implementation stage to this skill.
 
 It realizes the git branch at entry (the **deferred-branch** design — the branch was only
-*planned* at scaffold time, never created), then loops over the blueprint's `### Task N:`
+*planned* at scaffold time, never created), then loops over the plan's `### Task N:`
 headings, dispatching each task to a fresh subagent. On completion it hands off to **Code
 Review** and stops.
 
@@ -57,7 +57,7 @@ uses.
 | `commit.sh <STORY_ID> <message>` | Stages + commits | Conventional per-task commit |
 | `checkpoint.sh <action> <STORY_ID> [args]` | Manage state | complete / set-status / reopen / read |
 
-Checkpoint stage keys (ordered): `scaffold` → `context_pack` → `spec_finalizer` → `blueprint`
+Checkpoint stage keys (ordered): `scaffold` → `context_pack` → `spec_finalizer` → `plan`
 → `test_plan` → **`branch`** → `task_1`..`task_N` → `code_review` → `context_sync` → `closure`.
 Stage status values: `pending | in_progress | awaiting_handoff | complete | needs_rework`.
 
@@ -76,10 +76,10 @@ Resolve `<BIN>` = `.arcus/bin/` if it exists, else `$ARCUS_HOME/scripts/` (read 
 2. **Read state and grounded artifacts**:
    - `.arcus/specs/<STORY_ID>/session-checkpoint.json` (via `<BIN>/checkpoint.sh read <STORY_ID>`) —
      mode, `review_round`, and per-stage status.
-   - `.arcus/specs/<STORY_ID>/blueprint.md` — the task list.
-   - `.arcus/specs/<STORY_ID>/plan.md` — the **grounded decisions** (the shared deliberation record
-     written by spec-finalizer + implementation-planner). The dispatcher pulls the per-task
-     constraints from here. Do NOT read assumptions from anywhere else.
+   - `.arcus/specs/<STORY_ID>/plan.md` — the implementation plan (design deliberation +
+     `### Task N:` list).
+   - `.arcus/specs/<STORY_ID>/grounded-spec.md` — the **grounded decisions** from spec-finalizer.
+     The dispatcher pulls the per-task constraints from here.
 
 ### Step 3: Create the branch (deferred-branch step)
 
@@ -98,7 +98,7 @@ on disk yet:
 ### Step 4: Parse tasks
 
 Extract each `### Task N:` heading (and its body: description, files, DoD, `complexity`) from
-`blueprint.md`, **including any fix-tasks appended by a loopback** (see Loopback Protocol). Preserve
+`plan.md`, **including any fix-tasks appended by a loopback** (see Loopback Protocol). Preserve
 the heading order.
 
 ### Step 5: Loop over tasks
@@ -137,7 +137,7 @@ review gate, or afk auto-loops):
 1. `<BIN>/checkpoint.sh reopen <STORY_ID> code_review` — sets `code_review` to `needs_rework` and bumps
    `review_round`.
 2. Read `.arcus/specs/<STORY_ID>/review.md`. Convert **each critical and warning finding** into a
-   fix-task: append it to `blueprint.md` as a new `### Task N:` heading (continuing the numbering),
+   fix-task: append it to `plan.md` as a new `### Task N:` heading (continuing the numbering),
    each with a **Definition of Done derived from the finding**. Mark each new task
    `<BIN>/checkpoint.sh set-status <STORY_ID> task_<N> pending`.
 3. Run the loop (Step 5) for the **new fix-tasks only** — the already-complete tasks stay complete.
@@ -172,19 +172,17 @@ Resume later with: "review <STORY_ID>"
 
 > Layer: **orchestrator** — the **stateful** pipeline driver. Owns the checkpoint, the git branch, and the stage gates. It resolves all ARCUS paths and artifact filenames and passes capabilities/coordinators explicit, pre-resolved inputs — so the capabilities themselves stay path-free and reusable.
 
-- **Owned state**: Git branch (created at entry via `branch.sh` — the deferred-branch realization; collision bumps reflected via `checkpoint.sh set-branch`), per-task loop state (which tasks pending/in_progress/complete, via `checkpoint.sh`), loopback mechanics (on `changes_requested` verdict: reopens `code_review`, bumps `review_round`, converts findings from `review.md` into fix-tasks appended to `blueprint.md`).
-- **Calls**: `branch.sh` (realize planned branch at entry), `subagent-task-dispatcher` (per task, passing Story ID, Task N, complexity, commit message — dispatcher owns the per-task TDD + refactor gate + spec-check + commit protocol), `commit.sh` (indirectly, via dispatcher). Reads grounded decisions from `.arcus/specs/<STORY_ID>/plan.md`, task list from `blueprint.md`, checkpoint via `checkpoint.sh read`.
-- **Framework-conventions boundary**: All checkpoint state keys (`branch`, `task_<N>` stage keys), artifact paths (`.arcus/specs/<STORY_ID>/blueprint.md`, `plan.md`, `review.md`), helper script resolution (`.arcus/bin/` → `$ARCUS_HOME/scripts/`), and loopback-round cap (3) live HERE. The dispatcher receives only domain inputs (Story ID, Task N, complexity).
-
-> **Audit (ARC-0006)**: Reviewed for inline domain logic during the capability-library refactor. All content is legitimately orchestration protocol (branch realization, per-task loop state, loopback/fix-task conversion, handoff gates). No capability extracted.
+- **Owned state**: Git branch (created at entry via `branch.sh` — the deferred-branch realization; collision bumps reflected via `checkpoint.sh set-branch`), per-task loop state (which tasks pending/in_progress/complete, via `checkpoint.sh`), loopback mechanics (on `changes_requested` verdict: reopens `code_review`, bumps `review_round`, converts findings from `review.md` into fix-tasks appended to `plan.md`).
+- **Calls**: `branch.sh` (realize planned branch at entry), `subagent-task-dispatcher` (per task, passing Story ID, Task N, complexity, commit message — dispatcher owns the per-task TDD + refactor gate + spec-check + commit protocol), `commit.sh` (indirectly, via dispatcher). Reads grounded decisions from `.arcus/specs/<STORY_ID>/grounded-spec.md`, task list from `plan.md`, checkpoint via `checkpoint.sh read`.
+- **Framework-conventions boundary**: All checkpoint state keys (`branch`, `task_<N>` stage keys), artifact paths (`.arcus/specs/<STORY_ID>/grounded-spec.md`, `plan.md`, `review.md`), helper script resolution (`.arcus/bin/` → `$ARCUS_HOME/scripts/`), and loopback-round cap (3) live HERE. The dispatcher receives only domain inputs (Story ID, Task N, complexity).
 
 ## Success Criteria
 
 - The git branch is **created at entry** via `branch.sh` (it did not exist before this skill ran), and
   the `branch` stage is marked complete; any collision bump is reflected via `set-branch` (inside
   `branch.sh`).
-- Every `### Task N:` heading in `blueprint.md` is dispatched via `arcus:subagent-task-dispatcher`;
+- Every `### Task N:` heading in `plan.md` is dispatched via `arcus:subagent-task-dispatcher`;
   each task is committed via `commit.sh` (by the dispatcher).
 - Loopback appends fix-tasks and stops auto-looping at `review_round` == 3.
-- Grounded decisions are read from `plan.md` — never from assumptions/clarifications artifacts.
+- Grounded decisions are read from `grounded-spec.md`.
 - The Handoff block hands off to Code Review with cold-resume phrase `"review <STORY_ID>"`.

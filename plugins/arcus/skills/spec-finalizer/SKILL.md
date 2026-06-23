@@ -38,27 +38,15 @@ reuse it and do NOT re-ask questions already answered.
 
 This skill produces **exactly** the following — nothing else:
 
-- The `spec_grounding` output (written to the caller-provided output path) — A single **shared**
-  deliberation record. spec-finalizer writes ONLY its owned sections into it (always):
-  `# Plan: [STORY-ID]` title, `## Context Grounding`, `## Resolved Ambiguities`,
+- The `spec_grounding` output (written to the caller-provided output path) — a self-contained
+  grounded-spec record owned solely by spec-finalizer, with these sections:
+  `# Grounded Spec: [STORY-ID]` title, `## Context Grounding`, `## Resolved Ambiguities`,
   `## Dialogue Answers` (**dialogue mode only**), `## Implementation Boundary`, and `## Guardrail Check`.
 
-### Shared deliberation record — Section Ownership Contract
-
-The `spec_grounding` output is a single **shared** deliberation record (conceptually the shared
-plan / deliberation record) co-owned with `implementation-planner`, which runs **after** this skill
-and **appends** its own design sections (`## Approach Evaluation`, `## Chosen Approach & Reasoning`,
-`## Design / Impacted Files`, `## Design Dialogue Answers`) to the SAME record. The concrete write
-target is the output path the caller provides (standalone default
+The grounded spec is consumed downstream as an **input** to `implementation-planner` (which produces
+its own separate plan); spec-finalizer neither reads nor writes the implementation plan. The concrete
+write target is the output path the caller provides (standalone default
 `.arcus/outputs/spec-finalizer/<story-id-or-timestamp>.md`); this skill constructs no path itself.
-To avoid clobbering:
-
-- spec-finalizer runs first, so it **creates** the record (with the `# Plan: [STORY-ID]` title) at the
-  output path if it is absent.
-- If the record already exists, **append/merge** — replace only the sections spec-finalizer owns (listed
-  above) in place and leave any `implementation-planner` design sections untouched. Never overwrite the
-  whole record.
-- spec-finalizer must only ever write or replace its OWN sections.
 
 ## Workflow
 
@@ -148,11 +136,8 @@ Fix any issues inline. Do not skip this step.
 ### Step 6: Write Output
 
 Write the decisions to the `spec_grounding` output (at the caller-provided output path) using the
-template at `./assets/plan-template.md`. Respect the **section ownership contract** (see Output):
-create the record if it does not exist; if it already exists, replace only spec-finalizer's owned
-sections in place and leave any `implementation-planner` design sections intact — never overwrite the
-whole record. In dialogue mode, fill the `## Dialogue Answers` section from the recorded Q&A; in
-autonomous mode, leave it empty or omit it.
+template at `./assets/grounded-spec-template.md`. In dialogue mode, fill the `## Dialogue Answers`
+section from the recorded Q&A; in autonomous mode, leave it empty or omit it.
 
 ### Step 7: Emit Escalation Signal (return message)
 
@@ -176,7 +161,7 @@ If there are no such ambiguities, emit exactly:
 NEEDS_INPUT: none
 ```
 
-This block is informational. You still resolve every ambiguity autonomously in `plan.md`
+This block is informational. You still resolve every ambiguity autonomously in the grounded spec
 (zero-option items get the safest available placeholder, flagged `⚠️ LOW CONFIDENCE`). The
 orchestrator — not this skill — decides whether to pause and ask the user.
 
@@ -201,18 +186,16 @@ orchestrator — not this skill — decides whether to pause and ask the user.
 
 ## Resources
 
-- **Plan Template**: `./assets/plan-template.md`
+- **Grounded Spec Template**: `./assets/grounded-spec-template.md`
 - **Decision Heuristics**: `./references/decision-heuristics.md`
 
 ## Contract
 
 > Layer: **capability** — atomic, stateless, given declared inputs → produce one output. No checkpoint reads/writes, no branch ops, no ARCUS path construction.
 
-> **Section ownership**: governed by the manifest at `plugins/arcus/schemas/plan.md.schema.yaml`
-> (resolve via the plugin / `ARCUS_HOME` path, never a hard-coded `.arcus/` path). spec-finalizer
-> owns and writes ONLY: the `# Plan: <STORY-ID>` title, `## Context Grounding`, `## Resolved Ambiguities`,
-> `## Dialogue Answers` (dialogue mode), `## Implementation Boundary`, `## Guardrail Check`. It never
-> writes implementation-planner's design sections.
+> **Output**: a single self-contained `grounded-spec` record. spec-finalizer writes the
+> `# Grounded Spec: <STORY-ID>` title, `## Context Grounding`, `## Resolved Ambiguities`,
+> `## Dialogue Answers` (dialogue mode), `## Implementation Boundary`, and `## Guardrail Check`.
 
 ### Inputs
 | Input | Type | Description | Typical source |
@@ -222,7 +205,7 @@ orchestrator — not this skill — decides whether to pause and ask the user.
 | `mode` | string | Execution mode: `dialogue` (interview user on low-confidence items) or `autonomous` (auto-resolve everything) | orchestrator passes it / standalone user supplies it |
 
 ### Outputs
-- **`spec_grounding`** (markdown) — Resolved ambiguities with selected options and rationale, implementation boundary (included/excluded), guardrail check, and dialogue answers (if mode=dialogue). Written as owned sections in a shared plan document.
+- **`spec_grounding`** (markdown) — Resolved ambiguities with selected options and rationale, implementation boundary (included/excluded), guardrail check, and dialogue answers (if mode=dialogue). Written as a self-contained grounded-spec document.
   Output convention: pipeline caller sets the path; standalone default `.arcus/outputs/spec-finalizer/<story-id-or-timestamp>.md`. The capability never asks the user where to write.
 
 ### Mode

@@ -57,7 +57,7 @@ orchestrator runs the same pipeline in two modes:
 
 Both modes reuse the same `arcus:implementation-runner` loop driver for the Implementation stage, the
 same helper scripts, and the same checkpoint stage keys
-(`scaffold → context_pack → spec_finalizer → blueprint → test_plan → branch → task_1..N → code_review → context_sync → closure`).
+(`scaffold → context_pack → spec_finalizer → plan → test_plan → branch → task_1..N → code_review → context_sync → closure`).
 
 > Skills are still dispatched imperatively (one skill reads and follows the next by name). Isolated
 > execution via `context: fork` is a deferred follow-up and is **not** in use today.
@@ -69,8 +69,8 @@ Each story execution creates a working area under `.arcus/specs/[STORY-ID]/` in 
 - `session-checkpoint.json` — Resumable per-stage execution state (ordered stage keys + the planned/realized branch fields)
 - `story.md` — Canonical copy of the input story
 - `context-pack.md` — Compact, token-efficient context bundle
-- `plan.md` — Consolidated planning deliberation (grounded decisions, dialogue answers, design choices)
-- `blueprint.md` — Machine-parsed implementation plan and task list
+- `grounded-spec.md` — Grounded story decisions (written by spec-finalizer)
+- `plan.md` — Design deliberation plus the atomic task list (written by implementation-planner)
 - `test-plan.md` — Generated verification matrix
 - `review.md` — Holistic code-review report
 - `PR_DESCRIPTION.md` — Final pull request body
