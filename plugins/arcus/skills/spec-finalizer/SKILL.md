@@ -20,47 +20,51 @@ This skill runs in one of two modes. The caller (the `arcus:arcus-controller`) d
 
 | Mode | Context | Behaviour |
 |------|---------|-----------|
-| **dialogue** (gated) | Runs in the **main thread** | Auto-resolve what you confidently can, then **ask the user** the highest-impact open questions **one at a time**, folding each answer in before asking the next. Record answers in the `## Dialogue Answers` section of `plan.md`. |
+| **dialogue** (gated) | Runs in the **main thread** | Auto-resolve what you confidently can, then **ask the user** the highest-impact open questions **one at a time**, folding each answer in before asking the next. Record answers in the `## Dialogue Answers` section of the `spec_grounding` output. |
 | **one-shot** (afk / subagent) | Runs as an isolated subagent | Never block for input. Auto-resolve every ambiguity (safest option, flagged `⚠️ LOW CONFIDENCE` where weak), and surface unresolved items via the Step 7 `NEEDS_INPUT` block. Skip / leave empty the `## Dialogue Answers` section. |
 
-In **both** modes you must still produce a complete `plan.md` (spec-finalizer's owned sections —
-see Output). In dialogue mode, the user's answers are authoritative and override your tentative
-picks. If `plan.md` already has a populated `## Dialogue Answers` section, reuse it and do NOT
-re-ask questions already answered.
+In **both** modes you must still produce a complete `spec_grounding` output (spec-finalizer's owned
+sections — see Output). In dialogue mode, the user's answers are authoritative and override your
+tentative picks. If the `spec_grounding` output already has a populated `## Dialogue Answers` section,
+reuse it and do NOT re-ask questions already answered.
 
 ## Inputs
 
-- `.arcus/specs/[STORY-ID]/story.md` — The user story
-- `.arcus/specs/[STORY-ID]/context-pack.md` — Repository context (flows, patterns, constraints)
+- The `story` input — The user story
+- The `context_pack` input — Repository context (flows, patterns, constraints) (optional)
 - Project-wide guardrails (if present in `AGENTS.md` or `CLAUDE.md`)
 
 ## Output
 
 This skill produces **exactly** the following — nothing else:
 
-- `.arcus/specs/[STORY-ID]/plan.md` — A single **shared** deliberation record. spec-finalizer
-  writes ONLY its owned sections into it (always): `# Plan: [STORY-ID]` title, `## Context Grounding`,
-  `## Resolved Ambiguities`, `## Dialogue Answers` (**dialogue mode only**), `## Implementation Boundary`,
-  and `## Guardrail Check`.
+- The `spec_grounding` output (written to the caller-provided output path) — A single **shared**
+  deliberation record. spec-finalizer writes ONLY its owned sections into it (always):
+  `# Plan: [STORY-ID]` title, `## Context Grounding`, `## Resolved Ambiguities`,
+  `## Dialogue Answers` (**dialogue mode only**), `## Implementation Boundary`, and `## Guardrail Check`.
 
-### Shared plan.md — Section Ownership Contract
+### Shared deliberation record — Section Ownership Contract
 
-`plan.md` is a single file shared with `implementation-planner`, which runs **after** this skill and
-**appends** its own design sections (`## Approach Evaluation`, `## Chosen Approach & Reasoning`,
-`## Design / Impacted Files`, `## Design Dialogue Answers`) to the SAME file. To avoid clobbering:
+The `spec_grounding` output is a single **shared** deliberation record (conceptually the shared
+plan / deliberation record) co-owned with `implementation-planner`, which runs **after** this skill
+and **appends** its own design sections (`## Approach Evaluation`, `## Chosen Approach & Reasoning`,
+`## Design / Impacted Files`, `## Design Dialogue Answers`) to the SAME record. The concrete write
+target is the output path the caller provides (standalone default
+`.arcus/outputs/spec-finalizer/<story-id-or-timestamp>.md`); this skill constructs no path itself.
+To avoid clobbering:
 
-- spec-finalizer runs first, so it **creates** `plan.md` (with the `# Plan: [STORY-ID]` title) if it
-  is absent.
-- If `plan.md` already exists, **append/merge** — replace only the sections spec-finalizer owns (listed
+- spec-finalizer runs first, so it **creates** the record (with the `# Plan: [STORY-ID]` title) at the
+  output path if it is absent.
+- If the record already exists, **append/merge** — replace only the sections spec-finalizer owns (listed
   above) in place and leave any `implementation-planner` design sections untouched. Never overwrite the
-  whole file.
+  whole record.
 - spec-finalizer must only ever write or replace its OWN sections.
 
 ## Workflow
 
 ### Step 1: Completeness Analysis
 
-Read `story.md` and `context-pack.md`. Systematically scan for:
+Use the `story` input and the `context_pack` input. Systematically scan for:
 
 | Category | What to Look For |
 |----------|-----------------|
@@ -84,7 +88,7 @@ For EACH ambiguity identified in Step 1, generate **2-3 options**:
 - **Option B**: The pragmatic choice (simplest implementation that works)
 - **Option C** (optional): An alternative if A and B have significant tradeoffs
 
-Each option MUST be grounded in evidence from `context-pack.md` — reference specific patterns, flows, or conventions found in the repository.
+Each option MUST be grounded in evidence from the `context_pack` input — reference specific patterns, flows, or conventions found in the repository.
 
 **Fast-track rule**: If the repository has an obvious, consistent pattern for a given ambiguity, fast-track the decision (skip the options table). See decision-heuristics.md for when this applies.
 
@@ -120,7 +124,7 @@ Q: <the gap, phrased as a question>
 ```
 
 Record each chosen answer (whether the recommended option or the user's custom answer) into the
-`## Dialogue Answers` section of `.arcus/specs/[STORY-ID]/plan.md`. The user's answer is authoritative
+`## Dialogue Answers` section of the `spec_grounding` output. The user's answer is authoritative
 and overrides your recommendation.
 
 ### Step 4: Boundary Definition
@@ -141,12 +145,12 @@ Fix any issues inline. Do not skip this step.
 
 ### Step 6: Write Output
 
-Write the decisions to `.arcus/specs/[STORY-ID]/plan.md` using the template at
-`./assets/plan-template.md`. Respect the **section ownership contract** (see Output): create `plan.md`
-if it does not exist; if it already exists, replace only spec-finalizer's owned sections in place and
-leave any `implementation-planner` design sections intact — never overwrite the whole file. In dialogue
-mode, fill the `## Dialogue Answers` section from the recorded Q&A; in one-shot mode, leave it empty or
-omit it.
+Write the decisions to the `spec_grounding` output (at the caller-provided output path) using the
+template at `./assets/plan-template.md`. Respect the **section ownership contract** (see Output):
+create the record if it does not exist; if it already exists, replace only spec-finalizer's owned
+sections in place and leave any `implementation-planner` design sections intact — never overwrite the
+whole record. In dialogue mode, fill the `## Dialogue Answers` section from the recorded Q&A; in
+one-shot mode, leave it empty or omit it.
 
 ### Step 7: Emit Escalation Signal (return message)
 
@@ -225,3 +229,18 @@ The caller passes `mode` explicitly (full explicit-parameter wiring is finalized
 1. **Output path** — never ask. Default to `.arcus/outputs/spec-finalizer/<story-id-or-timestamp>.md`; orchestrators override with an explicit path.
 2. **Optional inputs** — never ask. Proceed without them; note the omission in the output.
 3. **Required inputs with no sensible default** — ask once, clearly. Cannot proceed without these.
+
+## Caller Guidance
+
+This capability receives **named inputs**, not file paths. How they arrive depends on the caller:
+
+- **Pipeline (via an orchestrator/coordinator)**: the caller resolves the ARCUS workspace spec
+  paths (the per-story spec directory under the ARCUS workspace) and passes the **content** of each
+  input plus an explicit `output_path`. The capability constructs no ARCUS paths itself.
+- **Standalone (a developer who has never used ARCUS)**: the user supplies the `story` text (and
+  optionally `context_pack`) directly — pasted inline or as a file they point to. Optional inputs
+  absent → proceed without them and note the omission. Output defaults to
+  `.arcus/outputs/spec-finalizer/<story-id-or-timestamp>.md`.
+
+The skill body below is written in terms of the named inputs; it never reads a hard-coded
+ARCUS workspace spec path.
