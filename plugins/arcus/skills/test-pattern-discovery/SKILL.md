@@ -1,6 +1,8 @@
 ---
 name: test-pattern-discovery
 description: Analyze existing tests and persist shared repository testing conventions. Use when user says "how do we write tests?", "discover and persist testing patterns", or "baseline the testing style".
+layer: capability
+standalone: true
 ---
 
 # Test Pattern Discovery

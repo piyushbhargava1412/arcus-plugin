@@ -1,6 +1,8 @@
 ---
 name: design-pattern-discovery
 description: Analyze existing source and persist shared repository design & coding patterns — conventions, idioms, layering/structure, naming, error-handling & logging, plus a curated "Avoid" list. Use when user says "what are our coding conventions?", "discover and persist design patterns", or "baseline the coding style".
+layer: capability
+standalone: true
 ---
 
 # Design Pattern Discovery

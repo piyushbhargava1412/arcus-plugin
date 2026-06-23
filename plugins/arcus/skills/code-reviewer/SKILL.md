@@ -7,6 +7,8 @@ description: >
   reviewers across the whole change set. Deduplicates, filters noise, judges severity,
   and writes a single review report with a verdict. Trigger on "review <STORY>" or
   "code review <STORY>".
+layer: coordinator
+standalone: true
 argument-hint: <STORY>
 ---
 

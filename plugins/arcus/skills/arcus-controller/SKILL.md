@@ -9,6 +9,8 @@ description: >
   "run afk on <STORY>". The gated, one-stage-at-a-time flow lives elsewhere
   (the per-stage skills + the `arcus:solution-architect` brainstorm coordinator) —
   this controller never runs gated.
+layer: orchestrator
+standalone: false
 argument-hint: <STORY>
 disallowed-tools: AskUserQuestion
 ---

@@ -1,6 +1,8 @@
 ---
 name: repository-context-builder
 description: Build or refresh baseline repository context by analyzing structure and generating repo_scope and repo_map artifacts. Use when user says "build shared repository context", "update the context", or "refresh the context" or "sync the repo context".
+layer: capability
+standalone: true
 ---
 
 # Repository Context Builder

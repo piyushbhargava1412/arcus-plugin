@@ -1,6 +1,8 @@
 ---
 name: flow-and-scope-discovery
 description: Identify business flows and persist each as a separate file in .context/flows. Use when user says "discover and persist flows", "generate context flows", or "what does this repo actually do".
+layer: capability
+standalone: true
 ---
 
 # Flow and Scope Discovery

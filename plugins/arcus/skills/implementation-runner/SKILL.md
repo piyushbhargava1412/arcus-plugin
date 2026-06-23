@@ -7,6 +7,8 @@ description: >
   and commit. Reused by both the gated flow and the afk controller. Activates on
   "implement <STORY>" or "code <STORY>"; resumes after a changes_requested review
   via the loopback protocol.
+layer: orchestrator
+standalone: false
 argument-hint: <STORY>
 ---
 

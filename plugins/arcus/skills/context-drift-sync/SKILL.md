@@ -5,6 +5,8 @@ description: >
   `.context/` artifact, and surgically sync only the affected ones. Runs after code-review
   approval and before Closure. Strict, diff-driven, FACTS-ONLY — no story artifacts read.
   Trigger on "sync context for <STORY_ID>", "sync context", or "sync the context drift".
+layer: capability
+standalone: true
 ---
 
 # Context Drift Sync (Post-Review .context/ Reconciliation)

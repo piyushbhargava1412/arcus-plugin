@@ -4,6 +4,8 @@ description: >
   Review implementation code for quality: pattern fidelity, clean structure, test coverage,
   and maintainability. Returns severity-tagged findings. Dispatched holistically by the
   code-reviewer coordinator over the whole branch diff — not invoked per task.
+layer: capability
+standalone: true
 user-invocable: false
 disable-model-invocation: true
 disallowed-tools: Edit, Write, MultiEdit

@@ -5,6 +5,8 @@ description: >
   all ARCUS skills. Loaded by name (the `arcus:model-strategy` skill) when an
   orchestrator or sub-skill needs to resolve a `heavy`/`medium`/`light` complexity to a model tier
   and platform model string. Not invoked directly by users.
+layer: substrate
+standalone: false
 user-invocable: false
 disable-model-invocation: true
 ---

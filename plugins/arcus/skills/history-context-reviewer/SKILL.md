@@ -5,6 +5,8 @@ description: >
   against git blame/log to detect load-bearing complexity removals: silently-reverted
   prior fixes, removed deliberate workarounds, and re-added previously-reverted code.
   Dispatched by arcus:code-reviewer in the Step 3 fan-out — not invoked directly by users.
+layer: capability
+standalone: true
 user-invocable: false
 disable-model-invocation: true
 disallowed-tools: Edit, Write, MultiEdit

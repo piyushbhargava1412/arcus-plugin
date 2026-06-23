@@ -1,6 +1,8 @@
 ---
 name: copilot-conversation-search
 description: Search past Copilot CLI conversation history. Use when asked to recall, find, or search for anything from previous sessions. Triggers include "what did we do today", "what did we work on yesterday", "how did we fix X", "search history", "recall when we", "what was that solution", "find past session", "what sessions", "previous work".
+layer: utility
+standalone: true
 ---
 
 # Conversation Search

@@ -7,6 +7,8 @@ description: >
   and a CLAUDE.md that imports it. Parallelizes independent stages for efficiency. Use when user says
   "agentify this repo", "wire me up", "make this repo agentic", "build context", "initialize context",
   "generate shared context", "bootstrap the .context folder", or "generate AGENTS.md".
+layer: coordinator
+standalone: true
 ---
 
 # Repo Agentifier (Meta-Skill)

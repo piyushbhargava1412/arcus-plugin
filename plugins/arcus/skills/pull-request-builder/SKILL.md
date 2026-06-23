@@ -1,6 +1,8 @@
 ---
 name: pull-request-builder
 description: Finalize the development workflow by summarizing changes and creating a pull request. Use when all tasks in the blueprint are completed and verified. Trigger on "finalize workflow", "create pull request", or "submit changes".
+layer: capability
+standalone: true
 ---
 
 # Pull Request Builder

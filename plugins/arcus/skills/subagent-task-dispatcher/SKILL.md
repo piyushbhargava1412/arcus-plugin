@@ -5,6 +5,8 @@ description: >
   receives scoped context (single task + relevant tests + constraints) to prevent
   token bleed between tasks. Used by the afk-skill-router orchestrator during the
   Code stage.
+layer: orchestrator
+standalone: false
 user-invocable: false
 disable-model-invocation: true
 disallowed-tools: AskUserQuestion

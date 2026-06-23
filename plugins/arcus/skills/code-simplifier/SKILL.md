@@ -6,6 +6,8 @@ description: >
   re-runs the test suite. Returns SIMPLIFIED if the suite stays green, REVERTED if it
   goes red (mutations rolled back). Skipped on `light` complexity tasks. Dispatched by
   arcus:subagent-task-dispatcher — not invoked directly by users.
+layer: coordinator
+standalone: false
 user-invocable: false
 disable-model-invocation: true
 disallowed-tools: AskUserQuestion

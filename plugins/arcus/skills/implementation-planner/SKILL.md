@@ -1,6 +1,8 @@
 ---
 name: implementation-planner
 description: Act as a Tech Lead to design a technical approach and decompose a user story into atomic implementation tasks. Generates and scores at least two candidate approaches, and in dialogue (gated) mode interviews the user on the design decision before producing the blueprint. Use when you have a context pack and a grounded plan and need to generate a blueprint. Trigger on "plan the implementation", "generate implementation blueprint", or "break down the story".
+layer: capability
+standalone: true
 ---
 
 # Implementation Planner

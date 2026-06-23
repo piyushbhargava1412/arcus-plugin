@@ -5,6 +5,8 @@ description: >
   exploitable or concretely dangerous vulnerabilities in the changed code only. Returns
   severity-tagged findings for the code-reviewer coordinator to consolidate. Dispatched
   by the code-reviewer skill — not invoked directly by users.
+layer: capability
+standalone: true
 user-invocable: false
 disable-model-invocation: true
 disallowed-tools: Edit, Write, MultiEdit

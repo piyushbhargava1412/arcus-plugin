@@ -4,6 +4,8 @@ description: >
   Review whether an implementation matches its specification. Verifies code against
   the task's Definition of Done from the blueprint. Returns PASS or structured issue list.
   Used by the orchestrator after each task implementation.
+layer: capability
+standalone: true
 user-invocable: false
 disable-model-invocation: true
 disallowed-tools: Edit, Write, MultiEdit

@@ -1,6 +1,8 @@
 ---
 name: context-pack-builder
 description: Build a minimal, story-specific context pack from shared artifacts. Use when starting a new story, building context for a specific story ID, or performing pre-specification planning. Trigger on "start a new story", "build context for story", or "prepare context pack".
+layer: capability
+standalone: true
 ---
 
 # Feature Context Pack Builder

@@ -4,6 +4,8 @@ description: >
   Analyze a user story for completeness and resolve all ambiguities by generating
   options grounded in repository patterns and selecting the best choice autonomously.
   Trigger on "finalize spec", "resolve ambiguities", or "ground the story".
+layer: capability
+standalone: true
 ---
 
 # Spec Finalizer (Story Completeness + Ambiguity Resolution)
