@@ -206,6 +206,12 @@ orchestrator — not this skill — decides whether to pause and ask the user.
 
 > Layer: **capability** — atomic, stateless, given declared inputs → produce one output. No checkpoint reads/writes, no branch ops, no ARCUS path construction.
 
+> **Section ownership**: governed by the manifest at `plugins/arcus/schemas/plan.md.schema.yaml`
+> (resolve via the plugin / `ARCUS_HOME` path, never a hard-coded `.arcus/` path). spec-finalizer
+> owns and writes ONLY: the `# Plan: <STORY-ID>` title, `## Context Grounding`, `## Resolved Ambiguities`,
+> `## Dialogue Answers` (dialogue mode), `## Implementation Boundary`, `## Guardrail Check`. It never
+> writes implementation-planner's design sections.
+
 ### Inputs
 | Input | Type | Description | Typical source |
 |-------|------|-------------|----------------|

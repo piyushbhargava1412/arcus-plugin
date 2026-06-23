@@ -114,6 +114,11 @@ Record the impacted-file map and design notes into the `## Design / Impacted Fil
 
 > Layer: **capability** — atomic, stateless, given declared inputs → produce one output. No checkpoint reads/writes, no branch ops, no ARCUS path construction.
 
+> **Section ownership**: governed by the manifest at `plugins/arcus/schemas/plan.md.schema.yaml`
+> (resolve via the plugin / `ARCUS_HOME` path, never a hard-coded `.arcus/` path). implementation-planner
+> owns and writes ONLY: `## Approach Evaluation`, `## Chosen Approach & Reasoning`, `## Design / Impacted Files`,
+> `## Design Dialogue Answers` (dialogue mode). It never writes spec-finalizer's requirements sections.
+
 ### Inputs
 | Input | Type | Description | Typical source |
 |-------|------|-------------|----------------|
