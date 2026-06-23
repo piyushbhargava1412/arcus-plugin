@@ -84,10 +84,11 @@ After verification passes:
 
 **Skip condition**: if the task `complexity` == `light`, skip this step entirely and proceed directly to Step 7 (Spec Check).
 
-Otherwise, dispatch the `arcus:code-simplifier` subagent:
+Otherwise, dispatch the `arcus:code-simplifier` coordinator subagent:
 - **Prompt**: Include the list of files modified by this task, the task's DoD from `blueprint.md`, and the instruction: "Read and follow the `arcus:code-simplifier` skill."
 - **Description**: `"Refactor: Task N"`
 - **Model**: Resolve complexity `medium` via the `arcus:model-strategy` skill
+- **Note**: The `code-simplifier` coordinator now delegates internally to the `simplify-and-verify` capability for the actual refactor+verify work.
 
 Handle the return status:
 | Status | Meaning | Action |
@@ -103,8 +104,8 @@ After verification passes, run **one** fast spec-compliance check before committ
 to catch the few things green tests + the later holistic review can't cheaply catch *early*, while the
 task's context is still fresh:
 
-- **gamed/over-fitted tests** — tests pass but don't actually encode the DoD;
-- **DoD items with no test at all** — a requirement silently skipped;
+- **gamed/over-fitted tests** — tests pass but don't actually encode the acceptance criteria;
+- **acceptance criteria items with no test at all** — a requirement silently skipped;
 - **`[EXTRA]` scope creep** — work the task didn't ask for, before it accretes across tasks.
 
 Code **quality** (patterns, structure, maintainability), **security**, and **performance** are NOT
@@ -164,8 +165,10 @@ After reviews pass (or retry limit reached):
 > Layer: **orchestrator** — the **stateful** pipeline driver. Owns the checkpoint, the git branch, and the stage gates. It resolves all ARCUS paths and artifact filenames and passes capabilities/coordinators explicit, pre-resolved inputs — so the capabilities themselves stay path-free and reusable.
 
 - **Owned state**: Per-task isolation protocol (TDD → refactor gate → spec-check → commit sequence), retry counters (max 2 implementation retries per task, max 1 spec-check retry, max 1 escalation per task), task complexity escalation state (light → medium → heavy on implementation failure).
-- **Calls**: Fresh subagents for task implementation (passing scoped context: single task definition from `blueprint.md`, relevant test cases from `test-plan.md`, relevant constraints from `plan.md`, architecture overview from `context-pack.md`, files modified by prior tasks — no full prior-task diffs), `code-simplifier` coordinator (on non-light complexity, after GREEN — passing changed files, task DoD, returns SIMPLIFIED/REVERTED), `spec-compliance-reviewer` capability (per-task mode — passing task requirements, implementer's status report, returns PASS/FAIL), `commit.sh` (after reviews pass). Resolves task complexity to model tier via `model-strategy` skill, passes resolved model string to subagent spawner (Claude Code `Agent` tool's `model` param; Copilot `runSubagent`).
-- **Framework-conventions boundary**: Task scoping rules (< 30% story context per subagent), artifact path resolution (`blueprint.md` task heading extraction, `test-plan.md` mapped-test-case extraction, `plan.md` relevant-constraint extraction), per-task checkpoint keys (`task_<N>`), commit message formatting (`"Task N: <desc>"` or `"Task N: <desc> [simplifier: reverted]"` or `"Task N: <desc> [spec: unresolved]"`), retry/escalation caps, and the refactor-gate skip condition (complexity == `light`) all live HERE. The capabilities receive only domain inputs (changed files, DoD, test cases, constraints).
+- **Calls**: Fresh subagents for task implementation (passing scoped context: single task definition from `blueprint.md`, relevant test cases from `test-plan.md`, relevant constraints from `plan.md`, architecture overview from `context-pack.md`, files modified by prior tasks — no full prior-task diffs), `code-simplifier` coordinator (on non-light complexity, after GREEN — passing changed files, task acceptance criteria, returns SIMPLIFIED/REVERTED), `spec-compliance-reviewer` capability (per-task mode — passing task requirements, implementer's status report, returns PASS/FAIL), `commit.sh` (after reviews pass). Resolves task complexity to model tier via `model-strategy` skill, passes resolved model string to subagent spawner (Claude Code `Agent` tool's `model` param; Copilot `runSubagent`).
+- **Framework-conventions boundary**: Task scoping rules (< 30% story context per subagent), artifact path resolution (`blueprint.md` task heading extraction, `test-plan.md` mapped-test-case extraction, `plan.md` relevant-constraint extraction), per-task checkpoint keys (`task_<N>`), commit message formatting (`"Task N: <desc>"` or `"Task N: <desc> [simplifier: reverted]"` or `"Task N: <desc> [spec: unresolved]"`), retry/escalation caps, and the refactor-gate skip condition (complexity == `light`) all live HERE. The capabilities receive only domain inputs (changed files, acceptance criteria, test cases, constraints).
+
+> **Audit (ARC-0006)**: Reviewed for inline domain logic during the capability-library refactor. All content is legitimately orchestration protocol (per-task isolation, retry/escalation state, gate sequencing, complexity escalation, scoping rules). No capability extracted. The refactor gate correctly delegates to `code-simplifier` (coordinator adapter that internally calls `simplify-and-verify`).
 
 ## Success Criteria
 
