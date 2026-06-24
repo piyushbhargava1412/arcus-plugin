@@ -198,4 +198,139 @@ section('L1-1..L1-3');
   }
 }
 
+// --- L1-4..L1-7 checks ---
+section('L1-4..L1-7');
+{
+  try {
+    const { checkAdvisoryReadOnly, checkCapabilityNoState, checkNoInlinedDomain, checkCrossRefs }
+      = await import('./lib/checks.mjs');
+    const { walkSkills, parseFrontmatter, ADVISORY_REVIEWERS }
+      = await import('./lib/skills.mjs');
+    const fs = await import('node:fs/promises');
+    const path = await import('node:path');
+    const { repoRoot } = await import('./lib/skills.mjs');
+
+    // Get all skills for cross-ref validation
+    const allSkills = walkSkills();
+    const knownSkillNames = new Set(allSkills.map(s => s.name));
+
+    // Test L1-4: checkAdvisoryReadOnly passes on real advisory reviewer (security-reviewer)
+    const securityReviewer = allSkills.find(s => s.name === 'security-reviewer');
+    assert(securityReviewer !== undefined, 'security-reviewer skill exists');
+
+    const secResult = checkAdvisoryReadOnly({
+      name: securityReviewer.name,
+      frontmatter: securityReviewer.frontmatter,
+      advisorySet: ADVISORY_REVIEWERS
+    });
+    assert(secResult.ok === true, `checkAdvisoryReadOnly passes on security-reviewer (got ${secResult.errors?.join('; ') || 'ok'})`);
+
+    // Test L1-4: checkAdvisoryReadOnly FAILS on write-enabled-reviewer fixture
+    const writeEnabledPath = path.join(repoRoot, 'tests/fixtures/write-enabled-reviewer/SKILL.md');
+    const writeEnabledText = await fs.readFile(writeEnabledPath, 'utf-8');
+    const writeEnabledFM = parseFrontmatter(writeEnabledText);
+    const writeEnabledResult = checkAdvisoryReadOnly({
+      name: 'security-reviewer', // Use the name from the fixture to trigger advisory check
+      frontmatter: writeEnabledFM,
+      advisorySet: ADVISORY_REVIEWERS
+    });
+    assert(writeEnabledResult.ok === false, `checkAdvisoryReadOnly fails on write-enabled-reviewer (got ok=${writeEnabledResult.ok})`);
+    assert(writeEnabledResult.errors.length > 0, 'checkAdvisoryReadOnly returns error messages for write-enabled-reviewer');
+
+    // Test L1-4: checkAdvisoryReadOnly passes (not applicable) on non-advisory skill
+    const specFinalizer = allSkills.find(s => s.name === 'spec-finalizer');
+    const nonAdvisoryResult = checkAdvisoryReadOnly({
+      name: specFinalizer.name,
+      frontmatter: specFinalizer.frontmatter,
+      advisorySet: ADVISORY_REVIEWERS
+    });
+    assert(nonAdvisoryResult.ok === true, 'checkAdvisoryReadOnly passes (not applicable) on non-advisory skill');
+
+    // Test L1-5: checkCapabilityNoState passes on real capability (spec-finalizer)
+    const stateResult = checkCapabilityNoState({
+      name: specFinalizer.name,
+      tier: 'capability',
+      body: specFinalizer.body
+    });
+    assert(stateResult.ok === true, `checkCapabilityNoState passes on spec-finalizer (got ${stateResult.errors?.join('; ') || 'ok'})`);
+
+    // Test L1-5: checkCapabilityNoState FAILS on capability-with-state fixture
+    const capWithStatePath = path.join(repoRoot, 'tests/fixtures/capability-with-state/SKILL.md');
+    const capWithStateText = await fs.readFile(capWithStatePath, 'utf-8');
+    const capWithStateFM = parseFrontmatter(capWithStateText);
+    const bodyMatch = capWithStateText.match(/---\n([\s\S]*?)---\n([\s\S]*)/);
+    const capWithStateBody = bodyMatch ? bodyMatch[2] : capWithStateText;
+    const capWithStateResult = checkCapabilityNoState({
+      name: 'capability-with-state',
+      tier: 'capability',
+      body: capWithStateBody
+    });
+    assert(capWithStateResult.ok === false, `checkCapabilityNoState fails on capability-with-state (got ok=${capWithStateResult.ok})`);
+    assert(capWithStateResult.errors.length > 0, 'checkCapabilityNoState returns error messages for capability-with-state');
+
+    // Test L1-5: checkCapabilityNoState passes (not applicable) on orchestrator
+    const implementationRunner = allSkills.find(s => s.name === 'implementation-runner');
+    const orchestratorResult = checkCapabilityNoState({
+      name: implementationRunner.name,
+      tier: 'orchestrator',
+      body: implementationRunner.body
+    });
+    assert(orchestratorResult.ok === true, 'checkCapabilityNoState passes (not applicable) on orchestrator');
+
+    // Test L1-6: checkNoInlinedDomain returns warnings (not errors) on prose-heavy-coordinator fixture
+    const proseHeavyPath = path.join(repoRoot, 'tests/fixtures/prose-heavy-coordinator/SKILL.md');
+    const proseHeavyText = await fs.readFile(proseHeavyPath, 'utf-8');
+    const proseHeavyFM = parseFrontmatter(proseHeavyText);
+    const proseBodyMatch = proseHeavyText.match(/---\n([\s\S]*?)---\n([\s\S]*)/);
+    const proseHeavyBody = proseBodyMatch ? proseBodyMatch[2] : proseHeavyText;
+    const proseHeavyResult = checkNoInlinedDomain({
+      name: 'prose-heavy-coordinator',
+      tier: 'coordinator',
+      body: proseHeavyBody
+    });
+    assert(proseHeavyResult.ok === true, 'checkNoInlinedDomain always returns ok:true (advisory only)');
+    assert(proseHeavyResult.warnings && proseHeavyResult.warnings.length > 0, 'checkNoInlinedDomain returns warnings for prose-heavy-coordinator');
+
+    // Test L1-6: checkNoInlinedDomain returns no warnings on real coordinator (code-reviewer)
+    const codeReviewer = allSkills.find(s => s.name === 'code-reviewer');
+    const codeReviewerResult = checkNoInlinedDomain({
+      name: codeReviewer.name,
+      tier: 'coordinator',
+      body: codeReviewer.body
+    });
+    assert(codeReviewerResult.ok === true, 'checkNoInlinedDomain returns ok:true on code-reviewer');
+    // Note: we allow warnings on real coordinators, just check it doesn't fail the gate
+    assert(codeReviewerResult.warnings !== undefined, 'checkNoInlinedDomain returns warnings array (may be empty)');
+
+    // Test L1-7: checkCrossRefs passes on real skill with valid references (code-reviewer)
+    const crossRefResult = checkCrossRefs({
+      name: codeReviewer.name,
+      body: codeReviewer.body,
+      knownSkillNames
+    });
+    assert(crossRefResult.ok === true, `checkCrossRefs passes on code-reviewer (got ${crossRefResult.errors?.join('; ') || 'ok'})`);
+
+    // Test L1-7: checkCrossRefs FAILS on dangling-ref fixture
+    const danglingRefPath = path.join(repoRoot, 'tests/fixtures/dangling-ref/SKILL.md');
+    const danglingRefText = await fs.readFile(danglingRefPath, 'utf-8');
+    const danglingBodyMatch = danglingRefText.match(/---\n([\s\S]*?)---\n([\s\S]*)/);
+    const danglingRefBody = danglingBodyMatch ? danglingBodyMatch[2] : danglingRefText;
+    const danglingRefResult = checkCrossRefs({
+      name: 'dangling-ref',
+      body: danglingRefBody,
+      knownSkillNames
+    });
+    assert(danglingRefResult.ok === false, `checkCrossRefs fails on dangling-ref (got ok=${danglingRefResult.ok})`);
+    assert(danglingRefResult.errors.length > 0, 'checkCrossRefs returns error messages for dangling-ref');
+    // Verify it caught the specific dangling refs
+    const errorMsg = danglingRefResult.errors.join(' ');
+    assert(errorMsg.includes('does-not-exist-skill') || errorMsg.includes('another-missing-skill'),
+           'checkCrossRefs identifies specific dangling references');
+
+    pass('L1-4..L1-7 checks passed');
+  } catch (err) {
+    fail(`L1-4..L1-7 checks failed: ${err.message}`);
+  }
+}
+
 exitWithReport();

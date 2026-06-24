@@ -4,8 +4,8 @@
 // non-zero on any failure.
 
 import { assert, section, exitWithReport } from './lib/assert.mjs';
-import { walkSkills, readJSON, repoRoot, VALID_TIERS } from './lib/skills.mjs';
-import { checkManifests, checkFrontmatter, checkLineBudget } from './lib/checks.mjs';
+import { walkSkills, readJSON, repoRoot, VALID_TIERS, ADVISORY_REVIEWERS } from './lib/skills.mjs';
+import { checkManifests, checkFrontmatter, checkLineBudget, checkAdvisoryReadOnly, checkCapabilityNoState, checkNoInlinedDomain, checkCrossRefs } from './lib/checks.mjs';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -78,6 +78,114 @@ section('L1-3: Line budget');
   }
 
   assert(budgetFailures === 0, `L1-3: all ${skills.length} skills are within 500-line budget (${budgetFailures} failures)`);
+}
+
+section('L1-4: Advisory reviewers are read-only');
+{
+  const skills = walkSkills();
+  let advisoryFailures = 0;
+
+  for (const skill of skills) {
+    // Only check advisory reviewers
+    if (!ADVISORY_REVIEWERS.has(skill.name)) {
+      continue;
+    }
+
+    const result = checkAdvisoryReadOnly({
+      name: skill.name,
+      frontmatter: skill.frontmatter,
+      advisorySet: ADVISORY_REVIEWERS
+    });
+
+    if (!result.ok) {
+      advisoryFailures++;
+      console.error(`  ${skill.name}: ${result.errors.join('; ')}`);
+    }
+  }
+
+  assert(advisoryFailures === 0, `L1-4: all ${ADVISORY_REVIEWERS.size} advisory reviewers are read-only (${advisoryFailures} failures)`);
+}
+
+section('L1-5: Capabilities hold no orchestration state');
+{
+  const skills = walkSkills();
+  let stateFailures = 0;
+
+  for (const skill of skills) {
+    const tier = skill.frontmatter.layer;
+
+    // Only check capabilities
+    if (tier !== 'capability') {
+      continue;
+    }
+
+    const result = checkCapabilityNoState({
+      name: skill.name,
+      tier,
+      body: skill.body
+    });
+
+    if (!result.ok) {
+      stateFailures++;
+      console.error(`  ${skill.name}: ${result.errors.join('; ')}`);
+    }
+  }
+
+  const capabilityCount = skills.filter(s => s.frontmatter.layer === 'capability').length;
+  assert(stateFailures === 0, `L1-5: all ${capabilityCount} capabilities hold no orchestration state (${stateFailures} failures)`);
+}
+
+section('L1-6: Orchestrators/coordinators no inlined domain logic (advisory)');
+{
+  const skills = walkSkills();
+  let totalWarnings = 0;
+
+  for (const skill of skills) {
+    const tier = skill.frontmatter.layer;
+
+    // Only check orchestrators and coordinators
+    if (tier !== 'orchestrator' && tier !== 'coordinator') {
+      continue;
+    }
+
+    const result = checkNoInlinedDomain({
+      name: skill.name,
+      tier,
+      body: skill.body
+    });
+
+    if (result.warnings && result.warnings.length > 0) {
+      totalWarnings += result.warnings.length;
+      console.log(`  WARNING: ${skill.name}: ${result.warnings.join('; ')}`);
+    }
+  }
+
+  const orchCoordCount = skills.filter(s => s.frontmatter.layer === 'orchestrator' || s.frontmatter.layer === 'coordinator').length;
+  console.log(`  L1-6: checked ${orchCoordCount} orchestrators/coordinators, found ${totalWarnings} warnings (advisory only)`);
+  // Note: This check never fails - it only warns
+  assert(true, 'L1-6: advisory check completed (warnings above are informational)');
+}
+
+section('L1-7: Cross-skill references resolve');
+{
+  const skills = walkSkills();
+  const knownSkillNames = new Set(skills.map(s => s.name));
+  let refFailures = 0;
+
+  for (const skill of skills) {
+    const result = checkCrossRefs({
+      name: skill.name,
+      body: skill.body,
+      knownSkillNames
+    });
+
+    if (!result.ok) {
+      refFailures++;
+      console.error(`  ${skill.name}: ${result.errors.join('; ')}`);
+    }
+  }
+
+  assert(refFailures === 0, `L1-7: all ${skills.length} skills have valid cross-references (${refFailures} failures)`);
 }
 
 exitWithReport();
