@@ -1,0 +1,36 @@
+{
+  "skill_name": "simplify-and-verify",
+  "cost_budget": { "max_tokens": 40000, "max_seconds": 120 },
+  "evals": [
+    {
+      "id": "sv-tiny-refactor-emits-contract-token",
+      "prompt": "Simplify and verify these files. The function below has a redundant nested if that can collapse into a single guard clause. Apply a behaviour-preserving simplification, then run the supplied test command. file_set: src/util.js. test_command: node test.mjs",
+      "mode": "autonomous",
+      "kind": "deterministic",
+      "fixture": {
+        "files": {
+          "src/util.js": "export function classify(n) {\n  if (n != null) {\n    if (n > 0) {\n      return 'pos';\n    }\n  }\n  return 'nonpos';\n}\n",
+          "test.mjs": "import { classify } from './src/util.js';\nimport assert from 'node:assert';\nassert.equal(classify(5), 'pos');\nassert.equal(classify(0), 'nonpos');\nassert.equal(classify(null), 'nonpos');\nconsole.log('ok');\n"
+        }
+      },
+      "expectations": [
+        {
+          "text": "Emits exactly one of the contractual result tokens SIMPLIFIED or REVERTED and nothing ambiguous.",
+          "tier": "critical"
+        },
+        {
+          "text": "Preserves observable behaviour of classify (5->'pos', 0->'nonpos', null->'nonpos') as proven by the test command staying green.",
+          "tier": "critical"
+        },
+        {
+          "text": "The simplification flattens the nested if into a single guard clause rather than rewriting unrelated code.",
+          "tier": "quality"
+        }
+      ],
+      "assertions": {
+        "required_substrings": ["SIMPLIFIED"],
+        "forbidden_substrings": ["VERDICT:", "next stage", "checkpoint.sh"]
+      }
+    }
+  ]
+}
