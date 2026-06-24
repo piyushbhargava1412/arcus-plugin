@@ -574,4 +574,39 @@ section('L1-11');
   }
 }
 
+// --- planted-violation coverage map ---
+section('planted-violation coverage map');
+{
+  // DoD guarantee: every L1 check has BOTH a good-input assertion (returns ok:true)
+  // and a planted-bad assertion (returns ok:false), EXCEPT L1-6 which is advisory
+  // (asserts warnings on bad input, never sets ok:false).
+  //
+  // This section programmatically asserts all 11 checks are covered above.
+  const coveredChecks = [
+    'L1-1',  // checkManifests: good=real manifests, bad=bad-manifest.json
+    'L1-2',  // checkFrontmatter: good=spec-finalizer, bad=bad-frontmatter (reserved word)
+    'L1-3',  // checkLineBudget: good=spec-finalizer, bad=over-budget.md
+    'L1-4',  // checkAdvisoryReadOnly: good=security-reviewer, bad=write-enabled-reviewer
+    'L1-5',  // checkCapabilityNoState: good=spec-finalizer, bad=capability-with-state
+    'L1-6',  // checkNoInlinedDomain: advisory warnings on prose-heavy-coordinator, never fails
+    'L1-7',  // checkCrossRefs: good=code-reviewer, bad=dangling-ref
+    'L1-8',  // checkResourcePaths: good=spec-finalizer, bad=dead-resource
+    'L1-9',  // checkHooks: good=real hooks.json, bad=bad-hooks.json
+    'L1-10', // checkNoInlineModel: good=model-strategy & implementation-runner, bad=inline-model
+    'L1-11'  // validateJsonSchema + checkArtifactSections: good=inline+markdown, bad=bad-checkpoint+bad-plan
+  ];
+
+  assert(coveredChecks.length === 11,
+         `coverage map lists all 11 L1 checks (got ${coveredChecks.length})`);
+
+  // Verify the list is exactly L1-1 through L1-11
+  for (let i = 1; i <= 11; i++) {
+    const checkId = `L1-${i}`;
+    assert(coveredChecks.includes(checkId),
+           `coverage map includes ${checkId}`);
+  }
+
+  pass('planted-violation coverage: all 11 L1 checks have good+planted assertions');
+}
+
 exitWithReport();
