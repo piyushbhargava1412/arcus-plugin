@@ -40,14 +40,10 @@ const SUBSTRATE_SKILLS = new Set([
 
 const VALID_TIERS = ['capability', 'coordinator', 'orchestrator', 'substrate'];
 
-// NOTE: Task 8 adds write-evals capability, bumping capability→18 / total→27.
-// These are the current expected counts before Task 8.
-const EXPECTED_TIER_COUNTS = {
-  orchestrator: 3,
-  coordinator: 4,
-  capability: 17,
-  substrate: 2
-};
+// Intentionally NO hard-coded expected tier counts: the skill roster changes over
+// time (e.g. write-evals was added by ARC-0007). The suite asserts RELATIONAL
+// invariants via tierCounts() — every skill has a valid tier, the named dispatched-only
+// and advisory sets resolve — rather than a brittle exact total that rots on every add.
 
 /**
  * Parse the leading YAML-ish frontmatter block from a SKILL.md file.
@@ -263,6 +259,5 @@ export {
   DISPATCHED_ONLY,
   ADVISORY_REVIEWERS,
   SUBSTRATE_SKILLS,
-  VALID_TIERS,
-  EXPECTED_TIER_COUNTS
+  VALID_TIERS
 };

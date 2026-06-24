@@ -46,7 +46,9 @@ const CONTRACTUAL_TOKEN_ALLOWLIST = new Set([
 
 const VALID_MODES = new Set(['autonomous', 'dialogue']);
 const VALID_KINDS = new Set(['judged', 'deterministic', 'routing']);
-const VALID_TIERS = new Set(['critical', 'quality']);
+// Expectation tiers (PR-4). Named EVAL_TIERS to avoid confusion with skill-layer
+// VALID_TIERS in tests/lib/skills.mjs — a different concept (capability/coordinator/...).
+const EVAL_TIERS = new Set(['critical', 'quality']);
 
 // FLAKY band (PR-3): pass-rate strictly inside [0.4, 0.7] is FLAKY.
 const FLAKY_LOW = 0.4;
@@ -192,7 +194,7 @@ function lintSpec(spec) {
         }
         if (exp.tier === undefined) {
           errors.push(`${tag}: expectation[${j}] missing required "tier" (PR-4)`);
-        } else if (!VALID_TIERS.has(exp.tier)) {
+        } else if (!EVAL_TIERS.has(exp.tier)) {
           errors.push(`${tag}: expectation[${j}] invalid tier "${exp.tier}" (expected critical|quality)`);
         }
       });

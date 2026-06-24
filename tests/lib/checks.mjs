@@ -182,6 +182,7 @@ function checkAdvisoryReadOnly({ name, frontmatter, advisorySet }) {
  * set-status, or "next stage" routing patterns.
  *
  * Patterns are calibrated to avoid false positives on clean capabilities:
+ * - session-checkpoint (the orchestration-state artifact, hyphenated token or .json filename)
  * - checkpoint.sh set-status (requires the set-status subcommand, not just "checkpoint")
  * - branch.sh (as a command or script reference)
  * - git checkout -b (the exact branch creation command)
@@ -199,6 +200,13 @@ function checkCapabilityNoState({ name, tier, body }) {
   // Only check capabilities
   if (tier !== 'capability') {
     return { ok: true, errors };
+  }
+
+  // Pattern 0: the session-checkpoint artifact itself (L1-5 lists it explicitly).
+  // Match the hyphenated artifact token and the JSON filename, not the bare word
+  // "checkpoint" (which can appear benignly in prose).
+  if (/session-checkpoint|session-checkpoint\.json/i.test(body)) {
+    errors.push(`${name}: capability references session-checkpoint (orchestration state)`);
   }
 
   // Pattern 1: checkpoint.sh set-status (specific subcommand)
@@ -475,33 +483,53 @@ function checkHooks({ hooksJson, scriptExists }) {
  *   - claude-sonnet-4-6
  *   - claude-3-5-sonnet
  *   - claude-haiku-3-5
+ * AND space-form routing strings: "Claude Opus 4.6", "Claude Sonnet 4.6 (copilot)".
  * But NOT bare tier words: opus, sonnet, haiku (which are legitimate complexity tier references).
  *
- * model-strategy itself is always ok:true (it's the single allowed resolution point).
+ * Allowlisted skills (MODEL_STRING_ALLOWLIST) are always ok:true: model-strategy (owns the
+ * single resolution table) and subagent-task-dispatcher (documents the pass-through format).
  *
  * @param {Object} input
  * @param {string} input.name - Skill name
  * @param {string} input.body - Skill body text
  * @returns {{ ok: boolean, errors: string[] }}
  */
+// Skills allowed to contain literal model strings:
+//   - model-strategy: owns the single resolution table (the one allowed point).
+//   - subagent-task-dispatcher: documents the platform pass-through string FORMAT
+//     (e.g. "Claude Sonnet 4.6 (copilot)") as an example of what model-strategy
+//     resolves to — it routes via model-strategy, it does not hardcode a decision.
+const MODEL_STRING_ALLOWLIST = new Set(['model-strategy', 'subagent-task-dispatcher']);
+
 function checkNoInlineModel({ name, body }) {
   const errors = [];
 
-  // model-strategy is the single allowed resolution point
-  if (name === 'model-strategy') {
+  // Allowlisted skills legitimately contain model strings (see MODEL_STRING_ALLOWLIST).
+  if (MODEL_STRING_ALLOWLIST.has(name)) {
     return { ok: true, errors };
   }
 
-  // Match versioned model IDs like:
-  //   claude-opus-4, claude-opus-4-8, claude-sonnet-4-6, claude-3-5-sonnet, claude-haiku-3-5
-  // Pattern: claude- followed by any text and then a digit somewhere
-  // Must contain "claude-" and at least one digit to be a versioned model ID
-  const versionedModelPattern = /claude-[a-z0-9-]*\d[a-z0-9-]*/gi;
-  const matches = [...body.matchAll(versionedModelPattern)];
+  const found = new Set();
 
-  if (matches.length > 0) {
-    const modelIds = [...new Set(matches.map(m => m[0]))].sort();
-    errors.push(`${name}: hardcodes versioned model ID(s): ${modelIds.join(', ')} (must resolve via arcus:model-strategy)`);
+  // Form 1 — hyphenated versioned IDs: claude-opus-4, claude-opus-4-8,
+  // claude-sonnet-4-6, claude-3-5-sonnet, claude-haiku-3-5.
+  // Match the whole "claude-<segment>(-<segment>)*" token (one linear pass, no
+  // backtracking around a straddling \d), then keep only tokens that contain a digit
+  // (a versioned id) — bare "claude-code" etc. without a version is not flagged.
+  for (const m of body.matchAll(/claude-[a-z0-9]+(?:-[a-z0-9]+)*/gi)) {
+    if (/\d/.test(m[0])) found.add(m[0]);
+  }
+
+  // Form 2 — space-form routing strings: "Claude Opus 4.6", "Claude Sonnet 4.6 (copilot)",
+  // "Claude Haiku 4.5". A tier word followed by a version number is a concrete model
+  // string, not a bare tier reference (bare "opus"/"sonnet"/"haiku" stay allowed).
+  for (const m of body.matchAll(/claude\s+(?:opus|sonnet|haiku)\s+\d[\d.]*/gi)) {
+    found.add(m[0].replace(/\s+/g, ' ').trim());
+  }
+
+  if (found.size > 0) {
+    const modelIds = [...found].sort();
+    errors.push(`${name}: hardcodes model string(s): ${modelIds.join(', ')} (must resolve via arcus:model-strategy)`);
   }
 
   return { ok: errors.length === 0, errors };

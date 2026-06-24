@@ -268,6 +268,25 @@ section('L1-4..L1-7');
     assert(capWithStateResult.ok === false, `checkCapabilityNoState fails on capability-with-state (got ok=${capWithStateResult.ok})`);
     assert(capWithStateResult.errors.length > 0, 'checkCapabilityNoState returns error messages for capability-with-state');
 
+    // Test L1-5: the bare "session-checkpoint" literal alone triggers a violation
+    // (the spec lists it explicitly; this proves the pattern independent of other tokens).
+    const sessionCheckpointOnly = checkCapabilityNoState({
+      name: 'synthetic-capability',
+      tier: 'capability',
+      body: 'This capability reads the session-checkpoint to decide what to do next.'
+    });
+    assert(sessionCheckpointOnly.ok === false, 'checkCapabilityNoState rejects a bare session-checkpoint reference');
+    assert(sessionCheckpointOnly.errors.join(' ').includes('session-checkpoint'),
+           'checkCapabilityNoState names session-checkpoint in the error');
+
+    // Negative control: the benign word "checkpoint" in prose must NOT trip the check.
+    const benignCheckpoint = checkCapabilityNoState({
+      name: 'synthetic-capability',
+      tier: 'capability',
+      body: 'Use this as a quality checkpoint before handing off your analysis.'
+    });
+    assert(benignCheckpoint.ok === true, 'checkCapabilityNoState does not flag the benign word "checkpoint"');
+
     // Test L1-5: checkCapabilityNoState passes (not applicable) on orchestrator
     const implementationRunner = allSkills.find(s => s.name === 'implementation-runner');
     const orchestratorResult = checkCapabilityNoState({
@@ -458,6 +477,31 @@ section('L1-8..L1-10');
     assert(implementationRunnerResult.ok === true,
            `checkNoInlineModel passes on implementation-runner with bare tier words (got ${implementationRunnerResult.errors?.join('; ') || 'ok'})`);
 
+    // Test L1-10: a SPACE-FORM model string (e.g. "Claude Sonnet 4.6") is detected as a
+    // hardcode for a non-allowlisted skill — the original regex missed this form.
+    const spaceFormResult = checkNoInlineModel({
+      name: 'synthetic-skill',
+      body: 'Always dispatch with the "Claude Sonnet 4.6 (copilot)" model.'
+    });
+    assert(spaceFormResult.ok === false, 'checkNoInlineModel detects a space-form model string');
+    assert(spaceFormResult.errors.join(' ').toLowerCase().includes('claude sonnet 4.6'),
+           'checkNoInlineModel reports the space-form model string it found');
+
+    // Test L1-10: bare tier words in space-form context are still allowed (no version number).
+    const bareTierResult = checkNoInlineModel({
+      name: 'synthetic-skill',
+      body: 'Resolve light→haiku, medium→sonnet, heavy→opus via arcus:model-strategy.'
+    });
+    assert(bareTierResult.ok === true, 'checkNoInlineModel allows bare tier words (no version)');
+
+    // Test L1-10: subagent-task-dispatcher is allowlisted — it documents the pass-through
+    // string FORMAT (e.g. "Claude Sonnet 4.6 (copilot)") rather than hardcoding a routing decision.
+    const dispatcher = allSkills.find(s => s.name === 'subagent-task-dispatcher');
+    assert(dispatcher !== undefined, 'subagent-task-dispatcher skill exists');
+    const dispatcherResult = checkNoInlineModel({ name: dispatcher.name, body: dispatcher.body });
+    assert(dispatcherResult.ok === true,
+           `checkNoInlineModel passes on allowlisted subagent-task-dispatcher (got ${dispatcherResult.errors?.join('; ') || 'ok'})`);
+
     pass('L1-8..L1-10 checks passed');
   } catch (err) {
     fail(`L1-8..L1-10 checks failed: ${err.message}`);
@@ -571,6 +615,60 @@ section('L1-11');
     pass('L1-11 checks passed');
   } catch (err) {
     fail(`L1-11 checks failed: ${err.message}`);
+  }
+}
+
+// --- eval-harness lintSpec (PR-2 / PR-4 planted-violation discipline) ---
+section('lintSpec (eval harness)');
+{
+  try {
+    const { lintSpec } = await import('./e2e/evals/run-evals.mjs');
+
+    // GOOD: a valid contractual-token spec lints clean.
+    const goodSpec = {
+      skill_name: 'simplify-and-verify',
+      cost_budget: { max_tokens: 1000, max_seconds: 60 },
+      evals: [{
+        id: 'ok-case', prompt: 'p', mode: 'autonomous', kind: 'deterministic',
+        fixture: { files: {} },
+        expectations: [{ text: 'emits a contract token', tier: 'critical' }],
+        assertions: { required_substrings: ['SIMPLIFIED'], forbidden_substrings: [] }
+      }]
+    };
+    const good = lintSpec(goodSpec);
+    assert(good.ok === true, `lintSpec accepts a valid allowlisted spec (got ${good.errors?.join('; ') || 'ok'})`);
+
+    // BAD (PR-4): an expectation missing its tier is rejected.
+    const missingTier = {
+      skill_name: 'spec-finalizer',
+      evals: [{
+        id: 'no-tier', prompt: 'p', mode: 'autonomous', kind: 'judged',
+        fixture: { files: {} },
+        expectations: [{ text: 'detects an ambiguity' }],
+        assertions: { required_substrings: [], forbidden_substrings: [] }
+      }]
+    };
+    const tierRes = lintSpec(missingTier);
+    assert(tierRes.ok === false, 'lintSpec rejects an expectation missing its tier (PR-4)');
+    assert(tierRes.errors.join(' ').includes('tier'), 'lintSpec PR-4 error names the missing tier');
+
+    // BAD (PR-2): required_substrings on a non-contractual-token skill is rejected.
+    const nakedSubstrings = {
+      skill_name: 'context-pack-builder',
+      evals: [{
+        id: 'naked', prompt: 'p', mode: 'autonomous', kind: 'judged',
+        fixture: { files: {} },
+        expectations: [{ text: 'builds a pack', tier: 'quality' }],
+        assertions: { required_substrings: ['some prose phrase'], forbidden_substrings: [] }
+      }]
+    };
+    const subRes = lintSpec(nakedSubstrings);
+    assert(subRes.ok === false, 'lintSpec rejects naked required_substrings off the allowlist (PR-2)');
+    assert(subRes.errors.join(' ').includes('required_substrings'), 'lintSpec PR-2 error names required_substrings');
+
+    pass('lintSpec PR-2/PR-4 rejection is automatically tested');
+  } catch (err) {
+    fail(`lintSpec tests failed: ${err.message}`);
   }
 }
 
