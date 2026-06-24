@@ -1,0 +1,14 @@
+{
+  "name": "arcus-plugin-tests",
+  "private": true,
+  "type": "module",
+  "version": "1.4.0",
+  "packageManager": "pnpm@10.32.1",
+  "scripts": {
+    "test": "node tests/check.mjs",
+    "test:unit": "node tests/unit.mjs",
+    "test:integration": "node tests/integration.mjs",
+    "test:evals": "node tests/e2e/evals/run-evals.mjs",
+    "test:triggers": "node tests/e2e/triggers/run-triggers.mjs"
+  }
+}
