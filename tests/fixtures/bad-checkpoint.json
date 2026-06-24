@@ -1,0 +1,13 @@
+{
+  "story_id": "ARC-BAD",
+  "branch_name": "arcus/ARC-BAD-1",
+  "base_branch": "main",
+  "workflow": "arcus",
+  "schema_version": 2,
+  "mode": "yolo",
+  "current_status": "IN_PROGRESS",
+  "review_round": 0,
+  "stages": {
+    "scaffold": "complete"
+  }
+}

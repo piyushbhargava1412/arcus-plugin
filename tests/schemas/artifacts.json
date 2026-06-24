@@ -1,0 +1,39 @@
+{
+  "grounded-spec.md": {
+    "requiredSections": [
+      "Context Grounding",
+      "Resolved Ambiguities",
+      "Implementation Boundary",
+      "Guardrail Check"
+    ],
+    "optionalSections": ["Dialogue Answers"]
+  },
+  "plan.md": {
+    "requiredSections": [
+      "Approach Evaluation",
+      "Chosen Approach & Reasoning",
+      "Design / Impacted Files",
+      "Tasks"
+    ],
+    "optionalSections": ["Design Dialogue Answers"]
+  },
+  "context-pack.md": {
+    "requiredSections": [
+      "Story Summary",
+      "Relevant Flows",
+      "Scope",
+      "Likely Working Areas",
+      "Testing Patterns",
+      "Design & Coding Patterns",
+      "Assumptions / Gaps"
+    ]
+  },
+  "test-plan.md": {
+    "requiredSections": [
+      "Objective",
+      "Task-to-Test Mapping Matrix",
+      "Detailed Test Matrix",
+      "Test Implementation Assets"
+    ]
+  }
+}

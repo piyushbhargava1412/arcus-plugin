@@ -262,4 +262,49 @@ section('L1-10: Single model-resolution point');
   assert(modelFailures === 0, `L1-10: all ${skills.length} skills use arcus:model-strategy (${modelFailures} failures)`);
 }
 
+section('L1-11: Artifact-schema validation (live checkpoint + real artifacts)');
+{
+  const { validateJsonSchema, checkArtifactSections } = await import('./lib/checks.mjs');
+
+  const specDir = join(repoRoot, '.arcus/specs/ARC-0007');
+  const schemaResult = readJSON(join(repoRoot, 'tests/schemas/session-checkpoint.schema.json'));
+  const artifactsResult = readJSON(join(repoRoot, 'tests/schemas/artifacts.json'));
+
+  assert(schemaResult.ok, `session-checkpoint.schema.json is valid JSON (${schemaResult.error || 'ok'})`);
+  assert(artifactsResult.ok, `artifacts.json is valid JSON (${artifactsResult.error || 'ok'})`);
+
+  // Live checkpoint validation. .arcus/ is gitignored, so on CI the file may be
+  // absent — SKIP cleanly (assert true) rather than fail when it does not exist.
+  const checkpointPath = join(specDir, 'session-checkpoint.json');
+  if (schemaResult.ok && existsSync(checkpointPath)) {
+    const checkpointResult = readJSON(checkpointPath);
+    assert(checkpointResult.ok, `live session-checkpoint.json is valid JSON (${checkpointResult.error || 'ok'})`);
+    if (checkpointResult.ok) {
+      const result = validateJsonSchema(checkpointResult.value, schemaResult.value);
+      assert(result.ok, `L1-11: live checkpoint validates against schema (${result.errors.join('; ') || 'ok'})`);
+    }
+  } else {
+    console.log('  [skip] .arcus/specs/ARC-0007/session-checkpoint.json absent (gitignored) — skipping live checkpoint validation');
+    assert(true, 'L1-11: live checkpoint validation skipped (artifact absent)');
+  }
+
+  // Required-section validation for the real planning artifacts.
+  if (artifactsResult.ok) {
+    const artifactSpecs = artifactsResult.value;
+    for (const fileName of Object.keys(artifactSpecs)) {
+      const artifactPath = join(specDir, fileName);
+      const requiredSections = artifactSpecs[fileName].requiredSections || [];
+
+      if (existsSync(artifactPath)) {
+        const text = readFileSync(artifactPath, 'utf-8');
+        const result = checkArtifactSections(text, requiredSections);
+        assert(result.ok, `L1-11: ${fileName} has all required sections (${result.errors.join('; ') || 'ok'})`);
+      } else {
+        console.log(`  [skip] .arcus/specs/ARC-0007/${fileName} absent (gitignored) — skipping section validation`);
+        assert(true, `L1-11: ${fileName} section validation skipped (artifact absent)`);
+      }
+    }
+  }
+}
+
 exitWithReport();

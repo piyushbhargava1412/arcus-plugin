@@ -507,7 +507,140 @@ function checkNoInlineModel({ name, body }) {
   return { ok: errors.length === 0, errors };
 }
 
+/**
+ * L1-11a: Dependency-free JSON-Schema (draft-07 subset) validator.
+ *
+ * Supports the SUFFICIENT SUBSET needed to validate the session checkpoint:
+ *   - type    : object | string | number | integer | array | boolean
+ *   - required: array of property names that must be present (objects)
+ *   - enum    : array of allowed values
+ *   - properties: object map of subschemas (recurses into each present property)
+ * Any other keyword is treated as a pass (ignored). NO external libraries.
+ *
+ * @param {*} instance - The value to validate.
+ * @param {Object} schema - The (subset) JSON Schema.
+ * @param {string} [pathPrefix] - Internal: dotted path for error messages.
+ * @returns {{ ok: boolean, errors: string[] }}
+ */
+function validateJsonSchema(instance, schema, pathPrefix = '') {
+  const errors = [];
+  const at = pathPrefix || '(root)';
+
+  if (!schema || typeof schema !== 'object') {
+    return { ok: true, errors };
+  }
+
+  // type
+  if (typeof schema.type === 'string') {
+    if (!matchesType(instance, schema.type)) {
+      errors.push(`${at}: expected type ${schema.type}, got ${describeType(instance)}`);
+      // Bail on further structural checks for this node — they assume the type.
+      return { ok: false, errors };
+    }
+  }
+
+  // enum
+  if (Array.isArray(schema.enum)) {
+    if (!schema.enum.some(allowed => deepEqual(allowed, instance))) {
+      errors.push(`${at}: value ${JSON.stringify(instance)} not in enum [${schema.enum.map(v => JSON.stringify(v)).join(', ')}]`);
+    }
+  }
+
+  // required (only meaningful for objects)
+  if (Array.isArray(schema.required) && instance && typeof instance === 'object' && !Array.isArray(instance)) {
+    for (const key of schema.required) {
+      if (!Object.prototype.hasOwnProperty.call(instance, key)) {
+        errors.push(`${at}: missing required property "${key}"`);
+      }
+    }
+  }
+
+  // properties (recurse into each present property)
+  if (schema.properties && typeof schema.properties === 'object' &&
+      instance && typeof instance === 'object' && !Array.isArray(instance)) {
+    for (const key of Object.keys(schema.properties)) {
+      if (Object.prototype.hasOwnProperty.call(instance, key)) {
+        const childPath = pathPrefix ? `${pathPrefix}.${key}` : key;
+        const childResult = validateJsonSchema(instance[key], schema.properties[key], childPath);
+        if (!childResult.ok) {
+          errors.push(...childResult.errors);
+        }
+      }
+    }
+  }
+
+  return { ok: errors.length === 0, errors };
+}
+
+function matchesType(value, type) {
+  switch (type) {
+    case 'object':
+      return value !== null && typeof value === 'object' && !Array.isArray(value);
+    case 'array':
+      return Array.isArray(value);
+    case 'string':
+      return typeof value === 'string';
+    case 'boolean':
+      return typeof value === 'boolean';
+    case 'number':
+      return typeof value === 'number' && !Number.isNaN(value);
+    case 'integer':
+      return typeof value === 'number' && Number.isInteger(value);
+    default:
+      // Unknown type keyword -> treat as pass.
+      return true;
+  }
+}
+
+function describeType(value) {
+  if (value === null) return 'null';
+  if (Array.isArray(value)) return 'array';
+  return typeof value;
+}
+
+function deepEqual(a, b) {
+  if (a === b) return true;
+  if (typeof a !== typeof b) return false;
+  if (a && b && typeof a === 'object') {
+    return JSON.stringify(a) === JSON.stringify(b);
+  }
+  return false;
+}
+
+/**
+ * L1-11b: Artifact required-section presence check (pure, no disk walk).
+ * Parses `## ` headings from the markdown text and asserts every required
+ * section heading is present (matched on the heading text after `## `).
+ *
+ * @param {string} markdownText - Full markdown body.
+ * @param {string[]} requiredSections - Required `## ` heading texts.
+ * @returns {{ ok: boolean, errors: string[] }}
+ */
+function checkArtifactSections(markdownText, requiredSections) {
+  const errors = [];
+  const text = typeof markdownText === 'string' ? markdownText : '';
+
+  // Collect all level-2 heading texts (exactly "## " prefix).
+  const present = new Set();
+  for (const line of text.split('\n')) {
+    const match = line.match(/^##\s+(.+?)\s*$/);
+    if (match) {
+      present.add(match[1].trim());
+    }
+  }
+
+  for (const required of (requiredSections || [])) {
+    if (!present.has(required.trim())) {
+      errors.push(`missing required section: "## ${required}"`);
+    }
+  }
+
+  return { ok: errors.length === 0, errors };
+}
+
 export {
+  validateJsonSchema,
+  checkArtifactSections,
   checkManifests,
   checkFrontmatter,
   checkLineBudget,

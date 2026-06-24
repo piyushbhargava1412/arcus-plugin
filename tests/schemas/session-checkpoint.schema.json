@@ -1,0 +1,18 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ARCUS session checkpoint",
+  "type": "object",
+  "required": ["story_id", "current_stage", "mode", "review_round", "branch_name", "stages"],
+  "properties": {
+    "story_id": { "type": "string" },
+    "current_stage": { "type": "string" },
+    "branch_name": { "type": "string" },
+    "base_branch": { "type": "string" },
+    "workflow": { "type": "string" },
+    "schema_version": { "type": "integer" },
+    "current_status": { "type": "string" },
+    "mode": { "type": "string", "enum": ["gated", "afk"] },
+    "review_round": { "type": "integer" },
+    "stages": { "type": "object" }
+  }
+}

@@ -464,4 +464,114 @@ section('L1-8..L1-10');
   }
 }
 
+// --- L1-11 checks (artifact-schema validation) ---
+section('L1-11');
+{
+  try {
+    const { validateJsonSchema, checkArtifactSections } = await import('./lib/checks.mjs');
+    const { readJSON, repoRoot } = await import('./lib/skills.mjs');
+    const fs = await import('node:fs/promises');
+    const path = await import('node:path');
+
+    const schemaPath = path.join(repoRoot, 'tests/schemas/session-checkpoint.schema.json');
+    const schemaResult = readJSON(schemaPath);
+    assert(schemaResult.ok, `session-checkpoint.schema.json is valid JSON (${schemaResult.error || 'ok'})`);
+    const checkpointSchema = schemaResult.value;
+
+    // --- validateJsonSchema: good inline checkpoint -> ok:true ---
+    const goodCheckpoint = {
+      story_id: 'ARC-0007',
+      branch_name: 'arcus/ARC-0007-1',
+      base_branch: 'main',
+      workflow: 'arcus',
+      schema_version: 2,
+      mode: 'gated',
+      current_status: 'IN_PROGRESS',
+      current_stage: 'task_6',
+      review_round: 0,
+      stages: { scaffold: 'complete' }
+    };
+    const goodResult = validateJsonSchema(goodCheckpoint, checkpointSchema);
+    assert(goodResult.ok === true, `validateJsonSchema ok on good checkpoint (got ${goodResult.errors?.join('; ') || 'ok'})`);
+
+    // --- validateJsonSchema: planted bad-checkpoint.json -> ok:false ---
+    const badCheckpointResult = readJSON(path.join(repoRoot, 'tests/fixtures/bad-checkpoint.json'));
+    assert(badCheckpointResult.ok, 'bad-checkpoint.json is parseable JSON');
+    const badResult = validateJsonSchema(badCheckpointResult.value, checkpointSchema);
+    assert(badResult.ok === false, `validateJsonSchema fails on bad-checkpoint (got ok=${badResult.ok})`);
+    assert(badResult.errors.length > 0, 'validateJsonSchema returns error messages for bad-checkpoint');
+
+    // --- validateJsonSchema: required keyword (use isolated counter for targeted checks) ---
+    const reqSchema = { type: 'object', required: ['a', 'b'], properties: { a: { type: 'string' } } };
+    const missingReq = validateJsonSchema({ a: 'x' }, reqSchema);
+    assert(missingReq.ok === false, 'validateJsonSchema flags missing required property');
+    const allReq = validateJsonSchema({ a: 'x', b: 1 }, reqSchema);
+    assert(allReq.ok === true, 'validateJsonSchema passes when all required present');
+
+    // --- validateJsonSchema: enum keyword ---
+    const enumSchema = { type: 'string', enum: ['gated', 'afk'] };
+    assert(validateJsonSchema('gated', enumSchema).ok === true, 'validateJsonSchema enum accepts allowed value');
+    assert(validateJsonSchema('yolo', enumSchema).ok === false, 'validateJsonSchema enum rejects disallowed value');
+
+    // --- validateJsonSchema: nested properties recursion ---
+    const nestedSchema = {
+      type: 'object',
+      required: ['outer'],
+      properties: {
+        outer: {
+          type: 'object',
+          required: ['inner'],
+          properties: { inner: { type: 'number' } }
+        }
+      }
+    };
+    assert(validateJsonSchema({ outer: { inner: 7 } }, nestedSchema).ok === true,
+           'validateJsonSchema recurses into nested properties (valid)');
+    assert(validateJsonSchema({ outer: { inner: 'nope' } }, nestedSchema).ok === false,
+           'validateJsonSchema recurses into nested properties (type mismatch)');
+    assert(validateJsonSchema({ outer: {} }, nestedSchema).ok === false,
+           'validateJsonSchema recurses into nested properties (missing nested required)');
+
+    // --- validateJsonSchema: type checks (integer vs number, array, boolean) ---
+    assert(validateJsonSchema(3, { type: 'integer' }).ok === true, 'integer accepts whole number');
+    assert(validateJsonSchema(3.5, { type: 'integer' }).ok === false, 'integer rejects float');
+    assert(validateJsonSchema(3.5, { type: 'number' }).ok === true, 'number accepts float');
+    assert(validateJsonSchema([], { type: 'array' }).ok === true, 'array accepts array');
+    assert(validateJsonSchema({}, { type: 'array' }).ok === false, 'array rejects object');
+    assert(validateJsonSchema(true, { type: 'boolean' }).ok === true, 'boolean accepts boolean');
+
+    // --- validateJsonSchema: unknown keyword is ignored (pass) ---
+    assert(validateJsonSchema('hi', { type: 'string', minLength: 99 }).ok === true,
+           'validateJsonSchema treats unknown keyword (minLength) as pass');
+
+    // --- checkArtifactSections: good markdown with all required sections -> ok:true ---
+    const goodPlanMd = [
+      '# Plan',
+      '## Approach Evaluation',
+      'text',
+      '## Chosen Approach & Reasoning',
+      'text',
+      '## Design / Impacted Files',
+      'text',
+      '## Tasks',
+      'text'
+    ].join('\n');
+    const goodSections = checkArtifactSections(goodPlanMd,
+      ['Approach Evaluation', 'Chosen Approach & Reasoning', 'Design / Impacted Files', 'Tasks']);
+    assert(goodSections.ok === true, `checkArtifactSections ok on complete markdown (got ${goodSections.errors?.join('; ') || 'ok'})`);
+
+    // --- checkArtifactSections: planted bad-plan.md (missing "Tasks") -> ok:false ---
+    const badPlanMd = await fs.readFile(path.join(repoRoot, 'tests/fixtures/bad-plan.md'), 'utf-8');
+    const badSections = checkArtifactSections(badPlanMd,
+      ['Approach Evaluation', 'Chosen Approach & Reasoning', 'Design / Impacted Files', 'Tasks']);
+    assert(badSections.ok === false, `checkArtifactSections fails on bad-plan (got ok=${badSections.ok})`);
+    assert(badSections.errors.length > 0, 'checkArtifactSections returns error messages for bad-plan');
+    assert(badSections.errors.join(' ').includes('Tasks'), 'checkArtifactSections identifies the missing "Tasks" section');
+
+    pass('L1-11 checks passed');
+  } catch (err) {
+    fail(`L1-11 checks failed: ${err.message}`);
+  }
+}
+
 exitWithReport();
