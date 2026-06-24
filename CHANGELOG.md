@@ -346,7 +346,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `test-pattern-discovery`, `repository-context-builder`, `context-pack-builder`,
   `implementation-planner`, `test-spec-compiler`, `subagent-task-dispatcher`, `spec-compliance-reviewer`, 
   `code-quality-reviewer`, `pull-request-builder`,
-  `copilot-conversation-search`, and the `model-strategy` reference skill.
+   and the `model-strategy` reference skill.
 - `SessionStart` bootstrap hook (`hooks/hooks.json` → `scripts/bootstrap.sh`) that
   stages helper scripts into the target workspace at `.aforge/bin/` and exports
   `AFORGE_HOME` via `.aforge/env`.
