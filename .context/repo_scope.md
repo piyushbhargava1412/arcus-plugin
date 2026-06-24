@@ -1,8 +1,8 @@
 # Repository Scope: arcus-plugin
 
 <!-- context-meta
-verification-commit: 5e94b2daba4bc8ee312c55334bfca39f18194fec
-generated-at: 2026-06-23T16:43:54Z
+verification-commit: 6072385578e5017440dbed197e9bd0fa133f9b51
+generated-at: 2026-06-24T06:51:22Z
 confidence: high
 -->
 
@@ -21,9 +21,9 @@ It provides orchestrator skills, supporting skills, and deterministic helper scr
 | Area | Scope | Evidence |
 |---|---|---|
 | Marketplace + plugin metadata | Marketplace catalog and plugin manifest metadata/versioning | `.claude-plugin/marketplace.json`, `plugins/arcus/.claude-plugin/plugin.json` |
-| Skill catalog | Three-tier library: Orchestrators (unified `arcus-controller`, shared `implementation-runner` loop, `subagent-task-dispatcher`), Coordinators (`kick-off`, `code-reviewer`, `code-simplifier`, `repo-agentifier`), and Capabilities in markdown specs | `plugins/arcus/skills/*/SKILL.md` |
+| Skill catalog | Three-tier library: Orchestrators (unified `arcus-controller`, shared `implementation-runner` loop, `subagent-task-dispatcher`), Coordinators (`kick-off`, `code-reviewer`, `code-simplifier`, `repo-agentifier`), and Capabilities in markdown specs (27 skills total, incl. `write-evals`) | `plugins/arcus/skills/*/SKILL.md` |
 | Hook + script runtime | Session bootstrap hook and deterministic bash utilities (incl. `scaffold.sh`, `branch.sh`, and the shared `lib/branch_name.sh`) | `plugins/arcus/hooks/hooks.json`, `plugins/arcus/scripts/*.sh`, `plugins/arcus/scripts/lib/branch_name.sh` |
-| Script test coverage | Shell-based checkpoint test harness | `plugins/arcus/scripts/tests/checkpoint.test.sh` |
+| Test coverage | Shell-based checkpoint test harness; Node-ESM zero-dependency Layer-1 static suite (skill manifests, frontmatter, line budgets, cross-references, hooks integrity, artifact schemas) | `plugins/arcus/scripts/tests/checkpoint.test.sh`, `tests/` |
 | Documentation site | VitePress docs content and config | `site/.vitepress/config.ts`, `site/guide/*.md`, `site/concepts/*.md` |
 
 ## Key Entry Surfaces
@@ -40,9 +40,9 @@ It provides orchestrator skills, supporting skills, and deterministic helper scr
 ## Tech Stack Signals
 | Category | Signals | Evidence |
 |---|---|---|
-| Languages | Markdown, Bash, TypeScript, JSON, Python | `README.md`, `plugins/arcus/scripts/*.sh`, `site/.vitepress/config.ts`, `plugins/arcus/.claude-plugin/plugin.json`, `plugins/arcus/skills/context-pack-builder/scripts/match_flows.py` |
-| Frameworks / tooling | VitePress, vitepress-plugin-mermaid, GitHub Actions | `site/package.json`, `site/.vitepress/config.ts`, `.github/workflows/docs.yml` |
-| Dependency manager(s) | pnpm (`pnpm@10.32.1`) | `site/package.json`, `site/pnpm-lock.yaml` |
+| Languages | Markdown, Bash, TypeScript, JSON, Python, JavaScript (Node ESM) | `README.md`, `plugins/arcus/scripts/*.sh`, `site/.vitepress/config.ts`, `plugins/arcus/.claude-plugin/plugin.json`, `plugins/arcus/skills/context-pack-builder/scripts/match_flows.py`, `tests/*.mjs` |
+| Frameworks / tooling | VitePress, vitepress-plugin-mermaid, GitHub Actions | `site/package.json`, `site/.vitepress/config.ts`, `.github/workflows/docs.yml`, `.github/workflows/tests.yml` |
+| Dependency manager(s) | pnpm (`pnpm@10.32.1`) | `site/package.json`, `site/pnpm-lock.yaml`, `package.json` (repo root + docs site) |
 
 ## Boundaries / Exclusions
 - `.arcus/` workspace artifacts are excluded by root ignore rules and treated as generated runtime workspace (`.gitignore`, `README.md`).
@@ -54,18 +54,18 @@ It provides orchestrator skills, supporting skills, and deterministic helper scr
 |---|---|
 | Source / specs | `plugins/arcus/skills/`, `plugins/arcus/hooks/`, `plugins/arcus/.claude-plugin/`, `.claude-plugin/` |
 | Scripts | `plugins/arcus/scripts/` |
-| Tests | `plugins/arcus/scripts/tests/` |
+| Tests | `plugins/arcus/scripts/tests/`, `tests/` |
 | Docs | `site/`, `README.md`, `CHANGELOG.md` |
 | CI/CD | `.github/workflows/` |
-| Config | `.gitignore`, `site/.gitignore`, `site/.vitepress/config.ts` |
+| Config | `.gitignore`, `site/.gitignore`, `site/.vitepress/config.ts`, `package.json` (repo root) |
 
 ## CI/CD & Automation
 | Workflow | Trigger | Key Test Gates | Deploy Target |
 |---|---|---|---|
 | `docs` (`.github/workflows/docs.yml`) | push to `main` on `site/**` or workflow file; PR on same paths; manual dispatch | build gate: `pnpm install --frozen-lockfile && pnpm run docs:build` (no explicit unit/integration/functional/acceptance/performance test jobs detected) | GitHub Pages via `actions/deploy-pages` |
+| `tests` (`.github/workflows/tests.yml`) | push, pull_request, manual dispatch | test gate: `pnpm test` (Layer-1 static suite: unit + integration checks) | none (CI validation only) |
 
 ## Evidence Gaps / Not Found
 - No event producers or consumers detected in scanned non-ignored files.
-- No OpenAPI/AsyncAPI/GraphQL/Proto/Avro/JSON-schema contract files detected.
+- No OpenAPI/AsyncAPI/GraphQL/Proto/Avro contract files detected (JSON schemas present in `tests/schemas/` and `plugins/arcus/schemas/` for internal artifact validation).
 - No Dockerfile, compose files, Terraform/Helm/Kustomize/serverless manifests detected.
-- No non-shell automated test framework files detected; only shell-script tests were found.
