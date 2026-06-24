@@ -1,6 +1,8 @@
 ---
 name: test-pattern-discovery
 description: Analyze existing tests and persist shared repository testing conventions. Use when user says "how do we write tests?", "discover and persist testing patterns", or "baseline the testing style".
+layer: capability
+standalone: true
 ---
 
 # Test Pattern Discovery
@@ -8,6 +10,26 @@ description: Analyze existing tests and persist shared repository testing conven
 ## Overview
 
 Identify how tests are authored in the repository and persist shared conventions to `.context/testing-patterns.md`. This will ensure downstream implementation agents follow the established testing style (mocking, assertions, naming).
+
+## Contract
+
+> Layer: **capability** — atomic, stateless, given declared inputs → produce one output. No checkpoint reads/writes, no branch ops, no ARCUS path construction.
+
+### Inputs
+| Input | Type | Description | Typical source |
+|-------|------|-------------|----------------|
+| `repo_structure` | markdown | Repository structure map identifying test locations for each layer | orchestrator passes repo_map / standalone user supplies it |
+| `repo_boundaries` | markdown | Repository scope and testing guardrails | orchestrator passes repo_scope / standalone user supplies it |
+| `test_roots` | paths | Test directories for unit, integration, functional, acceptance, performance, and shell tests | orchestrator passes it / inferred from repo_structure |
+
+### Outputs
+- **`testing_conventions`** (markdown) — Test frameworks, mocking patterns, assertion styles, test data patterns, and execution commands per test layer (unit, integration, functional, acceptance, performance, shell script).
+  Output convention: pipeline caller sets the path; standalone default `.arcus/outputs/test-pattern-discovery/<story-id-or-timestamp>.md`. The capability never asks the user where to write.
+
+### Clarification Policy
+1. **Output path** — never ask. Default to `.arcus/outputs/test-pattern-discovery/<story-id-or-timestamp>.md`; orchestrators override with an explicit path (typically `.context/testing-patterns.md`).
+2. **Optional inputs** — never ask. Proceed without them; note the omission in the output.
+3. **Required inputs with no sensible default** — ask once, clearly. Cannot proceed without these.
 
 ## Instructions
 

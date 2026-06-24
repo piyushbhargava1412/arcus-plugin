@@ -5,6 +5,8 @@ description: >
   all ARCUS skills. Loaded by name (the `arcus:model-strategy` skill) when an
   orchestrator or sub-skill needs to resolve a `heavy`/`medium`/`light` complexity to a model tier
   and platform model string. Not invoked directly by users.
+layer: substrate
+standalone: false
 user-invocable: false
 disable-model-invocation: true
 ---
@@ -35,7 +37,7 @@ The dispatcher resolves complexity to a model tier using this table:
 
 **Default**: If a task or test case is missing the `complexity` field, treat it as `medium`.
 
-This mapping can be overridden for specific runs (e.g., "all Opus for a quality sprint") by changing this table only — no blueprint regeneration needed.
+This mapping can be overridden for specific runs (e.g., "all Opus for a quality sprint") by changing this table only — no plan regeneration needed.
 
 ## Tier-to-Platform Model String Mapping
 

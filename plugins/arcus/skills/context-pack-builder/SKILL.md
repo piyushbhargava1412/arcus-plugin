@@ -1,6 +1,8 @@
 ---
 name: context-pack-builder
 description: Build a minimal, story-specific context pack from shared artifacts. Use when starting a new story, building context for a specific story ID, or performing pre-specification planning. Trigger on "start a new story", "build context for story", or "prepare context pack".
+layer: capability
+standalone: true
 ---
 
 # Feature Context Pack Builder
@@ -15,9 +17,8 @@ Generates a targeted, minimal context pack for a single user story by mapping it
 This skill runs a bundled helper script (`match_flows.py`) via shell. Because the shell runs from the workspace—not this skill's directory—invoke the script by absolute path: resolve `ARCUS_HOME` from `.arcus/env`, then run `"$ARCUS_HOME"/skills/context-pack-builder/scripts/match_flows.py`. Other resources (templates, references) load by relative path automatically.
 
 ### Step 1: Initialize & Extract ID
-- Extract the **Story ID** and **Summary** from the user's input. 
+- Extract the **Story ID** and **Summary** from the `story` input. 
 - If the ID is missing, determine it based on user provided information.
-- Create the target directory: `.arcus/specs/[STORY-ID]/`
 
 ### Step 2: Map Business Flows
 - Run the helper script to identify relevant flows without reading every file:
@@ -26,18 +27,18 @@ This skill runs a bundled helper script (`match_flows.py`) via shell. Because th
 - Select the **1–2 most relevant flows**. Include more only if the story spans multiple domain areas.
 
 ### Step 3: Gather Context
-- Read the full content of the **selected flow files** from `.context/flows/`.
-- Read `.context/repo_scope.md`, `.context/repo_map.md`, `.context/testing-patterns.md`, and `.context/design-and-coding-patterns.md` for high-level grounding.
-- **Rules:** Do NOT perform a full repository scan. Rely only on these shared artifacts.
+- Read the full content of the **selected flow files** from the `repo_context` directory (flows subdirectory).
+- Read the scope, map, testing-patterns, and design-and-coding-patterns files from the `repo_context` input for high-level grounding.
+- **Rules:** Do NOT perform a full repository scan. Rely only on these shared artifacts from `repo_context`.
 
 ### Step 4: Synthesize & Generate
 - Use the `./assets/context-pack-template.md` to structure the output.
-- In **Relevant Flows**, link each selected flow as a markdown link to `.context/flows/<name>.md` so consumers can read flow detail at full fidelity from the source. Synthesize only; do not copy flow content into the pack.
+- In **Relevant Flows**, link each selected flow as a markdown link relative to the `repo_context` location so consumers can read flow detail at full fidelity from the source. Synthesize only; do not copy flow content into the pack.
 - Identify likely working areas (packages/classes) based on flow entry points.
 - Explicitly capture any gaps or ambiguities in the "Assumptions / Gaps" section.
 
 ### Step 5: Persist
-- Write the final document to `.arcus/specs/[STORY-ID]/context-pack.md`.
+- Write the final document to the output path (default `.arcus/outputs/context-pack-builder/<story-id-or-timestamp>.md` for standalone mode; orchestrators provide an explicit path).
 - Overwrite if it already exists.
 
 ## Success Criteria
@@ -46,10 +47,44 @@ This skill runs a bundled helper script (`match_flows.py`) via shell. Because th
 - **Standardized**: Follows the provided template exactly.
 
 ## Failure Modes
-- **NO_MATCHING_FLOW**: If no flow matches the story, produce a pack based on `repo_scope.md` but mark "Flows" as "NONE MATCHED" and list this as a high risk.
-- **INSUFFICIENT_CONTEXT**: If `.context/` files are missing, alert the user that the repository needs "context reconciliation" first.
+- **NO_MATCHING_FLOW**: If no flow matches the story, produce a pack based on the scope file from `repo_context` but mark "Flows" as "NONE MATCHED" and list this as a high risk.
+- **INSUFFICIENT_CONTEXT**: If `repo_context` files are missing, alert the user that the repository needs "context reconciliation" first.
 
 ## Resources
 - **Template**: `./assets/context-pack-template.md`
 - **Matching Script**: `./scripts/match_flows.py` (resolve via `$ARCUS_HOME` for execution)
 - **Design Patterns**: `./references/design-patterns.md`
+
+## Contract
+
+> Layer: **capability** — atomic, stateless, given declared inputs → produce one output. No checkpoint reads/writes, no branch ops, no ARCUS path construction.
+
+### Inputs
+| Input | Type | Description | Typical source |
+|-------|------|-------------|----------------|
+| `story` | markdown or text | The user story requirement describing what needs to be built | orchestrator passes it / standalone user supplies it |
+| `repo_context` | directory path | Path to shared repository context artifacts (flows, scope, map, patterns) | orchestrator passes it / standalone user supplies it |
+
+### Outputs
+- **`context_pack`** (markdown) — Story-to-code correlations: relevant business flows (linked), likely working areas, repository patterns, testing conventions, and identified gaps or assumptions.
+  Output convention: pipeline caller sets the path; standalone default `.arcus/outputs/context-pack-builder/<story-id-or-timestamp>.md`. The capability never asks the user where to write.
+
+### Clarification Policy
+1. **Output path** — never ask. Default to `.arcus/outputs/context-pack-builder/<story-id-or-timestamp>.md`; orchestrators override with an explicit path.
+2. **Optional inputs** — never ask. Proceed without them; note the omission in the output.
+3. **Required inputs with no sensible default** — ask once, clearly. Cannot proceed without these.
+
+## Caller Guidance
+
+This capability receives **named inputs**, not file paths. How they arrive depends on the caller:
+
+- **Pipeline (via an orchestrator/coordinator)**: the caller resolves the ARCUS workspace paths and
+  passes the **content** of each input plus an explicit `output_path`. The capability constructs no
+  ARCUS paths itself.
+- **Standalone (a developer who has never used ARCUS)**: the user supplies the required inputs
+  (`story`, `repo_context`) directly — pasted inline or as a file they point to. Optional inputs absent →
+  proceed without them and note the omission. Output defaults to
+  `.arcus/outputs/context-pack-builder/<story-id-or-timestamp>.md`.
+
+The skill body below is written in terms of the named inputs; it never reads a hard-coded ARCUS
+workspace path.

@@ -1,14 +1,14 @@
 # ⚙️ Modes Explained
 
-Choosing between Gated and AFK modes
+Choosing between Interactive and Autonomous modes
 
 ---
 
 ## Side-by-Side Comparison
 
-| Aspect | Gated Mode (Default) | AFK Mode (Autonomous) |
-|--------|---------------------|----------------------|
-| **Driver** | Self-handoff chain entered via `solution-architect` (no router, no shared pipeline file) | `arcus-controller` runs every stage one-shot |
+| Aspect | Interactive Mode (Default) | Autonomous Mode (afk) |
+|--------|---------------------------|----------------------|
+| **Driver** | `arcus-controller` in interactive mode | `arcus-controller` in autonomous mode |
 | **Control** | Pauses between stages | Runs all stages back-to-back |
 | **User Role** | Review artifacts, say "yes"/"proceed" to advance | Hands-off until PR ready |
 | **Best For** | Novel domains, high-risk changes, learning | Familiar codebases, simple features |
@@ -21,21 +21,19 @@ Choosing between Gated and AFK modes
 | **Mistakes Caught** | Early (at each handoff before proceeding) | Late (after full implementation) |
 | **Context Switching** | Friendly (pause anytime, resume later) | Hostile (must complete in one session) |
 
-> **Gated is a chain of self-handing-off skills**, entered at `solution-architect`. Each
-> stage skill embeds a **Handoff Protocol** naming only its immediate successor; on a
-> same-session "yes"/"proceed" it loads the successor. **AFK is the `arcus-controller`
-> skill** — it drives AFK only and does *not* drive gated mode.
+> Both modes use the same **`arcus-controller`** orchestrator. Interactive mode pauses at
+> handoff gates for review; autonomous mode runs all stages unattended.
 
 ---
 
 ## Decision Tree
 
-Should you use AFK mode? Follow this flowchart:
+Should you use autonomous mode? Follow this flowchart:
 
 ```mermaid
 graph TD
-    A[Should I use AFK mode?] --> B{First story in this repo?}
-    B -->|Yes| C[Use Gated Mode]
+    A[Should I use autonomous mode?] --> B{First story in this repo?}
+    B -->|Yes| C[Use Interactive Mode]
     B -->|No| D{Spec complete and unambiguous?}
     D -->|No| C
     D -->|Yes| E{High confidence in story?}
@@ -44,9 +42,9 @@ graph TD
     F -->|Yes| C
     F -->|No| G{Available for 30-90 min uninterrupted?}
     G -->|No| C
-    G -->|Yes| H[✅ AFK Mode is appropriate]
+    G -->|Yes| H[✅ Autonomous Mode is appropriate]
     
-    C --> I[✅ Use Gated Mode]
+    C --> I[✅ Use Interactive Mode]
     
     style H fill:#e1ffe8
     style I fill:#fff4e1
@@ -54,13 +52,13 @@ graph TD
 
 ---
 
-## When to Choose Gated Mode
+## When to Choose Interactive Mode
 
 ✅ **First time using ARCUS in this repository**  
 You need to see how ARCUS interprets your patterns
 
 ✅ **Story has ambiguities or missing details**  
-Gated mode asks clarifying questions interactively
+Interactive mode asks clarifying questions with recommendations
 
 ✅ **Unfamiliar domain or complex requirements**  
 Review each stage to catch misunderstandings early
@@ -69,7 +67,7 @@ Review each stage to catch misunderstandings early
 See `plan.md`, test plan, and implementation incrementally
 
 ✅ **Need to pause and resume across multiple sessions**  
-Real work isn't always uninterrupted — gated mode respects that
+Real work isn't always uninterrupted — interactive mode respects that
 
 ✅ **Learning how ARCUS works**  
 See the workflow stage-by-stage to understand the process
@@ -82,7 +80,7 @@ Verify ARCUS follows your conventions
 
 ---
 
-## When to Choose AFK Mode
+## When to Choose Autonomous Mode
 
 ✅ **High-confidence, well-defined story**  
 No ambiguities, clear acceptance criteria, obvious approach
@@ -103,43 +101,44 @@ Spec finalizer's one-shot mode makes good default choices
 You know what to expect and trust the outputs
 
 ✅ **Tight deadline, need speed**  
-AFK mode is faster (no handoff pauses)
+Autonomous mode is faster (no handoff pauses)
 
 ---
 
 ## How to Trigger Each Mode
 
-### Gated Mode (Default)
+### Interactive Mode (Default)
 
-Enter the gated chain via `solution-architect`:
+Trigger with `implement` or `plan`:
 
 ```
-solution-architect story.md
+implement story.md
 plan story.md
 ```
 
-No flags needed — gated is the default.
+No flags needed — interactive is the default.
 
 **What happens:**
-- `solution-architect` runs `scaffold` (folder + checkpoint, **no git branch yet**)
-- The self-handoff chain walks `context_pack → spec_finalizer → blueprint → test_plan`
+- `arcus-controller` runs in interactive mode
+- Pipeline walks `scaffold → context_pack → spec_finalizer → plan → test_plan → branch → task_1..N → code_review → context_sync → closure`
 - You advance with `yes` / `proceed` at each handoff (or `no` to pause)
 - Cold-resuming a later stage uses that stage's explicit phrase — e.g.
-  `generate test plan for story.md`, `implement story.md`, `review story.md`,
+  `generate test plan for story.md`, `review story.md`,
   `create pull request for story.md`
 
-### AFK Mode (Opt-In)
+### Autonomous Mode (Opt-In)
 
-Use an AFK trigger or the `--afk` flag — these activate the `arcus-controller` skill:
+Use an autonomous trigger:
 
 ```
 run afk on story.md
 forge story.md
-implement story.md --afk
+afk story.md
 ```
 
 **What happens:**
-- `arcus-controller` runs every stage as a one-shot subagent, back-to-back
+- `arcus-controller` runs in autonomous mode
+- Every stage runs as a one-shot subagent, back-to-back
 - No pauses (all handoffs auto-confirm)
 - Milestone output only (less verbose)
 - Returns when the PR is ready
@@ -152,17 +151,17 @@ implement story.md --afk
 
 **Situation:** You just agentified a new codebase, writing your first story
 
-**Recommendation:** **Gated Mode**
+**Recommendation:** **Interactive Mode**
 
 **Why:**
 - ARCUS needs to learn your patterns
 - You need to verify it understood your conventions
-- Review `plan.md` and blueprint before code is written
+- Review `grounded-spec.md` and `plan.md` before code is written
 - Catch misalignments early
 
 **Command:**
 ```
-solution-architect story.md
+implement story.md
 ```
 
 ---
@@ -171,7 +170,7 @@ solution-architect story.md
 
 **Situation:** Fixing a typo in validation message, well-understood change
 
-**Recommendation:** **AFK Mode** (if time permits)
+**Recommendation:** **Autonomous Mode** (if time permits)
 
 **Why:**
 - You know exactly what needs to change
@@ -184,7 +183,7 @@ solution-architect story.md
 run afk on bug-fix-story.md
 ```
 
-**Fallback:** Use gated if you might be interrupted
+**Fallback:** Use interactive if you might be interrupted
 
 ---
 
@@ -192,7 +191,7 @@ run afk on bug-fix-story.md
 
 **Situation:** Adding new authentication flow, some details TBD
 
-**Recommendation:** **Gated Mode**
+**Recommendation:** **Interactive Mode**
 
 **Why:**
 - Ambiguities need resolution (interactive dialogue helps)
@@ -202,7 +201,7 @@ run afk on bug-fix-story.md
 
 **Command:**
 ```
-solution-architect auth-feature-story.md
+implement auth-feature-story.md
 ```
 
 ---
@@ -211,16 +210,16 @@ solution-architect auth-feature-story.md
 
 **Situation:** Clear spec, familiar domain, need it done today
 
-**Recommendation:** **AFK Mode** if story quality is high, else **Gated**
+**Recommendation:** **Autonomous Mode** if story quality is high, else **Interactive**
 
 **Why:**
-- Speed matters (AFK saves 10-15 min on handoffs)
+- Speed matters (autonomous saves 10-15 min on handoffs)
 - BUT: Only if spec is genuinely unambiguous
-- Bad spec + AFK = wasted time fixing wrong implementation
+- Bad spec + autonomous = wasted time fixing wrong implementation
 
 **Decision point:** Review your story:
-- Clear acceptance criteria? → AFK candidate
-- Any "TBD" or vague language? → Gated (dialogue will save time)
+- Clear acceptance criteria? → Autonomous candidate
+- Any "TBD" or vague language? → Interactive (dialogue will save time)
 
 **Command if clear:**
 ```
@@ -231,45 +230,45 @@ run afk on feature-story.md
 
 ## Switching Modes Mid-Pipeline
 
-**Can I switch from gated to AFK mid-pipeline?**  
+**Can I switch from interactive to autonomous mid-pipeline?**  
 No, mode is set at pipeline start and persists through all stages.
 
-**Can I switch from AFK to gated?**  
-No, AFK runs to completion without pauses.
+**Can I switch from autonomous to interactive?**  
+No, autonomous runs to completion without pauses.
 
-**Workaround:** Pause at next gate (gated only), restart with different mode if needed.
+**Workaround:** Pause at next gate (interactive only), restart with different mode if needed.
 
 ---
 
 ## Common Mistakes
 
-### ❌ Using AFK for First Story
+### ❌ Using Autonomous for First Story
 **Problem:** ARCUS hasn't learned your patterns yet  
 **Result:** May miss conventions, generate non-idiomatic code  
-**Fix:** Use gated mode for first 2-3 stories, then switch to AFK
+**Fix:** Use interactive mode for first 2-3 stories, then switch to autonomous
 
-### ❌ Using Gated When Unavailable
-**Problem:** Start gated mode, then get interrupted and don't return for days  
+### ❌ Using Interactive When Unavailable
+**Problem:** Start interactive mode, then get interrupted and don't return for days  
 **Result:** Context is stale, hard to remember where you were  
-**Fix:** Use AFK if you can't commit to reviewing gates promptly, or use `where am I?` to resume
+**Fix:** Use autonomous if you can't commit to reviewing gates promptly, or use `where am I?` to resume
 
-### ❌ Using AFK with Vague Story
-**Problem:** Spec has ambiguities, AFK auto-resolves incorrectly  
+### ❌ Using Autonomous with Vague Story
+**Problem:** Spec has ambiguities, autonomous auto-resolves incorrectly  
 **Result:** Implementation doesn't match intent, requires rework  
-**Fix:** Use gated dialogue to clarify ambiguities first
+**Fix:** Use interactive dialogue to clarify ambiguities first
 
-### ❌ Expecting AFK to Pause
-**Problem:** Start AFK mode, realize you need to intervene  
+### ❌ Expecting Autonomous to Pause
+**Problem:** Start autonomous mode, realize you need to intervene  
 **Result:** Can't pause (no gates), have to let it complete or abort  
-**Fix:** Only use AFK when you're truly hands-off
+**Fix:** Only use autonomous when you're truly hands-off
 
 ---
 
 ## Mode Selection Checklist
 
-Before running `solution-architect story.md`, ask yourself:
+Before running `implement story.md`, ask yourself:
 
-**Gated Mode if ANY of these are true:**
+**Interactive Mode if ANY of these are true:**
 - [ ] First 1-3 stories in this repo
 - [ ] Story has any ambiguities or unknowns
 - [ ] I want to review each stage before proceeding
@@ -277,7 +276,7 @@ Before running `solution-architect story.md`, ask yourself:
 - [ ] I'm learning ARCUS or exploring workflows
 - [ ] High-risk change (security, performance, core logic)
 
-**AFK Mode if ALL of these are true:**
+**Autonomous Mode if ALL of these are true:**
 - [ ] Story is 100% clear and unambiguous
 - [ ] I trust ARCUS patterns in this repo (not first story)
 - [ ] I can dedicate 30-90 min uninterrupted
@@ -285,7 +284,7 @@ Before running `solution-architect story.md`, ask yourself:
 - [ ] Low-to-medium risk change
 - [ ] I've used ARCUS successfully here before
 
-**When in doubt:** Use **Gated Mode** (default, safe)
+**When in doubt:** Use **Interactive Mode** (default, safe)
 
 ---
 
@@ -295,3 +294,4 @@ Before running `solution-architect story.md`, ask yourself:
 - **See all commands:** Ask "command reference"
 - **Check your setup:** Ask "getting started"
 - **Get help:** Ask "troubleshooting"
+- **Learn the architecture:** Ask "explain the capability library"

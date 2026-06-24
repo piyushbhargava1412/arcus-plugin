@@ -14,20 +14,41 @@ supporting skills, deterministic helper scripts, and documentation for a Spec ->
 Request workflow across Copilot CLI, Claude Code, and VS Code.
 
 The Spec -> Code -> Pull Request pipeline runs as two experiences over one ordered set of checkpoint
-stage keys (`scaffold -> context_pack -> spec_finalizer -> blueprint -> test_plan -> branch ->
-task_1..N -> code_review -> context_sync -> closure`):
+stage keys (`scaffold -> context_pack -> spec_finalizer -> plan -> test_plan -> branch ->
+task_1..N -> code_review -> context_sync -> closure`). Both experiences are driven by the **single**
+`arcus-controller` orchestrator over the **identical** canonical stage sequence — only the invocation
+style and gating differ:
 
-- **Gated (default, user-driven):** a chain of self-handing-off stage skills — no router, no shared
-  pipeline file. Entry is the `solution-architect` skill; each stage names only its immediate
-  successor. The `implementation-runner` skill drives the Implementation loop.
-- **AFK (autonomous):** the `arcus-controller` meta-skill (AFK-only); its body holds the single
-  canonical ordered stage list.
+- **Interactive (default, user-driven):** `arcus-controller` in `interactive` mode. Triggered by
+  `"implement <STORY>"` / `"plan <STORY>"`. Dialogue stages (spec-finalizer, implementation-planner)
+  run in the main thread; the controller emits a handoff gate after each phase group. The brainstorm
+  phase delegates to the `kick-off` coordinator (context-pack-builder -> spec-finalizer).
+- **Autonomous (AFK):** `arcus-controller` in `autonomous` mode. Triggered by `"forge <STORY>"` /
+  `"afk <STORY>"`. All stages run as one-shot subagents, no gates, milestone-only output.
+
+The `implementation-runner` skill drives the Implementation loop in both modes.
+
+### Three-Tier Capability Library (ARC-0006)
+
+ARCUS skills are organized into three tiers, declared via `layer:` frontmatter on every `SKILL.md`:
+
+| Tier | What it is | State | Examples |
+|------|-----------|-------|----------|
+| **Capability** | Atomic, stateless, **plug-n-play**: given declared inputs -> one output. No checkpoint/branch ops, no ARCUS path construction. Standalone-invocable by a developer who has never used ARCUS. | none | spec-finalizer, implementation-planner, context-pack-builder, test-spec-compiler, the 4 specialist reviewers, spec-compliance-reviewer, pull-request-builder, review-consolidator, simplify-and-verify, the 4 discovery skills, context-drift-sync |
+| **Coordinator** | Thin, **stateless** sequencer of capabilities (fan-out/consolidate or chain). Owns no pipeline state. | none | kick-off, code-reviewer, code-simplifier, repo-agentifier |
+| **Orchestrator** | **Stateful** pipeline driver. Owns the checkpoint, the git branch, and the stage gates; resolves all ARCUS paths and passes capabilities explicit inputs. | checkpoint + branch | arcus-controller, implementation-runner, subagent-task-dispatcher |
+| *Substrate* | Shared reference skills (not part of the pipeline flow). | — | model-strategy, arcus-guide |
+
+Capability contracts use **domain concept names** (`implementation_plan`, `spec_grounding`,
+`context_pack`, `acceptance_criteria`, `change_set`), never ARCUS artifact filenames — so each is
+reusable outside ARCUS. The hybrid output-path convention lives under `plugins/arcus/schemas/`.
 
 Branch creation is deferred: `scaffold.sh` records the *planned* branch (no git branch), and
 `branch.sh` creates it at the start of Implementation (calling `checkpoint.sh set-branch` on a
-collision bump). Planning deliberation lives in a single `plan.md` (replacing the former separate
-assumptions and clarifications files). Skills are still dispatched imperatively — `context: fork`
-is not in use.
+collision bump). Planning artifacts are split by owner: `spec-finalizer` writes the grounded spec
+(`grounded-spec.md`) and `implementation-planner` writes the implementation plan (`plan.md` — design
+deliberation plus the atomic task list); each skill owns exactly one file. Skills are still dispatched
+imperatively — `context: fork` is not in use.
 
 - Technical map: [.context/repo_map.md](.context/repo_map.md)
 - Business scope: [.context/repo_scope.md](.context/repo_scope.md)

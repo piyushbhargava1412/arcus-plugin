@@ -9,16 +9,16 @@ Understanding ARCUS's Spec → Code → PR workflow
 ARCUS runs an ordered list of stages. The keys (in order) are:
 
 ```
-scaffold → context_pack → spec_finalizer → blueprint → test_plan
+scaffold → context_pack → spec_finalizer → plan → test_plan
         → branch → task_1..N → code_review → context_sync → closure
 ```
 
 ```mermaid
 graph TD
     Scaffold[scaffold<br/>Folder + Checkpoint] --> ContextPack[context_pack<br/>Story-specific context]
-    ContextPack --> SpecFinalizer[spec_finalizer<br/>Resolve ambiguities → plan.md]
-    SpecFinalizer --> Blueprint[blueprint<br/>Atomic task list]
-    Blueprint --> TestPlan[test_plan<br/>Design test matrix]
+    ContextPack --> SpecFinalizer[spec_finalizer<br/>Resolve ambiguities → grounded-spec.md]
+    SpecFinalizer --> Plan[plan<br/>Design + atomic task list]
+    Plan --> TestPlan[test_plan<br/>Design test matrix]
     TestPlan --> Branch[branch<br/>Create git branch NOW]
     Branch --> Tasks[task_1..N<br/>Implement & verify each task]
     Tasks --> CodeReview[code_review<br/>Holistic quality gate]
@@ -29,7 +29,7 @@ graph TD
     style Scaffold fill:#e1f5ff
     style ContextPack fill:#e1f5ff
     style SpecFinalizer fill:#fff4e1
-    style Blueprint fill:#fff4e1
+    style Plan fill:#fff4e1
     style TestPlan fill:#f0e1ff
     style Branch fill:#e8e8ff
     style Tasks fill:#e1ffe8
@@ -45,22 +45,56 @@ graph TD
 
 ---
 
-## Two Experiences: Gated vs AFK
+## The Capability Library (Three Tiers)
 
-ARCUS ships **two ways to drive the same pipeline**:
+ARCUS is built as a **three-tier capability library** — a modular architecture where each component has a clear role:
 
-- **Gated (default, user-driven)** — a chain of self-handing-off skills. You stay in
-  control, reviewing each stage's output and saying "yes"/"proceed" to advance. Entry
-  point is the **`solution-architect`** skill (triggers on `solution-architect <STORY>`
-  or `plan <STORY>`). There is **no router** and **no shared pipeline file** — each stage
-  skill embeds a **Handoff Protocol** that names only its immediate successor.
+### Capability (Atomic, Plug-n-Play)
+**Stateless building blocks** that do one thing well. Declared inputs → one output. No checkpoint/branch operations. Usable **standalone** by any developer, even outside ARCUS — contracts use domain names like `implementation_plan`, `spec_grounding`, `change_set`, not ARCUS-specific filenames.
 
-- **AFK (autonomous)** — the **`arcus-controller`** skill runs the entire pipeline
-  unattended. It activates only on AFK phrases (`afk`, `--afk`, `forge`,
-  `run afk on <STORY>`), runs every stage as a one-shot subagent with milestone output,
-  and its body holds the single canonical ordered stage list.
+**Examples:**
+- `spec-finalizer` — Resolve ambiguities in a story
+- `implementation-planner` — Design technical approach and decompose into tasks
+- `context-pack-builder` — Build story-specific context pack
+- `test-spec-compiler` — Design test matrix
+- `spec-compliance-reviewer` — Verify implementation matches spec
+- `code-quality-reviewer` — Review for maintainability
+- `security-reviewer` — Security vulnerability analysis
+- `performance-reviewer` — Performance regression detection
+- `simplify-and-verify` — Refactor gate + verification
 
-See **"gated or afk?"** for guidance on choosing.
+### Coordinator (Stateless Sequencer)
+**Thin orchestrators** that sequence multiple capabilities without managing pipeline state. They compose capabilities into higher-order workflows but remain stateless.
+
+**Examples:**
+- `kick-off` — Run context-pack-builder → spec-finalizer (brainstorm/planning only, no implementation)
+- `code-reviewer` — Dispatch specialist reviewers + consolidate findings
+- `code-simplifier` — Simplify code and verify changes
+- `repo-agentifier` — Build repository context artifacts
+
+### Orchestrator (Stateful Pipeline Driver)
+**Owns checkpoint, branch, and handoff gate state.** Drives the full lifecycle from story to PR, managing the session and stage transitions.
+
+**Examples:**
+- `arcus-controller` — The single orchestrator for **both interactive and autonomous modes**
+- `implementation-runner` — Per-task implementation loop
+- `subagent-task-dispatcher` — Isolated task dispatch protocol
+
+This three-tier design keeps ARCUS **composable** — capabilities can be reused in any context, coordinators can mix-and-match capabilities, and only orchestrators carry session state.
+
+---
+
+## Two Modes: Interactive vs Autonomous
+
+ARCUS ships **two ways to run the same pipeline** via the **`arcus-controller`** orchestrator:
+
+- **Interactive (default)** — The `arcus-controller` pauses at handoff gates for review. You stay in control, reviewing each stage's output and saying "yes"/"proceed" to advance. Trigger with `implement <STORY>` or `plan <STORY>`.
+
+- **Autonomous (afk)** — The `arcus-controller` runs all stages unattended, back-to-back with milestone-only output. Activates on AFK phrases: `afk`, `forge`, `run afk on <STORY>`.
+
+Both modes use the same orchestrator (`arcus-controller`), the same stages, and the same capabilities — the only difference is whether handoff gates pause for user review.
+
+See **"interactive or autonomous?"** for guidance on choosing.
 
 ---
 
@@ -78,8 +112,8 @@ See **"gated or afk?"** for guidance on choosing.
 - Creates **no git branch** (deferred to the `branch` stage)
 
 **Driven by:**
-- Gated: `solution-architect` (main thread) calls `scaffold.sh`
-- AFK: `arcus-controller` runs scaffold as its first stage
+- Interactive: `arcus-controller` (interactive mode) calls `scaffold.sh`
+- Autonomous: `arcus-controller` (autonomous mode) calls `scaffold.sh`
 
 **Artifacts created:**
 - `.arcus/specs/[STORY-ID]/story.md` (copy of original)
@@ -110,42 +144,42 @@ snapshot.
 
 **What happens:**
 - Analyzes the story for completeness and identifies ambiguous requirements
-- **Gated mode:** interactive dialogue. **Every interview question is presented with
+- **Interactive mode:** dialogue with recommendations. **Every interview question is presented with
   exactly one option marked Recommended (with a one-line rationale) plus a custom-answer
   option** — so you can accept the recommendation fast or steer.
-- **AFK mode:** auto-resolves ambiguities one-shot, grounded in repo patterns
-- Consolidates all planning deliberation into a single **`plan.md`**
+- **Autonomous mode:** auto-resolves ambiguities one-shot, grounded in repo patterns
+- Consolidates all grounded story decisions into a single **`grounded-spec.md`**
 
 **Skills invoked:**
 - `spec-finalizer`
 
 **Artifacts created:**
-- `plan.md` — consolidated planning deliberation (technical decisions, constraints,
-  error handling, and — in gated mode — the recorded Q&A). *This single file replaces the
-  two separate planning files used by earlier versions of ARCUS.*
+- `grounded-spec.md` — grounded story decisions (context grounding, resolved ambiguities,
+  dialogue answers, implementation boundary, guardrail check). *Written by spec-finalizer;
+  the design deliberation and task list live separately in `plan.md`.*
 
-**💡 Tip:** This is your chance to course-correct before implementation. Review `plan.md`
+**💡 Tip:** This is your chance to course-correct before implementation. Review `grounded-spec.md`
 carefully!
 
 ---
 
-### blueprint 🗂️
+### plan 🗂️
 
-**Purpose:** Decompose the story into atomic implementation tasks.
+**Purpose:** Design the technical approach and decompose the story into atomic implementation tasks.
 
 **What happens:**
 - Acts as a Tech Lead: designs the technical approach and breaks the story into
   atomic tasks with a Definition of Done
-- **Gated mode:** the `implementation-planner` runs the same recommendation-first
+- **Interactive mode:** the `implementation-planner` runs the same recommendation-first
   interview style — every question carries one **Recommended** option + rationale and a
   custom-answer option
-- Writes the **machine-parsed task list** to `blueprint.md`
+- Writes the **design deliberation + machine-parsed task list** to `plan.md`
 
 **Skills invoked:**
 - `implementation-planner`
 
 **Artifacts created:**
-- `blueprint.md` — atomic task list with IDs, complexity, affected files, Definition of Done
+- `plan.md` — design deliberation plus the atomic task list with IDs, complexity, affected files, Definition of Done
 
 ---
 
@@ -154,9 +188,9 @@ carefully!
 **Purpose:** Design a comprehensive test matrix before writing code (TDD).
 
 **What happens:**
-- Reviews `blueprint.md` and `plan.md`
+- Reviews `plan.md` and `grounded-spec.md`
 - Designs test cases across **Functional / Edge Case / Error Handling**
-- Maps each test to a blueprint task ID
+- Maps each test to a `plan.md` task ID
 - Follows patterns from `.context/testing-patterns.md`
 
 **Skills invoked:**
@@ -181,7 +215,7 @@ carefully!
   `checkpoint.sh set-branch` to record the actual name
 
 **Driven by:**
-- `implementation-runner` (used by both gated and AFK)
+- `implementation-runner` (used by both interactive and autonomous modes)
 
 **Why deferred?** Planning never touches git. The branch is only created once you commit
 to writing code, keeping aborted/abandoned plans from littering your branch list.
@@ -194,10 +228,10 @@ to writing code, keeping aborted/abandoned plans from littering your branch list
 
 **What happens:**
 - The `implementation-runner` drives the per-task loop (the same loop is reused by
-  gated and AFK)
+  both interactive and autonomous modes)
 - Each task is dispatched to an isolated subagent with scoped context
 - Each task includes implementation, test writing (following `test-plan.md`), a refactor
-  gate (`code-simplifier`: mutate toward simplicity, re-run suite — skipped on `light`
+  gate (`simplify-and-verify` capability: mutate toward simplicity, re-run suite — skipped on `light`
   tasks), and one lightweight, **advisory** per-task spec-compliance check (does not
   hard-block; unresolved issues carry forward to Code Review)
 - Commits incrementally (one commit per task) and runs tests after each task
@@ -207,10 +241,10 @@ to writing code, keeping aborted/abandoned plans from littering your branch list
 > because isolated subagents never see prior tasks' code.
 
 **Skills invoked:**
-- `implementation-runner` (loop driver)
-- `subagent-task-dispatcher` (per-task dispatch protocol)
-- `code-simplifier` (per-task refactor gate, skipped on `light`)
-- `spec-compliance-reviewer` (per-task mode, advisory)
+- `implementation-runner` (orchestrator: loop driver)
+- `subagent-task-dispatcher` (orchestrator: per-task dispatch protocol)
+- `simplify-and-verify` (capability: per-task refactor gate, skipped on `light`)
+- `spec-compliance-reviewer` (capability: per-task mode, advisory)
 
 **Artifacts created:**
 - Code changes + tests (committed to the branch)
@@ -255,12 +289,13 @@ concrete problems block).
 - Returns verdict: `approved` or `changes_requested`
 
 **Skills invoked:**
-- `code-reviewer` (coordinator)
-- `spec-compliance-reviewer` (holistic mode)
-- `code-quality-reviewer` (holistic mode)
-- `security-reviewer`
-- `performance-reviewer`
-- `history-context-reviewer`
+- `code-reviewer` (coordinator: orchestrates specialist reviewers)
+- `review-consolidator` (capability: deduplicates + judges severity)
+- `spec-compliance-reviewer` (capability: holistic mode)
+- `code-quality-reviewer` (capability: holistic mode)
+- `security-reviewer` (capability)
+- `performance-reviewer` (capability)
+- `history-context-reviewer` (capability)
 
 **Artifacts created:**
 - `review.md` — Deterministic gate results (pass/fail/skipped per check) + consolidated
@@ -283,12 +318,12 @@ approved branch diff materially drifted — *before* the PR is opened.
 - Surgically syncs **only the affected** artifacts (refreshing their context-meta); updates
   `AGENTS.md` only when a flow file is added or removed
 - **Facts-only and diff-driven** — no full repository rescan
-- **Gated mode:** shows a drift assessment + a single consolidated yes/no
-- **AFK mode:** auto-decides
+- **Interactive mode:** shows a drift assessment + a single consolidated yes/no
+- **Autonomous mode:** auto-decides
 - Also **standalone-invocable** via `sync context for <STORY_ID>` / `sync context`
 
 **Skills invoked:**
-- `context-drift-sync`
+- `context-drift-sync` (capability)
 
 **Artifacts created:**
 - **None** — updates existing `.context/` files in place; the rationale is persisted in the sync
@@ -307,12 +342,12 @@ approved branch diff materially drifted — *before* the PR is opened.
 
 **What happens:**
 - Runs the final test suite, gathers evidence of completion
-- Synthesizes the PR description from: original story, `plan.md`, `blueprint.md`, test
+- Synthesizes the PR description from: original story, `grounded-spec.md`, `plan.md`, test
   results, and review findings
 - Creates the pull request (if `gh` CLI configured)
 
 **Skills invoked:**
-- `pull-request-builder`
+- `pull-request-builder` (capability)
 
 **Artifacts created:**
 - `PR_DESCRIPTION.md` — Final PR body
@@ -337,31 +372,30 @@ judgment is needed.
 
 ---
 
-## Gated vs AFK Behavior
+## Interactive vs Autonomous Behavior
 
-| Aspect | Gated (self-handoff chain) | AFK (`arcus-controller`) |
-|--------|----------------------------|--------------------------|
-| **Driver** | `solution-architect` entry; each stage skill hands off to its successor | `arcus-controller` runs every stage one-shot |
+| Aspect | Interactive (default) | Autonomous (afk) |
+|--------|----------------------|------------------|
+| **Driver** | `arcus-controller` in interactive mode | `arcus-controller` in autonomous mode |
 | **Gates** | Pauses between stages for your "yes"/"proceed" | Auto-confirms; runs back-to-back |
 | **spec_finalizer** | Recommendation-first dialogue (one question at a time) | One-shot auto-resolution |
 | **Resume** | Cold resume = the next stage's explicit phrase + the checkpoint | Intended to run uninterrupted |
 | **Output** | Full progress updates | Milestone-only output |
 
-> The **`arcus-controller`** drives **AFK only**. It does *not* drive gated mode — gated is
-> the self-handoff chain entered via `solution-architect`.
+> Both modes use the same **`arcus-controller`** orchestrator — the only difference is whether
+> handoff gates pause for user review.
 
 ---
 
-## Gated Resume Phrases
+## Interactive Mode Resume Phrases
 
-In gated mode, each stage's Handoff Protocol tells you the exact phrase to resume the next
+In interactive mode, the orchestrator tells you the exact phrase to resume the next
 stage in a fresh session. Examples:
 
 | To run / resume… | Say |
 |------------------|-----|
-| Planning (entry) | `solution-architect <STORY>` (or `plan <STORY>`) |
+| Full pipeline | `implement <STORY>` (or `plan <STORY>`) |
 | Test plan | `generate test plan for <STORY>` |
-| Implementation | `implement <STORY>` |
 | Code review | `review <STORY>` |
 | Context sync | `sync context for <STORY>` |
 | Closure (PR) | `create pull request for <STORY>` |
@@ -372,7 +406,7 @@ Within the same session, a simple `yes` / `proceed` loads the next stage directl
 
 ## What's Next?
 
-- **Understand modes:** Ask "gated or afk?"
+- **Understand modes:** Ask "interactive or autonomous?"
 - **See all commands:** Ask "command reference"
 - **Check artifacts:** Ask "explain artifacts"
 - **Get help:** Ask "troubleshooting"

@@ -1,6 +1,8 @@
 ---
 name: flow-and-scope-discovery
 description: Identify business flows and persist each as a separate file in .context/flows. Use when user says "discover and persist flows", "generate context flows", or "what does this repo actually do".
+layer: capability
+standalone: true
 ---
 
 # Flow and Scope Discovery
@@ -8,6 +10,25 @@ description: Identify business flows and persist each as a separate file in .con
 ## Overview
 
 Identify key business flows and map each flow to its associated implementation scope. This skill transforms raw repository structure into a set of discrete, specialized context files in `.context/flows/`.
+
+## Contract
+
+> Layer: **capability** — atomic, stateless, given declared inputs → produce one output. No checkpoint reads/writes, no branch ops, no ARCUS path construction.
+
+### Inputs
+| Input | Type | Description | Typical source |
+|-------|------|-------------|----------------|
+| `repo_structure` | markdown | Repository structure map with entry surfaces, services, and components | orchestrator passes repo_map / standalone user supplies it |
+| `repo_boundaries` | markdown | Repository purpose and scope information | orchestrator passes repo_scope / standalone user supplies it |
+
+### Outputs
+- **`business_flows`** (set of markdown files) — One file per discrete business flow, each containing entry points, core path, scope, and confidence.
+  Output convention: pipeline caller sets the path; standalone default `.arcus/outputs/flow-and-scope-discovery/<story-id-or-timestamp>/flows/`. The capability never asks the user where to write.
+
+### Clarification Policy
+1. **Output path** — never ask. Default to `.arcus/outputs/flow-and-scope-discovery/<story-id-or-timestamp>/flows/`; orchestrators override with an explicit path (typically `.context/flows/`).
+2. **Optional inputs** — never ask. Proceed without them; note the omission in the output.
+3. **Required inputs with no sensible default** — ask once, clearly. Cannot proceed without these.
 
 ## Instructions
 

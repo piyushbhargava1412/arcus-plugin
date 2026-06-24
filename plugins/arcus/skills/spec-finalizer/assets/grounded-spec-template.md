@@ -1,20 +1,17 @@
 <!--
-SHARED FILE — SECTION OWNERSHIP CONTRACT.
-This is `.arcus/specs/<STORY-ID>/plan.md`, a single shared deliberation record.
-spec-finalizer OWNS and writes ONLY the sections in THIS template (the requirements half):
-  - `# Plan: <STORY-ID>` (title)
+GROUNDED SPEC — owned solely by spec-finalizer.
+This is `.arcus/specs/<STORY-ID>/grounded-spec.md`, a self-contained record of the grounded
+story decisions. It is consumed downstream as an INPUT to implementation-planner (which writes
+its own separate `plan.md`). Sections:
+  - `# Grounded Spec: <STORY-ID>` (title)
   - `## Context Grounding`
   - `## Resolved Ambiguities`
-  - `## Dialogue Answers` (gated mode only)
+  - `## Dialogue Answers` (dialogue mode only)
   - `## Implementation Boundary`
   - `## Guardrail Check`
-implementation-planner LATER APPENDS its own design sections to the SAME file
-(`## Approach Evaluation`, `## Chosen Approach & Reasoning`, `## Design / Impacted Files`,
-`## Design Dialogue Answers`). spec-finalizer must NOT clobber those: create plan.md if
-absent, otherwise replace ONLY its owned sections in place and leave everything else intact.
 -->
 
-# Plan: [STORY-ID]
+# Grounded Spec: [STORY-ID]
 
 ## Context Grounding
 - **Primary Flow**: [Flow name from context-pack]

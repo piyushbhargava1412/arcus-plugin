@@ -6,7 +6,7 @@
 
 ARCUS is your AI-powered software development lifecycle factory. It takes a user story written in markdown and runs it through a six-phase pipeline (`Brainstorm → Test Plan → Implementation → Code Review → Context Sync → Closure`, spanning ten ordered stages) that produces production-ready code, complete with tests and code review, ending with an opened pull request.
 
-The system is built around a repository-agentifier and **two experiences** over the same pipeline:
+The system is built around a repository-agentifier and **two modes** of one orchestrator over the same pipeline:
 
 ### `repo-agentifier`
 
@@ -25,27 +25,31 @@ This is a one-time setup per repository, re-run only after major restructuring o
 See [Context Engineering](/concepts/context-engineering) for how these five artifacts are built once,
 scoped per story, and synced on drift.
 
-### Gated experience — `solution-architect` + a self-handoff chain
+ARCUS is a **three-tier capability library** — atomic, plug-n-play capabilities; thin coordinators
+that sequence them; and one stateful orchestrator (`arcus-controller`) that owns the pipeline.
+See [The Capability Library](/concepts/capability-library) for how the pieces fit together. The
+orchestrator runs the pipeline in **two modes**:
 
-The **default, user-driven** experience is a chain of self-handing-off stage skills with **no router
-and no shared pipeline file**. You enter at `arcus:solution-architect` (`solution-architect <STORY>`
-or `plan <STORY>`); each stage skill names only its immediate successor and pauses at a handoff gate.
-You can:
+### Interactive mode (default) — `arcus-controller`
+
+The **default, user-driven** mode. You enter with `implement <STORY>` or `plan <STORY>`; the
+`arcus-controller` orchestrator runs the pipeline gated, pausing at each handoff gate. You can:
 
 - Review and approve at each gate with "yes" to proceed
 - Invoke stages individually — `generate test plan for <STORY>`, `implement <STORY>`,
   `review <STORY>`, `close <STORY>`
+- Brainstorm only (context pack + finalized spec, no implementation) via the `kick-off` coordinator —
+  `brainstorm <STORY>` / `kick off <STORY>` / `architect <STORY>`
 - Pause and resume — your session checkpoint persists across agent sessions; on a cold resume, type
   the next stage's phrase
-- Answer recommendation-first interviews — every gated question presents one **Recommended** option
+- Answer recommendation-first interviews — every question presents one **Recommended** option
   with a rationale, plus a custom-answer option
 
-### AFK experience — `arcus-controller`
+### Autonomous (AFK) mode — `arcus-controller`
 
-The opt-in **autonomous** experience is the `arcus-controller` meta-skill. It activates only on AFK
+The opt-in **autonomous** mode of the same `arcus-controller` orchestrator. It activates on AFK
 phrases (`afk`, `--afk`, `forge`, `run afk on <STORY>`), runs every stage back-to-back as one-shot
-subagents with milestone-only output, and never stops at a gate. Its body holds the single canonical
-ordered stage list for the pipeline.
+subagents with milestone-only output, and never stops at a gate.
 
 ## Who is ARCUS for?
 

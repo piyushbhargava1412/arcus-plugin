@@ -4,7 +4,10 @@ description: >
   Security specialist for the ARCUS Code Review stage. Reviews a branch diff for
   exploitable or concretely dangerous vulnerabilities in the changed code only. Returns
   severity-tagged findings for the code-reviewer coordinator to consolidate. Dispatched
-  by the code-reviewer skill — not invoked directly by users.
+  by the code-reviewer skill — not invoked directly by users. Standalone: trigger on
+  "security review this diff" / "review this diff for vulnerabilities" / "security review <branch> vs <base>".
+layer: capability
+standalone: true
 user-invocable: false
 disable-model-invocation: true
 disallowed-tools: Edit, Write, MultiEdit
@@ -17,6 +20,25 @@ disallowed-tools: Edit, Write, MultiEdit
 A focused security pass over the changed code. Flags only issues that are **exploitable or
 concretely dangerous** — not theoretical, defense-in-depth wishlist items. Telling the model what
 NOT to flag is what keeps this signal-rich.
+
+## Contract
+
+> Layer: **capability** — atomic, stateless, given declared inputs → produce one output. No checkpoint reads/writes, no branch ops, no ARCUS path construction.
+
+### Inputs
+| Input | Type | Description | Typical source |
+|-------|------|-------------|----------------|
+| `change_set` | git diff | The branch diff with changed files and hunks | orchestrator passes it / standalone user supplies branch |
+| `repo_conventions` | markdown | Architecture patterns, security guardrails, and coding conventions | orchestrator passes relevant section from context pack / standalone user supplies it |
+
+### Outputs
+- **`security_findings`** (structured report) — Exploitable vulnerabilities and concrete security risks with severity, confidence, and file:line references.
+  Output convention: pipeline caller sets the path; standalone default `.arcus/outputs/security-reviewer/<story-id-or-timestamp>.md`. The capability never asks the user where to write.
+
+### Clarification Policy
+1. **Output path** — never ask. Default to `.arcus/outputs/security-reviewer/<story-id-or-timestamp>.md`; orchestrators override with an explicit path (code-reviewer reads this inline, no file written).
+2. **Optional inputs** — never ask. Proceed without them; note the omission in the output.
+3. **Required inputs with no sensible default** — ask once, clearly. Cannot proceed without these.
 
 ## Inputs (provided by the coordinator)
 
@@ -65,3 +87,9 @@ Only report findings with confidence ≥ 80; drop anything below that threshold 
 - **Changed code only**: Don't audit the whole repo; review what the diff introduces or modifies.
 - **Verify before flagging**: Read the surrounding source to confirm the issue is real and reachable.
 - **Concrete over speculative**: If you can't describe how it's exploited, don't flag it.
+
+## Standalone Invocation
+
+A developer can invoke this reviewer directly by supplying the `change_set` (a diff, or "the changes on my branch vs <base>") and optionally the `repo_conventions` / `repo_context`. The reviewer returns its severity-tagged findings as described in the Output Format section above.
+
+Note that organic/automatic invocation remains disabled — this reviewer only runs when explicitly asked or dispatched by the code-reviewer coordinator.

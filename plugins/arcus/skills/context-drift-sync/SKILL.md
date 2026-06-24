@@ -5,6 +5,8 @@ description: >
   `.context/` artifact, and surgically sync only the affected ones. Runs after code-review
   approval and before Closure. Strict, diff-driven, FACTS-ONLY — no story artifacts read.
   Trigger on "sync context for <STORY_ID>", "sync context", or "sync the context drift".
+layer: capability
+standalone: true
 ---
 
 # Context Drift Sync (Post-Review .context/ Reconciliation)
@@ -16,7 +18,7 @@ the approved branch diff **materially** changed any shared `.context/` artifact,
 sync only the affected sections** — never regenerate.
 
 This stage is deliberately **FACTS-ONLY** and **token-efficient**. It reads **no story artifacts** —
-no `blueprint.md`, no `plan.md`, no `context-pack.md`, no `test-plan.md`. Planning intent is irrelevant;
+no `plan.md`, no `grounded-spec.md`, no `context-pack.md`, no `test-plan.md`. Planning intent is irrelevant;
 only what the diff actually changed and what the `.context/` artifacts actually say matter. The strict
 trigger catalog in [`references/drift-triggers.md`](references/drift-triggers.md) is the sole authority
 for materiality — this skill **references** it and does not restate its triggers.
@@ -24,6 +26,26 @@ for materiality — this skill **references** it and does not restate its trigge
 **NO-OP is the default outcome; sync is the exception.** A pure internal refactor (logic reshaped, names
 changed, files moved without altering entry points, steps, integrations, structure, scope, or tests)
 crosses no trigger and is a NO-OP. When in doubt, do not flag.
+
+## Contract
+
+> Layer: **capability** — atomic, stateless, given declared inputs → produce one output. No checkpoint reads/writes, no branch ops, no ARCUS path construction.
+
+### Inputs
+| Input | Type | Description | Typical source |
+|-------|------|-------------|----------------|
+| `approved_change_set` | git diff | Code-review-approved branch diff (committed + working tree) | orchestrator passes it / standalone computes from branch |
+| `repo_context` | markdown artifacts | Existing shared repository context (repo_map, repo_scope, flows, testing conventions, design conventions) | orchestrator passes paths / standalone reads from `.context/` |
+| `drift_baseline` | git ref | Baseline commit to diff against (merge-base for story scope, per-artifact hash for standalone) | orchestrator passes it / standalone computes per mode |
+
+### Outputs
+- **`context_drift_assessment`** (structured report) — Per-artifact assessment: which triggers crossed, which artifacts flagged, which skipped, and the surgical edits applied.
+  Output convention: pipeline caller sets the path; standalone default `.arcus/outputs/context-drift-sync/<story-id-or-timestamp>.md`. The capability never asks the user where to write.
+
+### Clarification Policy
+1. **Output path** — never ask. Default to `.arcus/outputs/context-drift-sync/<story-id-or-timestamp>.md`; orchestrators override with an explicit path (in-pipeline this is commit-body-only, no file).
+2. **Optional inputs** — never ask. Proceed without them; note the omission in the output.
+3. **Required inputs with no sensible default** — ask once, clearly. Cannot proceed without these.
 
 ## Inputs
 
@@ -290,7 +312,7 @@ Resume later with: "create pull request for <STORY_ID>"
 
 ## Success Criteria
 
-- **FACTS-ONLY**: no `blueprint.md` / `plan.md` / `context-pack.md` / `test-plan.md` read — drift is
+- **FACTS-ONLY**: no `plan.md` / `grounded-spec.md` / `context-pack.md` / `test-plan.md` read — drift is
   established only from the diff and the artifacts' own content.
 - **Strict gate with a clean NO-OP path**: artifacts are flagged only when a trigger in
   `references/drift-triggers.md` is crossed; in a story run, "No material context drift" produces no

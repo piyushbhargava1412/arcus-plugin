@@ -27,29 +27,31 @@ Begin the SDLC pipeline
 
 | Command | What it does | When to use |
 |---------|-------------|-------------|
-| `solution-architect <STORY>.md` | Start the **gated** chain (entry skill) | Begin work on any story (default, recommended) |
-| `plan <STORY>.md` | Alias for solution-architect (gated entry) | Same as above |
-| `run afk on <STORY>.md` | Start the pipeline in **AFK** mode (autonomous, via `arcus-controller`) | High-confidence stories, familiar codebases |
-| `forge <STORY>.md` | AFK trigger | Same as above |
-| `implement <STORY> --afk` | Start the pipeline with the AFK flag | Same as above |
+| `implement <STORY>.md` | Start the pipeline in **interactive** mode (default) | Begin work on any story (default, recommended) |
+| `plan <STORY>.md` | Planning-only alias for interactive mode | Same as above |
+| `brainstorm <STORY>.md` | Run **kick-off** coordinator (context-pack + spec-finalizer only, no implementation) | When you want planning artifacts without implementation |
+| `kick off <STORY>.md` | Alias for brainstorm | Same as above |
+| `architect <STORY>.md` | Alias for brainstorm | Same as above |
+| `run afk on <STORY>.md` | Start the pipeline in **autonomous** mode | High-confidence stories, familiar codebases |
+| `forge <STORY>.md` | Autonomous trigger | Same as above |
+| `afk <STORY>.md` | Autonomous trigger | Same as above |
 
-> **Gated vs AFK:** `solution-architect` / `plan` enter the **gated self-handoff chain**.
-> AFK phrases (`afk`, `--afk`, `forge`, `run afk on …`) activate the **`arcus-controller`**,
-> which runs every stage unattended. `arcus-controller` is **AFK-only**.
+> **Interactive vs Autonomous:** Both modes use the **`arcus-controller`** orchestrator.
+> Interactive mode (default) pauses at handoff gates for review.
+> Autonomous mode (`afk`, `forge`, `run afk on`) runs all stages unattended.
 
 ---
 
-## ⏭️ Gated Resume Phrases
+## ⏭️ Interactive Mode Resume Phrases
 
-In gated mode, each stage's Handoff Protocol names its successor. To cold-resume a later
+In interactive mode, the orchestrator pauses at handoff gates. To cold-resume a later
 stage in a fresh session, use that stage's explicit phrase.
 
 | Command | Resumes / runs | When to use |
 |---------|----------------|-------------|
-| `solution-architect <STORY>` | Planning (entry: scaffold → context_pack → spec_finalizer → blueprint) | Start or resume planning |
-| `plan <STORY>` | Alias for solution-architect | Same as above |
+| `implement <STORY>` | Full pipeline from start (interactive mode) | Start or resume from beginning |
+| `plan <STORY>` | Alias for implement | Same as above |
 | `generate test plan for <STORY>` | The `test_plan` stage | Resume or restart test planning |
-| `implement <STORY>` | Implementation (creates the branch, then the task loop) | Resume or restart implementation |
 | `review <STORY>` | The `code_review` stage | Resume or restart code review |
 | `code review <STORY>` | Alias for review | Same as above |
 | `sync context for <STORY>` | The `context_sync` stage | Resume or run the post-review `.context/` drift sync (also: `sync context`) |
@@ -75,7 +77,7 @@ Navigate handoff gates
 | `stop` | Alias for no | Same as above |
 | `hold` | Alias for no | Same as above |
 
-**💡 Tip:** In gated mode, you can pause at any gate and resume hours or days later.
+**💡 Tip:** In interactive mode, you can pause at any gate and resume hours or days later.
 
 ---
 
@@ -123,10 +125,11 @@ Helper and history tools
 **Starting fresh:**
 ```
 agentify this repo              # First-time setup
-solution-architect story.md     # Run your first story (gated entry)
+implement story.md              # Run your first story (interactive mode)
+plan story.md                   # Alternative trigger for interactive mode
 ```
 
-**Mid-pipeline (gated):**
+**Mid-pipeline (interactive):**
 ```
 where am I?                     # Check status
 yes                             # Proceed to next stage
@@ -142,6 +145,15 @@ yes                             # Continue from last gate
 **Need speed (experienced users):**
 ```
 run afk on story.md             # Autonomous mode
+forge story.md                  # Autonomous mode
+afk story.md                    # Autonomous mode
+```
+
+**Brainstorm only (no implementation):**
+```
+brainstorm story.md             # Run kick-off coordinator
+kick off story.md               # Alternative trigger
+architect story.md              # Alternative trigger
 ```
 
 **Fixing issues:**
@@ -172,6 +184,6 @@ troubleshooting                 # Common issues
 ## What's Next?
 
 - **Understand the stages:** Ask "explain the pipeline"
-- **Choose a mode:** Ask "gated or afk?"
+- **Choose a mode:** Ask "interactive or autonomous?"
 - **Check your status:** Ask "where am I?"
 - **Get troubleshooting help:** Ask "troubleshooting"

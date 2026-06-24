@@ -44,7 +44,7 @@ For fast-tracked decisions, write: **Decision**: [choice] — *Fast-tracked: [1-
 Flag low-confidence decisions so downstream stages (implementation, review) know to handle them carefully.
 
 `zero-option` is an **escalation signal**, not a decision: it means no viable option could be
-generated. Still record the safest placeholder in `plan.md`, but list the item in the
+generated. Still record the safest placeholder in the grounded spec, but list the item in the
 `NEEDS_INPUT` block so the orchestrator can ask the user. A `zero-option` blocker is treated as a
 hard blocker by the orchestrator regardless of interactive mode.
 
@@ -59,7 +59,7 @@ In **dialogue (gated)** mode, every question put to the user about a `zero-optio
 - the user is always offered an explicit **custom-answer** option ("or provide your own").
 
 This makes the LLM's own recommendation visible while keeping the user's answer authoritative.
-Record each chosen answer (recommended or custom) in the `## Dialogue Answers` section of `plan.md`.
+Record each chosen answer (recommended or custom) in the `## Dialogue Answers` section of the grounded spec.
 
 ## Common Ambiguity Categories
 

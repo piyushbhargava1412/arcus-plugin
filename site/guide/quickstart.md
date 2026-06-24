@@ -51,21 +51,23 @@ Point ARCUS at a user story file to start planning the SDLC pipeline:
 plan path/to/story.md
 ```
 
-Or use the longer entry phrase:
+Or jump straight to implementation (still interactive/gated):
 
 ```
-solution-architect path/to/story.md
+implement path/to/story.md
 ```
 
-**Default behavior:** ARCUS runs the **gated** experience — a chain of self-handing-off skills that
-pauses at each handoff gate for your review. The entry point is `arcus:solution-architect`. At each
-gate you respond "yes" to load the next stage, or "no" to pause; on a cold resume you type the next
-stage's explicit phrase (e.g. `generate test plan for <STORY>`, `implement <STORY>`,
-`review <STORY>`, `sync context for <STORY>`, `close <STORY>`).
+**Default behavior:** ARCUS runs in **interactive** mode (gated) — the `arcus:arcus-controller`
+orchestrator drives the pipeline, pausing at each handoff gate for your review. At each
+gate you respond "yes" to advance to the next stage, or "no" to pause; on a cold resume you type the
+next stage's explicit phrase (e.g. `generate test plan for <STORY>`, `implement <STORY>`,
+`review <STORY>`, `sync context for <STORY>`, `close <STORY>`). To brainstorm only (context pack +
+finalized spec, no implementation), use `brainstorm <STORY>` / `kick off <STORY>` (the `kick-off`
+coordinator).
 
 The pipeline runs as **six phases** over ten ordered stages:
 
-1. **Brainstorm** — Scaffolds the workspace and records the *planned* branch `arcus/[STORY-ID]-N` (no git branch yet), then builds context and resolves ambiguities → `plan.md` + `blueprint.md` (stages `scaffold`, `context_pack`, `spec_finalizer`, `blueprint`)
+1. **Brainstorm** — Scaffolds the workspace and records the *planned* branch `arcus/[STORY-ID]-N` (no git branch yet), then builds context and resolves ambiguities → `grounded-spec.md` + `plan.md` (stages `scaffold`, `context_pack`, `spec_finalizer`, `plan`)
 2. **Test Plan** — Designs test matrix → `test-plan.md` (stage `test_plan`)
 3. **Implementation** — Creates the git branch, then implements tasks → committed code (stages `branch`, `task_1..N`)
 4. **Code Review** — Two-tier holistic quality check → `review.md` + verdict (stage `code_review`)
@@ -95,14 +97,14 @@ forge path/to/story.md
 implement path/to/story.md --afk
 ```
 
-For more details on choosing between the two experiences, see [Mode Concepts](/concepts/modes). For a detailed breakdown of each pipeline stage, see [Pipeline Concepts](/concepts/pipeline).
+For more details on choosing between the two modes, see [Mode Concepts](/concepts/modes). For a detailed breakdown of each pipeline stage, see [Pipeline Concepts](/concepts/pipeline).
 
 ## Quick Start Checklist
 
 - [ ] Install ARCUS plugin
 - [ ] Run `generate context` to build `.context/` snapshot
 - [ ] Write your first story in `story.md`
-- [ ] Run `plan story.md` to start the gated pipeline at the solution architect
+- [ ] Run `plan story.md` to start the interactive (gated) pipeline
 - [ ] Review artifacts at each gate and respond "yes" to proceed
 - [ ] Verify the opened pull request
 

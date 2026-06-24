@@ -1,6 +1,8 @@
 ---
 name: design-pattern-discovery
 description: Analyze existing source and persist shared repository design & coding patterns — conventions, idioms, layering/structure, naming, error-handling & logging, plus a curated "Avoid" list. Use when user says "what are our coding conventions?", "discover and persist design patterns", or "baseline the coding style".
+layer: capability
+standalone: true
 ---
 
 # Design Pattern Discovery
@@ -19,6 +21,26 @@ discipline, same recurrence threshold. Where `test-pattern-discovery` baselines 
 skill baselines *design & coding* style. The artifact it produces is **static by design** — it is
 maintained thereafter only by `context-drift-sync` when a genuinely new team-level pattern is adopted,
 not regenerated on routine diffs.
+
+## Contract
+
+> Layer: **capability** — atomic, stateless, given declared inputs → produce one output. No checkpoint reads/writes, no branch ops, no ARCUS path construction.
+
+### Inputs
+| Input | Type | Description | Typical source |
+|-------|------|-------------|----------------|
+| `repo_structure` | markdown | Repository structure map identifying source layers and modules | orchestrator passes repo_map / standalone user supplies it |
+| `repo_boundaries` | markdown | Repository scope, guardrails, and configuration conventions | orchestrator passes repo_scope / standalone user supplies it |
+| `source_roots` | paths | Primary source directories for each language detected | orchestrator passes it / inferred from repo_structure |
+
+### Outputs
+- **`design_and_coding_conventions`** (markdown) — Recurring design patterns, layering/structure conventions, naming idioms, error-handling/logging conventions, configuration/dependency conventions, and curated anti-patterns to avoid.
+  Output convention: pipeline caller sets the path; standalone default `.arcus/outputs/design-pattern-discovery/<story-id-or-timestamp>.md`. The capability never asks the user where to write.
+
+### Clarification Policy
+1. **Output path** — never ask. Default to `.arcus/outputs/design-pattern-discovery/<story-id-or-timestamp>.md`; orchestrators override with an explicit path (typically `.context/design-and-coding-patterns.md`).
+2. **Optional inputs** — never ask. Proceed without them; note the omission in the output.
+3. **Required inputs with no sensible default** — ask once, clearly. Cannot proceed without these.
 
 ## Instructions
 

@@ -3,7 +3,10 @@ name: code-quality-reviewer
 description: >
   Review implementation code for quality: pattern fidelity, clean structure, test coverage,
   and maintainability. Returns severity-tagged findings. Dispatched holistically by the
-  code-reviewer coordinator over the whole branch diff — not invoked per task.
+  code-reviewer coordinator over the whole branch diff — not invoked per task. Standalone:
+  trigger on "code quality review this diff" / "quality review this diff" / "code quality review <branch> vs <base>".
+layer: capability
+standalone: true
 user-invocable: false
 disable-model-invocation: true
 disallowed-tools: Edit, Write, MultiEdit
@@ -14,6 +17,26 @@ disallowed-tools: Edit, Write, MultiEdit
 ## Overview
 
 Reviews implementation code for quality concerns — pattern fidelity, clean structure, maintainability, and adherence to repository conventions. Dispatched **once, holistically**, by the `code-reviewer` coordinator over the entire branch diff after implementation completes. It is **not** run per task: subagents never see prior tasks' code, so quality issues don't propagate between them, and a per-task binary FAIL conflicts with the coordinator's signal-over-noise threshold. Quality is judged once, in full context.
+
+## Contract
+
+> Layer: **capability** — atomic, stateless, given declared inputs → produce one output. No checkpoint reads/writes, no branch ops, no ARCUS path construction.
+
+### Inputs
+| Input | Type | Description | Typical source |
+|-------|------|-------------|----------------|
+| `change_set` | git diff | The branch diff with all files changed by this story | orchestrator passes it / standalone user supplies branch |
+| `repo_conventions` | markdown | Architecture patterns, design/coding conventions, testing patterns, and repository guidelines | orchestrator passes relevant sections from context pack + `.context/` artifacts / standalone user supplies it |
+| `acceptance_criteria` | markdown | Definition of Done for the tasks in this story | orchestrator passes it / standalone user supplies acceptance criteria |
+
+### Outputs
+- **`quality_findings`** (structured report) — Pattern fidelity violations, structural issues, maintainability concerns, error-handling gaps, test quality issues, and dead code, with severity, confidence, and file:line references.
+  Output convention: pipeline caller sets the path; standalone default `.arcus/outputs/code-quality-reviewer/<story-id-or-timestamp>.md`. The capability never asks the user where to write.
+
+### Clarification Policy
+1. **Output path** — never ask. Default to `.arcus/outputs/code-quality-reviewer/<story-id-or-timestamp>.md`; orchestrators override with an explicit path (code-reviewer reads this inline, no file written).
+2. **Optional inputs** — never ask. Proceed without them; note the omission in the output.
+3. **Required inputs with no sensible default** — ask once, clearly. Cannot proceed without these.
 
 ## Output
 
@@ -104,3 +127,9 @@ A test that meaningfully guards behaviour is never "excessive" — only redundan
 - **Signal over noise**: Style preferences are `suggestion` at most, and usually dropped. Only surface things that would cause real problems as `critical`/`warning`.
 - **Be specific**: Every finding must include a file:line reference.
 - **No manufactured findings**: If the code is clean, return an empty FINDINGS list. Don't invent issues.
+
+## Standalone Invocation
+
+A developer can invoke this reviewer directly by supplying the `change_set` (a diff, or "the changes on my branch vs <base>"), optionally the `repo_conventions` / `repo_context`, and optionally the `acceptance_criteria`. The reviewer returns its severity-tagged findings as described in the Output section above.
+
+Note that organic/automatic invocation remains disabled — this reviewer only runs when explicitly asked or dispatched by the code-reviewer coordinator.

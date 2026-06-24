@@ -52,31 +52,33 @@ See the full README for detailed instructions.
 
 ### Q: How do I start a story?
 
-**A:** Start the **gated** chain via the `solution-architect` entry skill:
+**A:** Start the pipeline in **interactive** mode (default):
 ```
-solution-architect path/to/story.md
+implement path/to/story.md
 plan path/to/story.md
 ```
 
-Gated is the default (pauses at each stage). For autonomous **AFK** mode (the
-`arcus-controller`), use an AFK trigger instead:
+Interactive mode pauses at each stage. For **autonomous** mode, use an autonomous trigger:
 ```
 run afk on path/to/story.md
 forge path/to/story.md
-implement path/to/story.md --afk
+afk path/to/story.md
+```
+
+For **brainstorm-only** (context-pack + spec-finalizer, no implementation):
+```
+brainstorm path/to/story.md
+kick off path/to/story.md
+architect path/to/story.md
 ```
 
 ---
 
-### Q: What enters gated mode vs AFK mode?
+### Q: What's the difference between interactive and autonomous mode?
 
-**A:** They're driven by different skills:
-- **Gated:** `solution-architect` (also `plan <story>`) — a chain of self-handing-off
-  skills, where each stage hands off to its successor. This is the default.
-- **AFK:** `arcus-controller`, activated only by AFK phrases (`afk`, `--afk`, `forge`,
-  `run afk on <story>`). It runs every stage unattended.
-
-`arcus-controller` is **AFK-only** — it does not drive gated mode.
+**A:** Both modes use the **`arcus-controller`** orchestrator:
+- **Interactive:** The default. Pauses at handoff gates for review. Triggered by `implement <story>` or `plan <story>`.
+- **Autonomous:** Runs all stages unattended, back-to-back. Triggered by AFK phrases (`afk`, `forge`, `run afk on <story>`).
 
 ---
 
@@ -86,8 +88,8 @@ implement path/to/story.md --afk
 
 **✅ Safe to edit:**
 - All `.context/` files (repo_scope.md, flows/*.md, etc.)
-- `plan.md` (refine decisions before the `blueprint` stage)
-- `blueprint.md` (adjust tasks before Implementation)
+- `grounded-spec.md` (refine grounded decisions)
+- `plan.md` (adjust design + tasks before Implementation)
 - `test-plan.md` (add tests before Implementation)
 
 **⚠️ Edit with caution:**
@@ -103,12 +105,11 @@ See **Artifacts Guide** for full editing guidelines.
 
 ### Q: How do I resume or jump to a stage?
 
-**A:** In gated mode, use the resume phrase your last handoff printed (each stage's
-Handoff Protocol names its successor):
+**A:** In interactive mode, use the resume phrase your last handoff printed:
 ```
-solution-architect <story>           # Planning (entry)
+implement <story>                    # Full pipeline (interactive mode)
+plan <story>                         # Alternative for full pipeline
 generate test plan for <story>       # Test plan stage
-implement <story>                    # Implementation (creates branch, then task loop)
 review <story>                       # Code review stage
 create pull request for <story>      # Closure stage
 ```
@@ -119,7 +120,7 @@ create pull request for <story>      # Closure stage
 
 ### Q: Can I pause and resume later?
 
-**A:** **Yes**, in gated mode only. At any handoff gate:
+**A:** **Yes**, in interactive mode only. At any handoff gate:
 - Say `"no"` to pause
 - Return hours or days later
 - Say `"where am I?"` to check status
@@ -131,34 +132,34 @@ Your progress is saved in `.arcus/session-checkpoint.json`.
 
 ## Modes & Configuration
 
-### Q: What's the difference between gated and AFK mode?
+### Q: What's the difference between interactive and autonomous mode?
 
 **A:** 
 
-| Aspect | Gated (Default) | AFK (Autonomous) |
-|--------|----------------|------------------|
+| Aspect | Interactive (Default) | Autonomous (afk) |
+|--------|--------------------|------------------|
 | Control | Pauses at each gate | Runs end-to-end |
 | User role | Review and approve | Hands-off |
 | Best for | Learning, high-risk | Simple, familiar |
 | Resumable | Yes | No |
 
-**Use gated** for safety and learning.  
-**Use AFK** when story is clear and you trust the system.
+**Use interactive** for safety and learning.  
+**Use autonomous** when story is clear and you trust the system.
 
 See **Modes Explained** for detailed decision framework.
 
 ---
 
-### Q: When should I use AFK mode?
+### Q: When should I use autonomous mode?
 
-**A:** Use AFK mode when **all** of these are true:
+**A:** Use autonomous mode when **all** of these are true:
 - ✅ Story is 100% clear and unambiguous
 - ✅ You trust ARCUS patterns in this repo (not first story)
 - ✅ You can dedicate 30-90 min uninterrupted
 - ✅ Low-to-medium risk change
 - ✅ You've used ARCUS successfully here before
 
-**When in doubt:** Use gated mode (default, safe).
+**When in doubt:** Use interactive mode (default, safe).
 
 ---
 
@@ -172,14 +173,14 @@ See **Modes Explained** for detailed decision framework.
 
 ### Q: What are the pipeline stages?
 
-**A:** In order: `scaffold → context_pack → spec_finalizer → blueprint → test_plan →
+**A:** In order: `scaffold → context_pack → spec_finalizer → plan → test_plan →
 branch → task_1..N → code_review → context_sync → closure`.
 
 1. **scaffold** — Creates the story folder + checkpoint (records the *planned* branch
    name). **No git branch yet.**
 2. **context_pack** — Story-specific context → `context-pack.md`
-3. **spec_finalizer** — Resolve ambiguities → consolidated `plan.md`
-4. **blueprint** — Atomic task list → `blueprint.md`
+3. **spec_finalizer** — Resolve ambiguities → grounded `grounded-spec.md`
+4. **plan** — Design deliberation + atomic task list → `plan.md`
 5. **test_plan** — Test matrix → `test-plan.md`
 6. **branch** — **Creates the git branch now**, at the start of Implementation
 7. **task_1..N** — Implement tasks → committed code + tests
@@ -195,8 +196,8 @@ See **Pipeline Overview** for detailed breakdown.
 ### Q: How long does a full pipeline take?
 
 **A:** 
-- **Gated mode:** 30-90 minutes of *active time* (spread over hours/days if you pause)
-- **AFK mode:** 30-90 minutes *uninterrupted*
+- **Interactive mode:** 30-90 minutes of *active time* (spread over hours/days if you pause)
+- **Autonomous mode:** 30-90 minutes *uninterrupted*
 
 Time varies based on story complexity, codebase size, and number of tasks.
 
@@ -216,9 +217,9 @@ You can resume anytime with `"yes"`.
 
 **A:** ARCUS automatically loops back into the task loop (Implementation) with fix-tasks generated from review findings. This loop is **bounded to 3 rounds maximum**. If still failing after 3 rounds, manual intervention is required.
 
-`code_review` runs as a **two-tier gate**, so a failure means one of two things:
+`code_review` (a **coordinator** in the capability library) runs as a **two-tier gate**, so a failure means one of two things:
 - **Tier 1 (deterministic gate)** — the repo's real tooling failed (typecheck, full test suite, build/startup, or secret scan). These are objective and stop the semantic review immediately. Fix the concrete breakage.
-- **Tier 2 (semantic review)** — specialist reviewers flagged genuine design/spec/security/perf concerns. These are judgment calls you can address or override.
+- **Tier 2 (semantic review)** — specialist reviewer **capabilities** flagged genuine design/spec/security/perf concerns. These are judgment calls you can address or override.
 
 ---
 
@@ -241,7 +242,7 @@ Created by `agentify this repo`, used by all stories.
 
 **A:** Session workspace (git-ignored), per-story working data:
 - `session-checkpoint.json` — Pipeline state
-- `specs/[STORY-ID]/` — Story artifacts (`plan.md`, `blueprint.md`, `test-plan.md`, `review.md`, `PR_DESCRIPTION.md`)
+- `specs/[STORY-ID]/` — Story artifacts (`grounded-spec.md`, `plan.md`, `test-plan.md`, `review.md`, `PR_DESCRIPTION.md`)
 - `bin/` — Helper scripts
 
 Not committed to git, safe to delete after PR merged.
@@ -284,7 +285,7 @@ Not committed to git, safe to delete after PR merged.
 
 ### Q: Does ARCUS commit automatically?
 
-**A:** **Yes** — the branch is created at the start of Implementation (the `branch` stage), then each task is committed incrementally to the `arcus/[STORY-ID]` branch. You control whether to create the final PR (the `closure` stage asks for confirmation in gated mode).
+**A:** **Yes** — the branch is created at the start of Implementation (the `branch` stage), then each task is committed incrementally to the `arcus/[STORY-ID]` branch. You control whether to create the final PR (the `closure` stage asks for confirmation in interactive mode).
 
 ---
 
@@ -310,12 +311,12 @@ ARCUS adapts to your patterns rather than enforcing its own.
 
 ---
 
-### Q: What if I disagree with the blueprint?
+### Q: What if I disagree with the plan?
 
 **A:** 
-1. Pause at the handoff before Implementation (after `blueprint` / `test_plan`)
+1. Pause at the handoff before Implementation (after `plan` / `test_plan`)
 2. Say `"no"` to pause
-3. Edit `.arcus/specs/[STORY-ID]/blueprint.md` to adjust tasks
+3. Edit `.arcus/specs/[STORY-ID]/plan.md` to adjust tasks
 4. Say `"yes"` when ready to proceed with your changes
 
 ---
@@ -379,7 +380,7 @@ See **Troubleshooting** for detailed solutions.
 
 ### Q: What if `.arcus/` directory is missing?
 
-**A:** Reinitialize with `solution-architect story.md` to trigger the `scaffold` stage and rebuild the workspace. See **Troubleshooting** for details.
+**A:** Reinitialize with `implement story.md` to trigger the `scaffold` stage and rebuild the workspace. See **Troubleshooting** for details.
 
 ---
 
@@ -429,8 +430,10 @@ Or ask natural language questions like:
 **Most common commands:**
 ```
 agentify this repo          # Initial setup
-solution-architect story.md # Start story (gated entry)
-run afk on story.md         # Start story (autonomous, arcus-controller)
+implement story.md          # Start story (interactive mode)
+plan story.md               # Alternative for interactive mode
+brainstorm story.md         # Brainstorm only (kick-off coordinator)
+run afk on story.md         # Start story (autonomous mode)
 where am I?                 # Check status
 yes                         # Proceed at gate
 no                          # Pause at gate
@@ -439,7 +442,7 @@ what is arcus?              # Launch this guide
 
 **Most common questions:**
 - "How do I get started?" → Getting Started section above
-- "What's the difference between gated and AFK?" → Modes section above
+- "What's the difference between interactive and autonomous?" → Modes section above
 - "Where are my artifacts?" → Artifacts section above
 - "Something's not working" → Troubleshooting guide
 - "How do I [specific task]?" → Command Reference

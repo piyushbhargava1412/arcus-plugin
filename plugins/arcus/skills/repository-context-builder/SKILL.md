@@ -1,6 +1,8 @@
 ---
 name: repository-context-builder
 description: Build or refresh baseline repository context by analyzing structure and generating repo_scope and repo_map artifacts. Use when user says "build shared repository context", "update the context", or "refresh the context" or "sync the repo context".
+layer: capability
+standalone: true
 ---
 
 # Repository Context Builder
@@ -8,6 +10,26 @@ description: Build or refresh baseline repository context by analyzing structure
 ## Overview
 
 Build or refresh baseline repository context by analyzing repository structure and generating artifacts in `.context/`. This defines repository boundaries and navigation for downstream flow discovery and feature context building.
+
+## Contract
+
+> Layer: **capability** — atomic, stateless, given declared inputs → produce one output. No checkpoint reads/writes, no branch ops, no ARCUS path construction.
+
+### Inputs
+| Input | Type | Description | Typical source |
+|-------|------|-------------|----------------|
+| `repository_root` | path | The root directory of the repository to analyze | orchestrator passes it / standalone user supplies it or inferred from cwd |
+| `context_ignore_rules` | optional file | Optional `.contextignore` or `.arcus-ignore` file for additional exclusions | orchestrator passes it / discovered at repository root |
+
+### Outputs
+- **`repo_scope`** (markdown) — Repository purpose, boundaries, core responsibilities, and ownership.
+- **`repo_map`** (markdown) — Repository structure, tech stack, entry points, build commands, test locations, and navigation index.
+  Output convention: pipeline caller sets the path; standalone default `.arcus/outputs/repository-context-builder/<story-id-or-timestamp>/` for both files. The capability never asks the user where to write.
+
+### Clarification Policy
+1. **Output path** — never ask. Default to `.arcus/outputs/repository-context-builder/<story-id-or-timestamp>/`; orchestrators override with an explicit path (typically `.context/`).
+2. **Optional inputs** — never ask. Proceed without them; note the omission in the output.
+3. **Required inputs with no sensible default** — ask once, clearly. Cannot proceed without these.
 
 ## Instructions
 

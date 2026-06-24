@@ -5,16 +5,20 @@
 > and VS Code.
 
 ARCUS turns a written user story into a reviewed, test-backed pull request through human-gated
-SDLC stages, with an opt-in fully-autonomous **Away From Keyboard (AFK)** mode. It bundles two
-orchestrator meta-skills and their supporting sub-skills, helper scripts, and a session bootstrap
-hook into a single versioned plugin.
+SDLC stages, with an opt-in fully-autonomous **Away From Keyboard (AFK)** mode. Its skills are
+organized into a three-tier capability library — stateless **Capabilities**, thin **Coordinators**,
+and stateful **Orchestrators** — plus helper scripts and a session bootstrap hook, packaged into a
+single versioned plugin.
 
 - **`repo-agentifier`** — scans the repo to build the `.context/` snapshot, then generates `AGENTS.md` + `CLAUDE.md` to make it agent-ready.
-- **Gated experience** — the default, user-driven Spec → Code → Pull Request flow: a chain of
-  self-handing-off stage skills (no router, no shared pipeline file) entered at
-  **`solution-architect`**, pausing at each handoff gate.
-- **`arcus-controller`** — the opt-in **AFK-only** autonomous orchestrator; activates on
-  `afk` / `--afk` / `forge` / `run afk on <STORY>` and runs the whole pipeline end-to-end with no gates.
+- **`arcus-controller`** — the single orchestrator driving both experiences over one canonical
+  stage sequence:
+  - **Interactive (default, user-driven)** — the Spec → Code → Pull Request flow in `interactive`
+    mode, entered via `implement <STORY>` / `plan <STORY>`; the controller pauses at each handoff
+    gate. The brainstorm phase delegates to the **`kick-off`** coordinator (context-pack-builder →
+    spec-finalizer).
+  - **Autonomous (AFK)** — the opt-in unattended mode in `autonomous` mode; activates on
+    `afk` / `--afk` / `forge` / `run afk on <STORY>` and runs the whole pipeline end-to-end with no gates.
 
 This repository is also the **plugin marketplace** (`arcus`): one repo serves Copilot CLI,
 Claude Code, and VS Code from the same unified plugin format.
@@ -219,23 +223,23 @@ to pause and resume later). Each stage is also independently invocable.
 
 ```sh
 copilot                                   # or: claude
-> plan path/to/story.md                   # gated entry: solution-architect; stops at each handoff for your "yes"
+> plan path/to/story.md                   # interactive entry: arcus-controller; stops at each handoff for your "yes"
 ```
 
-The gated pipeline runs as **six phases** over ten ordered stages (`scaffold` is the opening
+The interactive pipeline runs as **six phases** over ten ordered stages (`scaffold` is the opening
 stage of Brainstorm, not a phase of its own):
 
-1. **Brainstorm** (human-in-the-loop) — `scaffold.sh` creates the spec folder + `story.md` + checkpoint with the *planned* branch (**no git branch yet**); then the context pack and recommendation-first spec-finalizer + implementation-planner dialogues → `plan.md` + `blueprint.md`. Stages `scaffold`, `context_pack`, `spec_finalizer`, `blueprint`. *Gate.*
+1. **Brainstorm** (human-in-the-loop) — `scaffold.sh` creates the spec folder + `story.md` + checkpoint with the *planned* branch (**no git branch yet**); then the `kick-off` coordinator (context pack + recommendation-first spec-finalizer dialogue → `grounded-spec.md`) and the implementation-planner dialogue → `plan.md`. Stages `scaffold`, `context_pack`, `spec_finalizer`, `plan`. *Gate.*
 2. **Test Plan** (automated) — `test-plan.md`. Runs on your `yes`, then pauses before implementation. Stage `test_plan`.
 3. **Implementation** (automated, TDD per task) — the `branch` step creates the git branch first (deferred-branch design), then per-task committed code. Stages `branch`, `task_1..N`. *Gate.*
 4. **Code Review** (automated) — two-tier holistic review of the branch diff → `review.md` + verdict. *Decision gate:* approve, or loop findings back into Implementation as fix-tasks. Stage `code_review`.
 5. **Context Sync** (automated) — on approval, reconciles only the shared `.context/` artifacts the diff materially drifted (facts-only, diff-driven; rationale in the sync commit body), then auto-continues to Closure. Stage `context_sync`.
 6. **Closure** (manual trigger) — opens the pull request. Stage `closure`.
 
-Gated entry / per-stage / continuation phrases: `solution-architect <STORY>` or `plan <STORY>`
-(entry), `generate test plan for <STORY>`, `implement <STORY>` / `code <STORY>`, `review <STORY>`,
+Interactive entry / per-stage / continuation phrases: `plan <STORY>` or `implement <STORY>`
+(entry), `generate test plan for <STORY>`, `code <STORY>`, `review <STORY>`,
 `fix <STORY>`, `sync context for <STORY>`, `close <STORY>`, and `yes` / `no` at any gate. The Implementation loop is the shared
-`implementation-runner` skill, reused by both the gated chain and the AFK controller.
+`implementation-runner` skill, reused by both the interactive and autonomous controller modes.
 
 #### Fully unattended (AFK) mode
 
@@ -263,8 +267,8 @@ Each story gets a working area under `.arcus/specs/[STORY-ID]/` in the target re
 | `session-checkpoint.json` | Resumable per-stage execution state (ordered stage keys + status enum; planned/realized branch fields) |
 | `story.md`              | Canonical copy of the input story                    |
 | `context-pack.md`       | Compact, token-efficient context bundle              |
-| `plan.md`               | Consolidated planning deliberation (grounded decisions, dialogue answers, design choices) |
-| `blueprint.md`          | Machine-parsed implementation plan and task list     |
+| `grounded-spec.md`      | Grounded spec — resolved ambiguities, decisions, and dialogue answers (owned by spec-finalizer) |
+| `plan.md`               | Implementation plan — design deliberation and the atomic task list (owned by implementation-planner) |
 | `test-plan.md`          | Generated verification matrix and test cases         |
 | `review.md`             | Holistic code-review report + verdict                |
 | `PR_DESCRIPTION.md`     | Final PR body                                        |

@@ -7,6 +7,8 @@ description: >
   reviewers across the whole change set. Deduplicates, filters noise, judges severity,
   and writes a single review report with a verdict. Trigger on "review <STORY>" or
   "code review <STORY>".
+layer: coordinator
+standalone: true
 argument-hint: <STORY>
 ---
 
@@ -47,11 +49,11 @@ But keep the two axes separate:
 ## Inputs
 
 - `STORY_ID` (provided by the orchestrator)
-- The branch diff against base: `git diff <base_branch>...HEAD` (base from `session-checkpoint.json`)
-- `.arcus/specs/<STORY_ID>/blueprint.md` — what was supposed to be built
-- `.arcus/specs/<STORY_ID>/plan.md` — the agreed decisions/scope
-- `.arcus/specs/<STORY_ID>/test-plan.md` — expected test coverage
-- `.arcus/specs/<STORY_ID>/context-pack.md` — architecture + repo patterns
+- The branch diff against base: `git diff <base_branch>...HEAD` (base from `session-checkpoint.json` in the story workspace)
+- The story's `plan.md` — the implementation plan (design + tasks) of what was supposed to be built
+- The story's `grounded-spec.md` — the agreed decisions/scope
+- The story's `test-plan.md` — expected test coverage
+- The story's `context-pack.md` — architecture + repo patterns
 - Repo conventions / guidelines (if present in `AGENTS.md` or `CLAUDE.md`)
 - **Command sources for the deterministic gate** (resolved in priority order):
   1. The repo's **CI/CD workflow definitions** (`.github/workflows/*`, `.gitlab-ci.yml`, `Jenkinsfile`,
@@ -61,26 +63,22 @@ But keep the two axes separate:
 
 ## Output
 
-- `.arcus/specs/<STORY_ID>/review.md` — the consolidated, severity-tagged review report
+- `<STORY_DIR>/review.md` — the consolidated, severity-tagged review report, where `<STORY_DIR>` is
+  the story's workspace directory under the ARCUS workspace
 - A return message ending with exactly one line: `VERDICT: approved | changes_requested`
 
-## Severity Taxonomy (canonical for all ARCUS reviewers)
+## Severity Taxonomy
 
-| Severity | Meaning | Effect on verdict |
-|----------|---------|-------------------|
-| **critical** | Will cause an outage, data loss, security breach, or breaks existing behaviour | Forces `changes_requested` |
-| **warning** | Concrete, measurable risk or a real maintenance/pattern violation | Multiple warnings → `changes_requested`; one or two in otherwise-clean code → `approved` with comments |
-| **suggestion** | An improvement worth considering; non-blocking | Never blocks |
-
-Map legacy per-task verdicts onto this taxonomy: `CRITICAL`/`MISSING`/`WRONG` → **critical** or
-**warning** (judge by blast radius); `IMPORTANT`/`EXTRA` → **warning**; anything stylistic →
-**suggestion** (or drop it).
+The canonical severity taxonomy (critical / warning / suggestion) and the rules for mapping legacy
+per-task verdicts onto it now live in the `arcus:review-consolidator` capability, which owns severity
+calibration and the verdict. The coordinator only needs it to tag the deterministic-gate failures it
+hands off (a failing gate check is a `critical`); all semantic-finding calibration is delegated.
 
 ## Workflow
 
 ### Step 1: Assemble the diff
 
-1. Read `base_branch` from `.arcus/specs/<STORY_ID>/session-checkpoint.json`.
+1. Read `base_branch` from `session-checkpoint.json` in the story workspace (`<STORY_DIR>`).
 2. Compute the changed-file set: `git diff --name-only <base_branch>...HEAD`.
 3. Drop noise files before review: lock files (`*.lock`, `package-lock.json`, `go.sum`, etc.),
    minified/generated assets (`*.min.*`, `*.map`, `// @generated`), and vendored directories.
@@ -126,7 +124,7 @@ changed files plus the relevant spec section — not the full conversation. Reso
 
 | Reviewer | Skill | Complexity | Scope |
 |----------|-------|------------|-------|
-| Spec compliance | `arcus:spec-compliance-reviewer` (holistic mode) | medium | Whole diff vs. blueprint DoD + assumptions |
+| Spec compliance | `arcus:spec-compliance-reviewer` (holistic mode) | medium | Whole diff vs. plan DoD + grounded spec |
 | Code quality | `arcus:code-quality-reviewer` (holistic mode) | medium | Whole diff vs. repo patterns, incl. **test proportionality** (excessive/over-engineered tests, slow integration tests that bloat the build) |
 | Security | `arcus:security-reviewer` | medium | Whole diff |
 | Performance | `arcus:performance-reviewer` | medium | Whole diff |
@@ -137,72 +135,33 @@ summary. Tell each reviewer to read source files as needed to verify before flag
 on **judgment-grade** concerns only — lint/format/test-pass/build are already settled by the Step 2
 gate, so reviewers must not re-litigate them.
 
-### Step 4: Judge and consolidate
+### Step 4: Consolidate via the review-consolidator capability
 
-Act as the coordinator:
+Do **not** judge findings inline. Delegate consolidation to the `arcus:review-consolidator`
+capability, passing it:
 
-1. **Deduplicate**: If two reviewers flag the same issue, keep it once in the most fitting section.
-2. **Re-categorise**: Move a finding to the section it truly belongs to (e.g., a perf issue flagged
-   by code-quality goes under Performance).
-3. **Reasonableness filter**: Drop speculative nitpicks, false positives, theoretical risks needing
-   unlikely preconditions, and findings that contradict the repo's own conventions. If unsure, read
-   the source to verify before keeping.
-4. **Confidence filter**: Each specialist finding carries a confidence score (0–100). Drop any finding with confidence < 80 before the verdict step — these are noise, not signal.
-5. **False-positive drop-list**: Explicitly drop findings that are: (a) linter-catchable — already handled by the deterministic gate in Step 2; (b) in a file marked with a lint-ignore directive (e.g. `// eslint-disable`, `# noqa`, `// nolint`); (c) pre-existing in the base branch — the scope guard in item 6 already covers this, but make it explicit.
-6. **Scope guard**: Only flag issues in code this branch changed. Ignore pre-existing problems in
-   untouched code.
+- `specialist_findings` — the collected outputs of the five specialists from Step 3 (each carries
+  severity, file:line, description, confidence), plus any deterministic-gate failures from Step 2
+  pre-tagged as `critical` findings.
+- `change_set` — the branch diff from Step 1, for anchoring and scope-guarding.
+- `acceptance_criteria` — the relevant plan Definition of Done, to weight spec-compliance findings.
+- An explicit `output_path` of `<STORY_DIR>/review.md`, plus the `review_round`.
 
-### Step 5: Decide the verdict
+The capability deduplicates overlapping findings, calibrates severity against the canonical taxonomy,
+applies the confidence / false-positive / scope filters, biases the verdict for **signal over noise**
+(one or two warnings in otherwise-clean code still approves), decides the verdict, and writes the
+single consolidated `review.md`. It returns the calibrated `review_report` and a `VERDICT:` line.
 
-Apply this rubric (a hard gate failure in Step 2 already forced `changes_requested` — this rubric
-covers the case where the gate passed and only semantic findings remain):
+The detailed dedupe / severity-calibration / signal-over-noise / verdict rules live in
+`arcus:review-consolidator` — the coordinator only forwards inputs and relays the result.
 
-| Condition | Verdict |
-|-----------|---------|
-| No findings, or only suggestions | `approved` |
-| One or two warnings, no production risk | `approved` (with comments) |
-| Multiple warnings forming a risk pattern | `changes_requested` |
-| Any critical finding (gate or semantic) | `changes_requested` |
+### Step 5: Emit the verdict
 
-### Step 6: Write the report
-
-Write `.arcus/specs/<STORY_ID>/review.md` with:
-
-```
-# Code Review — <STORY_ID>  (round <review_round>)
-
-**Verdict:** approved | changes_requested
-**Counts:** critical <C>, warning <W>, suggestion <S>
-
-## Deterministic Gate
-| Check | Command | Result |
-|-------|---------|--------|
-| Typecheck | <cmd or "—"> | pass / fail / skipped: not configured |
-| Test suite (full) | <cmd> | pass / fail / skipped |
-| Build + startup | <cmd> | pass / fail / skipped |
-| Secret scan | <cmd> | pass / fail / skipped |
-| Lint | <cmd> | pass / autofixed / fail / skipped |
-| Format | <cmd> | pass / autofixed / skipped |
-| Static analysis | <cmd> | pass / findings / skipped |
-
-## Critical
-- [critical] <description> — <file:line>
-
-## Warnings
-- [warning] <description> — <file:line>
-
-## Suggestions
-- [suggestion] <description> — <file:line>
-
-## History/Context
-- [severity] <description of git-history signal found> — <file:line>
-(Omit section if no findings.)
-
-## Notes
-<one-paragraph summary: overall quality, what was verified, anything the user should know>
-```
-
-Omit a section if it has no items. End your return message with exactly:
+A hard gate failure in Step 2 still short-circuits before this point (write the gate failures as
+`critical` and return `changes_requested` directly). Otherwise, take the verdict returned by the
+consolidator and normalise it to the pipeline's contract: `APPROVE` → `approved`,
+`CHANGES_REQUESTED` → `changes_requested`. Surface the consolidator's `review.md` as the stage
+artifact and proceed to the Handoff Protocol. End your return message with exactly:
 
 ```
 VERDICT: approved
@@ -212,20 +171,32 @@ or
 VERDICT: changes_requested
 ```
 
+When recording the deterministic-gate table in `review.md`, include the gate results captured in
+Step 2 (pass / fail / skipped, with the command run) so the report carries both the gate outcome and
+the consolidated semantic findings.
+
 ## Constraints
 
 - **Run, don't simulate**: For anything a tool answers (lint, format, tests, build, secrets, static
   analysis), run the tool. Never have an LLM eyeball the diff for these — it's slower and both misses
   and hallucinates.
 - **Zero-trust investigation**: Treat the implementer's report as a map of where to look, never as
-  proof. Verify every claim against source and tool output.
-- **Changed code only**: Never flag pre-existing issues in files this branch didn't touch.
-- **Verify, don't speculate**: Read source to confirm a finding before reporting it.
-- **No style firehose**: Style preferences are `suggestion` at most, and usually dropped. Brutal in the
-  hunt, fair in the verdict.
+  proof. The fan-out specialists verify every claim against source and tool output.
+- **Delegate the judgment**: Dedupe, severity calibration, noise filtering, and the verdict are owned
+  by `arcus:review-consolidator`. The coordinator forwards the specialists' findings and the change
+  set and relays the result — it does not re-judge them inline.
 - **One report, one verdict**: The orchestrator depends on a single parseable `VERDICT:` line.
-- **Loopback awareness**: On a re-review (round > 1), confirm previously-reported critical/warning
-  items and gate failures are resolved; only re-emit ones that still apply, plus any new ones.
+- **Loopback awareness**: On a re-review (round > 1), pass the `review_round` through to the
+  consolidator so previously-reported items and gate failures are reconciled; only re-emit ones that
+  still apply, plus any new ones.
+
+## Layer Rules
+
+> Layer: **coordinator** — a thin, **stateless** sequencer of capabilities. Owns **no** pipeline state: no checkpoint reads/writes, no branch ops, no stage gates. Its only job is to call capabilities in a fan-out/consolidate or chained pattern and pass each one explicit inputs.
+
+- **Owned state**: none.
+- **Sequences**: Deterministic gate (typecheck, full test suite, build/startup smoke, secret scan, lint/format, static analysis — via shell commands resolved from CI workflows and `.context/` tables) → fan-out to 5 specialist reviewers (security, performance, code-quality, spec-compliance, history-context), passing each the branch diff, relevant spec sections, and repo conventions → call `arcus:review-consolidator` to consolidate the specialists' findings into one severity-tagged report with a verdict.
+- **Delegation**: Deterministic gate runs first (fail-fast on critical failures); on pass, fan out semantic reviewers in parallel → hand the collected `specialist_findings` + `change_set` to `arcus:review-consolidator`, which deduplicates, re-categorizes, filters noise, calibrates severity, and judges the verdict → produces the single `review.md` + verdict, which this coordinator relays.
 
 ## Handoff Protocol
 
@@ -248,6 +219,10 @@ that lives only in the afk `arcus:arcus-controller`.
   (`"sync context for <STORY_ID>"` or `"fix <STORY_ID>"`), which re-activates the successor by
   description-matching + the checkpoint.
 
+## Standalone Invocation
+
+A developer can run the whole review standalone by supplying the `change_set` (the changes on their branch vs <base>) and optionally the story artifacts (plan, grounded-spec, test-plan, context-pack). The reviewer runs the full gate (deterministic tooling checks) followed by the specialist fan-out (security, performance, code-quality, spec-compliance, history-context) and consolidates the findings into a single severity-tagged report with a verdict (approved or changes_requested).
+
 Emit the block matching the verdict.
 
 On `approved`:
@@ -255,7 +230,7 @@ On `approved`:
 ```
 [Handoff] Code Review complete (approved) → next: Context Sync
 Summary: critical 0, warning <W>, suggestion <S>
-Artifacts: .arcus/specs/<STORY_ID>/review.md
+Artifacts: <STORY_DIR>/review.md
 Proceed? Reply "yes" to run Context Sync, or "no" to pause.
 Resume later with: "sync context for <STORY_ID>"
 ```
@@ -265,7 +240,7 @@ On `changes_requested`:
 ```
 [Handoff] Code Review complete (changes_requested) → next: Implementation (loopback)
 Summary: critical <C>, warning <W>, suggestion <S>
-Artifacts: .arcus/specs/<STORY_ID>/review.md
+Artifacts: <STORY_DIR>/review.md
 Proceed? Reply "fix" to loop findings back into Implementation, or "no" to pause.
 Resume later with: "fix <STORY_ID>"
 ```

@@ -1,8 +1,8 @@
 # Flow: Story Branch Workspace Initialization
 
 <!-- context-meta
-verification-commit: 9107e6a1b19abee4250ef8d3df6e47ac13fa5ddf
-generated-at: 2026-06-18T03:03:49Z
+verification-commit: 5e94b2daba4bc8ee312c55334bfca39f18194fec
+generated-at: 2026-06-23T16:43:54Z
 confidence: high
 -->
 
@@ -50,9 +50,8 @@ in the shared `scripts/lib/branch_name.sh` library, sourced by both scripts.
 - `plugins/arcus/scripts/branch.sh`
 - `plugins/arcus/scripts/lib/branch_name.sh`
 - `plugins/arcus/scripts/checkpoint.sh`
-- `plugins/arcus/skills/solution-architect/SKILL.md` (drives Scaffold in the gated flow)
+- `plugins/arcus/skills/arcus-controller/SKILL.md` (unified orchestrator — drives Scaffold in interactive and autonomous modes)
 - `plugins/arcus/skills/implementation-runner/SKILL.md` (drives the deferred Branch step)
-- `plugins/arcus/skills/arcus-controller/SKILL.md` (drives both in the AFK flow)
 - `plugins/arcus/scripts/bootstrap.sh`
 
 ## Tests

@@ -8,7 +8,7 @@ When acting as the **QA Lead** to compile a Test Plan, follow these strategies t
 - **Contract Tests**: Verify that API inputs/outputs match precisely with the `plan.md`.
 
 ## 2. Scenario Discovery Heuristics
-For every task in the `blueprint.md`, ask:
+For every task in the `plan.md`, ask:
 - **What if the input is null/empty?**
 - **What if the value is at the extreme limit (zero, max-int)?**
 - **What if a dependent service is slow or down?**
