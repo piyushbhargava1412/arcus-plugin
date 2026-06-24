@@ -333,4 +333,135 @@ section('L1-4..L1-7');
   }
 }
 
+// --- L1-8..L1-10 checks ---
+section('L1-8..L1-10');
+{
+  try {
+    const { checkResourcePaths, checkHooks, checkNoInlineModel } = await import('./lib/checks.mjs');
+    const { walkSkills, readJSON, parseFrontmatter, repoRoot } = await import('./lib/skills.mjs');
+    const fs = await import('node:fs/promises');
+    const path = await import('node:path');
+    const { existsSync } = await import('node:fs');
+
+    // Test L1-8: checkResourcePaths FAILS on dead-resource fixture
+    const deadResourcePath = path.join(repoRoot, 'tests/fixtures/dead-resource/SKILL.md');
+    const deadResourceText = await fs.readFile(deadResourcePath, 'utf-8');
+    const deadResourceBody = deadResourceText.split('---\n').slice(2).join('---\n');
+    const deadResourceDir = path.join(repoRoot, 'tests/fixtures/dead-resource');
+
+    // Injected fileExists that returns false for missing files
+    const deadResourceFileExists = (resourcePath) => {
+      const fullPath = path.join(deadResourceDir, resourcePath);
+      return existsSync(fullPath);
+    };
+
+    const deadResourceResult = checkResourcePaths({
+      name: 'dead-resource',
+      dir: deadResourceDir,
+      body: deadResourceBody,
+      fileExists: deadResourceFileExists
+    });
+    assert(deadResourceResult.ok === false, `checkResourcePaths fails on dead-resource (got ok=${deadResourceResult.ok})`);
+    assert(deadResourceResult.errors.length > 0, 'checkResourcePaths returns error messages for dead-resource');
+    const deadResourceError = deadResourceResult.errors.join(' ');
+    assert(deadResourceError.includes('missing-file.md') || deadResourceError.includes('another-missing.json'),
+           'checkResourcePaths identifies specific missing resource files');
+
+    // Test L1-8: checkResourcePaths passes on real skill with valid resources (spec-finalizer)
+    const allSkills = walkSkills();
+    const specFinalizer = allSkills.find(s => s.name === 'spec-finalizer');
+    assert(specFinalizer !== undefined, 'spec-finalizer skill exists');
+
+    const specFinalizerFileExists = (resourcePath) => {
+      const fullPath = path.join(specFinalizer.dir, resourcePath);
+      return existsSync(fullPath);
+    };
+
+    const specFinalizerResourceResult = checkResourcePaths({
+      name: specFinalizer.name,
+      dir: specFinalizer.dir,
+      body: specFinalizer.body,
+      fileExists: specFinalizerFileExists
+    });
+    assert(specFinalizerResourceResult.ok === true,
+           `checkResourcePaths passes on spec-finalizer (got ${specFinalizerResourceResult.errors?.join('; ') || 'ok'})`);
+
+    // Test L1-9: checkHooks FAILS on bad-hooks.json fixture
+    const badHooksPath = path.join(repoRoot, 'tests/fixtures/bad-hooks.json');
+    const badHooksResult = readJSON(badHooksPath);
+    assert(badHooksResult.ok, 'bad-hooks.json is parseable JSON');
+
+    const badScriptExists = (scriptPath) => {
+      // For the test, we know does-not-exist.sh does not exist
+      return false;
+    };
+
+    const badHooksCheckResult = checkHooks({
+      hooksJson: badHooksResult.value,
+      scriptExists: badScriptExists
+    });
+    assert(badHooksCheckResult.ok === false, `checkHooks fails on bad-hooks.json (got ok=${badHooksCheckResult.ok})`);
+    assert(badHooksCheckResult.errors.length > 0, 'checkHooks returns error messages for bad-hooks.json');
+    const badHooksError = badHooksCheckResult.errors.join(' ');
+    assert(badHooksError.includes('does-not-exist.sh'), 'checkHooks identifies missing script');
+
+    // Test L1-9: checkHooks passes on real hooks.json
+    const realHooksPath = path.join(repoRoot, 'plugins/arcus/hooks/hooks.json');
+    const realHooksResult = readJSON(realHooksPath);
+    assert(realHooksResult.ok, 'real hooks.json is parseable JSON');
+
+    const realScriptExists = (scriptPath) => {
+      const fullPath = path.join(repoRoot, 'plugins/arcus', scriptPath);
+      return existsSync(fullPath);
+    };
+
+    const realHooksCheckResult = checkHooks({
+      hooksJson: realHooksResult.value,
+      scriptExists: realScriptExists
+    });
+    assert(realHooksCheckResult.ok === true,
+           `checkHooks passes on real hooks.json (got ${realHooksCheckResult.errors?.join('; ') || 'ok'})`);
+
+    // Test L1-10: checkNoInlineModel FAILS on inline-model fixture
+    const inlineModelPath = path.join(repoRoot, 'tests/fixtures/inline-model/SKILL.md');
+    const inlineModelText = await fs.readFile(inlineModelPath, 'utf-8');
+    const inlineModelBody = inlineModelText.split('---\n').slice(2).join('---\n');
+
+    const inlineModelResult = checkNoInlineModel({
+      name: 'inline-model',
+      body: inlineModelBody
+    });
+    assert(inlineModelResult.ok === false, `checkNoInlineModel fails on inline-model (got ok=${inlineModelResult.ok})`);
+    assert(inlineModelResult.errors.length > 0, 'checkNoInlineModel returns error messages for inline-model');
+    const inlineModelError = inlineModelResult.errors.join(' ');
+    assert(inlineModelError.includes('claude-opus-4') || inlineModelError.includes('claude-haiku-3'),
+           'checkNoInlineModel identifies versioned model IDs');
+
+    // Test L1-10: checkNoInlineModel passes on model-strategy (always allowed)
+    const modelStrategy = allSkills.find(s => s.name === 'model-strategy');
+    assert(modelStrategy !== undefined, 'model-strategy skill exists');
+
+    const modelStrategyResult = checkNoInlineModel({
+      name: modelStrategy.name,
+      body: modelStrategy.body
+    });
+    assert(modelStrategyResult.ok === true, 'checkNoInlineModel passes on model-strategy (single allowed resolution point)');
+
+    // Test L1-10: checkNoInlineModel passes on real skill with bare tier words (implementation-runner)
+    const implementationRunner = allSkills.find(s => s.name === 'implementation-runner');
+    assert(implementationRunner !== undefined, 'implementation-runner skill exists');
+
+    const implementationRunnerResult = checkNoInlineModel({
+      name: implementationRunner.name,
+      body: implementationRunner.body
+    });
+    assert(implementationRunnerResult.ok === true,
+           `checkNoInlineModel passes on implementation-runner with bare tier words (got ${implementationRunnerResult.errors?.join('; ') || 'ok'})`);
+
+    pass('L1-8..L1-10 checks passed');
+  } catch (err) {
+    fail(`L1-8..L1-10 checks failed: ${err.message}`);
+  }
+}
+
 exitWithReport();

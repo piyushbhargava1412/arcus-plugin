@@ -188,4 +188,78 @@ section('L1-7: Cross-skill references resolve');
   assert(refFailures === 0, `L1-7: all ${skills.length} skills have valid cross-references (${refFailures} failures)`);
 }
 
+section('L1-8: Bundled-resource paths resolve');
+{
+  const skills = walkSkills();
+  const { checkResourcePaths } = await import('./lib/checks.mjs');
+  let resourceFailures = 0;
+
+  for (const skill of skills) {
+    // Injected fileExists predicate rooted at skill dir
+    const fileExists = (resourcePath) => {
+      const fullPath = join(skill.dir, resourcePath);
+      return existsSync(fullPath);
+    };
+
+    const result = checkResourcePaths({
+      name: skill.name,
+      dir: skill.dir,
+      body: skill.body,
+      fileExists
+    });
+
+    if (!result.ok) {
+      resourceFailures++;
+      console.error(`  ${skill.name}: ${result.errors.join('; ')}`);
+    }
+  }
+
+  assert(resourceFailures === 0, `L1-8: all ${skills.length} skills have valid resource paths (${resourceFailures} failures)`);
+}
+
+section('L1-9: Hooks integrity');
+{
+  const { checkHooks } = await import('./lib/checks.mjs');
+  const hooksJsonPath = join(repoRoot, 'plugins/arcus/hooks/hooks.json');
+  const hooksJsonResult = readJSON(hooksJsonPath);
+
+  assert(hooksJsonResult.ok, `hooks.json is valid JSON (${hooksJsonResult.error || 'ok'})`);
+
+  if (hooksJsonResult.ok) {
+    // Injected scriptExists predicate rooted at plugin root
+    const scriptExists = (scriptPath) => {
+      const fullPath = join(repoRoot, 'plugins/arcus', scriptPath);
+      return existsSync(fullPath);
+    };
+
+    const result = checkHooks({
+      hooksJson: hooksJsonResult.value,
+      scriptExists
+    });
+
+    assert(result.ok, `L1-9: hooks integrity (${result.errors.join('; ') || 'ok'})`);
+  }
+}
+
+section('L1-10: Single model-resolution point');
+{
+  const skills = walkSkills();
+  const { checkNoInlineModel } = await import('./lib/checks.mjs');
+  let modelFailures = 0;
+
+  for (const skill of skills) {
+    const result = checkNoInlineModel({
+      name: skill.name,
+      body: skill.body
+    });
+
+    if (!result.ok) {
+      modelFailures++;
+      console.error(`  ${skill.name}: ${result.errors.join('; ')}`);
+    }
+  }
+
+  assert(modelFailures === 0, `L1-10: all ${skills.length} skills use arcus:model-strategy (${modelFailures} failures)`);
+}
+
 exitWithReport();

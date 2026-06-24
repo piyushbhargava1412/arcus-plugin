@@ -334,6 +334,179 @@ function checkCrossRefs({ name, body, knownSkillNames }) {
   return { ok: errors.length === 0, errors };
 }
 
+/**
+ * L1-8: Bundled-resource paths resolve.
+ * Find every references/... or assets/... path mentioned in the body that has a FILE EXTENSION,
+ * and verify it exists on disk relative to the skill's dir.
+ *
+ * Match ONLY extension-bearing paths (e.g., .md, .json, .py, .txt, .sh) to avoid false positives
+ * on prose mentions of "references/" or "assets/" without a filename.
+ *
+ * @param {Object} input
+ * @param {string} input.name - Skill name
+ * @param {string} input.dir - Skill directory path
+ * @param {string} input.body - Skill body text
+ * @param {Function} input.fileExists - Injected predicate (path) => boolean (rooted at skill dir)
+ * @returns {{ ok: boolean, errors: string[] }}
+ */
+function checkResourcePaths({ name, dir, body, fileExists }) {
+  const errors = [];
+
+  // Match references/... or assets/... paths with file extensions
+  // Pattern: (references|assets)/[path-segment(s)]/filename.ext
+  // We require at least one dot in the filename portion to indicate an extension
+  const resourcePattern = /\b(references|assets)\/[^\s"'`)\]]+\.[a-zA-Z0-9]+/g;
+  const matches = [...body.matchAll(resourcePattern)];
+
+  const missingPaths = new Set();
+
+  for (const match of matches) {
+    const resourcePath = match[0];
+
+    // Check if the file exists relative to the skill directory
+    if (!fileExists(resourcePath)) {
+      missingPaths.add(resourcePath);
+    }
+  }
+
+  if (missingPaths.size > 0) {
+    const pathList = Array.from(missingPaths).sort().join(', ');
+    errors.push(`${name}: references non-existent resource files: ${pathList}`);
+  }
+
+  return { ok: errors.length === 0, errors };
+}
+
+/**
+ * L1-9: Hooks integrity.
+ * Validates hooks.json structure and ensures every referenced command script exists.
+ *
+ * @param {Object} input
+ * @param {Object} input.hooksJson - Parsed hooks.json
+ * @param {Function} input.scriptExists - Injected predicate (path) => boolean (rooted at plugin root)
+ * @returns {{ ok: boolean, errors: string[] }}
+ */
+function checkHooks({ hooksJson, scriptExists }) {
+  const errors = [];
+
+  // Validate basic structure
+  if (!hooksJson || typeof hooksJson !== 'object') {
+    errors.push('hooks.json is not a valid object');
+    return { ok: false, errors };
+  }
+
+  if (!hooksJson.hooks || typeof hooksJson.hooks !== 'object') {
+    errors.push('hooks.json missing "hooks" top-level object');
+    return { ok: false, errors };
+  }
+
+  // Extract all command scripts from the hooks structure
+  const scriptPaths = new Set();
+
+  for (const hookName in hooksJson.hooks) {
+    const hookEntries = hooksJson.hooks[hookName];
+    if (!Array.isArray(hookEntries)) {
+      errors.push(`hooks.json: hook "${hookName}" is not an array`);
+      continue;
+    }
+
+    for (const entry of hookEntries) {
+      if (!entry.hooks || !Array.isArray(entry.hooks)) {
+        continue;
+      }
+
+      for (const hook of entry.hooks) {
+        if (hook.type === 'command' && hook.command) {
+          // Extract script path from command string
+          // Handle: "${CLAUDE_PLUGIN_ROOT}"/scripts/bootstrap.sh
+          // Resolve ${CLAUDE_PLUGIN_ROOT} to empty string (we check relative to plugin root)
+          let scriptPath = hook.command;
+
+          // Remove quotes
+          scriptPath = scriptPath.replace(/^["']|["']$/g, '');
+
+          // Replace ${CLAUDE_PLUGIN_ROOT} with empty string (we'll check relative to plugin root)
+          scriptPath = scriptPath.replace(/\$\{CLAUDE_PLUGIN_ROOT\}\/?/, '');
+
+          // Extract just the script path (first token before any arguments)
+          scriptPath = scriptPath.split(/\s+/)[0];
+
+          // Remove any remaining quotes
+          scriptPath = scriptPath.replace(/["']/g, '');
+
+          if (scriptPath) {
+            scriptPaths.add(scriptPath);
+          }
+        }
+      }
+    }
+  }
+
+  // Check that each script exists
+  const missingScripts = [];
+  for (const scriptPath of scriptPaths) {
+    if (!scriptExists(scriptPath)) {
+      missingScripts.push(scriptPath);
+    }
+  }
+
+  if (missingScripts.length > 0) {
+    errors.push(`hooks.json references non-existent scripts: ${missingScripts.join(', ')}`);
+  }
+
+  return { ok: errors.length === 0, errors };
+}
+
+/**
+ * L1-10: Single model-resolution point (CALIBRATION-CRITICAL).
+ * Every skill EXCEPT model-strategy must NOT hard-code a model string as a ROUTING decision.
+ *
+ * Flag patterns like:
+ *   - Explicit versioned model ids: claude-...-4-... (e.g., claude-opus-4, claude-sonnet-4-6, claude-3-5-...)
+ *
+ * IMPORTANT: Bare words opus/sonnet/haiku appear LEGITIMATELY across many skills as
+ * COMPLEXITY-TIER references (e.g., "light→haiku, medium→sonnet, heavy→opus",
+ * "resolve via arcus:model-strategy"). Those are NOT violations — they reference the
+ * model-strategy table, they don't hardcode a routing decision.
+ *
+ * CALIBRATION: This check MUST be GREEN for all non-model-strategy skills in the live tree.
+ * The regex matches versioned model-id strings like:
+ *   - claude-opus-4
+ *   - claude-sonnet-4-6
+ *   - claude-3-5-sonnet
+ *   - claude-haiku-3-5
+ * But NOT bare tier words: opus, sonnet, haiku (which are legitimate complexity tier references).
+ *
+ * model-strategy itself is always ok:true (it's the single allowed resolution point).
+ *
+ * @param {Object} input
+ * @param {string} input.name - Skill name
+ * @param {string} input.body - Skill body text
+ * @returns {{ ok: boolean, errors: string[] }}
+ */
+function checkNoInlineModel({ name, body }) {
+  const errors = [];
+
+  // model-strategy is the single allowed resolution point
+  if (name === 'model-strategy') {
+    return { ok: true, errors };
+  }
+
+  // Match versioned model IDs like:
+  //   claude-opus-4, claude-opus-4-8, claude-sonnet-4-6, claude-3-5-sonnet, claude-haiku-3-5
+  // Pattern: claude- followed by any text and then a digit somewhere
+  // Must contain "claude-" and at least one digit to be a versioned model ID
+  const versionedModelPattern = /claude-[a-z0-9-]*\d[a-z0-9-]*/gi;
+  const matches = [...body.matchAll(versionedModelPattern)];
+
+  if (matches.length > 0) {
+    const modelIds = [...new Set(matches.map(m => m[0]))].sort();
+    errors.push(`${name}: hardcodes versioned model ID(s): ${modelIds.join(', ')} (must resolve via arcus:model-strategy)`);
+  }
+
+  return { ok: errors.length === 0, errors };
+}
+
 export {
   checkManifests,
   checkFrontmatter,
@@ -341,5 +514,8 @@ export {
   checkAdvisoryReadOnly,
   checkCapabilityNoState,
   checkNoInlinedDomain,
-  checkCrossRefs
+  checkCrossRefs,
+  checkResourcePaths,
+  checkHooks,
+  checkNoInlineModel
 };
