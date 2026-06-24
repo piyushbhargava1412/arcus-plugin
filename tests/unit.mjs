@@ -107,4 +107,95 @@ section('skills.mjs');
   }
 }
 
+// --- L1-1, L1-2, L1-3 checks ---
+section('L1-1..L1-3');
+{
+  try {
+    const { checkManifests, checkFrontmatter, checkLineBudget } = await import('./lib/checks.mjs');
+    const { walkSkills, readJSON, parseFrontmatter, lineCount, repoRoot } = await import('./lib/skills.mjs');
+    const fs = await import('node:fs/promises');
+    const path = await import('node:path');
+    const { existsSync } = await import('node:fs');
+
+    // Test L1-1: checkManifests passes on real manifests
+    const pluginJsonPath = path.join(repoRoot, 'plugins/arcus/.claude-plugin/plugin.json');
+    const marketplaceJsonPath = path.join(repoRoot, '.claude-plugin/marketplace.json');
+    const pluginJsonResult = readJSON(pluginJsonPath);
+    const marketplaceJsonResult = readJSON(marketplaceJsonPath);
+
+    assert(pluginJsonResult.ok && marketplaceJsonResult.ok, 'real manifests are valid JSON');
+
+    const sourcePath = path.join(repoRoot, 'plugins/arcus');
+    const sourceResolves = existsSync(sourcePath);
+
+    const manifestResult = checkManifests({
+      pluginJson: pluginJsonResult.value,
+      marketplaceJson: marketplaceJsonResult.value,
+      sourceResolves
+    });
+    assert(manifestResult.ok === true, `checkManifests passes on real manifests (got ${manifestResult.errors?.join('; ') || 'ok'})`);
+
+    // Test L1-1: checkManifests FAILS on bad manifest
+    const badManifestResult = readJSON(path.join(repoRoot, 'tests/fixtures/bad-manifest.json'));
+    assert(badManifestResult.ok, 'bad-manifest.json is parseable JSON');
+    const badResult = checkManifests({
+      pluginJson: badManifestResult.value,
+      marketplaceJson: marketplaceJsonResult.value,
+      sourceResolves: true
+    });
+    assert(badResult.ok === false, `checkManifests fails on name mismatch (got ok=${badResult.ok})`);
+    assert(badResult.errors.length > 0, 'checkManifests returns error messages for bad manifest');
+
+    // Test L1-2: checkFrontmatter passes on real skill (spec-finalizer)
+    const allSkills = walkSkills();
+    const specFinalizer = allSkills.find(s => s.name === 'spec-finalizer');
+    assert(specFinalizer !== undefined, 'spec-finalizer skill exists');
+
+    const fmResult = checkFrontmatter({
+      name: specFinalizer.name,
+      dir: specFinalizer.dir,
+      frontmatter: specFinalizer.frontmatter,
+      body: specFinalizer.body
+    });
+    assert(fmResult.ok === true, `checkFrontmatter passes on spec-finalizer (got ${fmResult.errors?.join('; ') || 'ok'})`);
+
+    // Test L1-2: checkFrontmatter FAILS on bad frontmatter (reserved word)
+    const badFMPath = path.join(repoRoot, 'tests/fixtures/bad-frontmatter/SKILL.md');
+    const badFMText = await fs.readFile(badFMPath, 'utf-8');
+    const badFM = parseFrontmatter(badFMText);
+    const badFMResult = checkFrontmatter({
+      name: 'Claude',
+      dir: path.join(repoRoot, 'tests/fixtures/bad-frontmatter'),
+      frontmatter: badFM,
+      body: badFMText
+    });
+    assert(badFMResult.ok === false, `checkFrontmatter fails on reserved word 'Claude' (got ok=${badFMResult.ok})`);
+    assert(badFMResult.errors.length > 0, 'checkFrontmatter returns error messages for reserved word');
+
+    // Test L1-3: checkLineBudget passes on real skill
+    const specText = await fs.readFile(specFinalizer.path, 'utf-8');
+    const budgetResult = checkLineBudget({
+      name: specFinalizer.name,
+      body: specFinalizer.body,
+      fullText: specText
+    });
+    assert(budgetResult.ok === true, `checkLineBudget passes on spec-finalizer (got ${budgetResult.errors?.join('; ') || 'ok'})`);
+
+    // Test L1-3: checkLineBudget FAILS on over-budget file
+    const overBudgetPath = path.join(repoRoot, 'tests/fixtures/over-budget.md');
+    const overBudgetText = await fs.readFile(overBudgetPath, 'utf-8');
+    const overBudgetResult = checkLineBudget({
+      name: 'over-budget',
+      body: overBudgetText,
+      fullText: overBudgetText
+    });
+    assert(overBudgetResult.ok === false, `checkLineBudget fails on >500 lines (got ok=${overBudgetResult.ok})`);
+    assert(overBudgetResult.errors.length > 0, 'checkLineBudget returns error messages for over-budget file');
+
+    pass('L1-1..L1-3 checks passed');
+  } catch (err) {
+    fail(`L1-1..L1-3 checks failed: ${err.message}`);
+  }
+}
+
 exitWithReport();
