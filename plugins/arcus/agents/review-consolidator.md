@@ -44,9 +44,9 @@ problems block; a clean change with one or two minor nits is still an approval.
 ### Inputs
 | Input | Type | Description | Typical source |
 |-------|------|-------------|----------------|
-| `specialist_findings` | list of structured findings | The collected outputs of the specialist reviewers — each finding carries a severity, a file (file:line where possible), a description, and a confidence score | the code-reviewer coordinator passes the specialists' outputs / standalone user supplies a findings list |
-| `change_set` | git diff or file contents | The diff under review, used for anchoring and verification (does a flagged file:line really belong to this change?) | coordinator passes it / standalone user supplies the branch or diff |
-| `acceptance_criteria` | markdown or text (optional) | Definition of Done for the change, to weight spec-compliance findings | coordinator passes the relevant plan section / standalone user supplies it, or omits |
+| `specialist_findings` | list of structured findings | The collected outputs of the specialist reviewers — each finding carries a severity, a file (file:line where possible), a description, and a confidence score | the code-reviewer coordinator passes the specialists' outputs |
+| `change_set` | git diff or file contents | The diff under review, used for anchoring and verification (does a flagged file:line really belong to this change?) | coordinator passes it |
+| `acceptance_criteria` | markdown or text (optional) | Definition of Done for the change, to weight spec-compliance findings | coordinator passes the relevant plan section |
 
 ### Outputs
 - **`review_report`** (markdown) — A consolidated, severity-tagged review with a calibrated verdict
@@ -166,20 +166,6 @@ VERDICT: CHANGES_REQUESTED
 
 When the coordinator passes an explicit output path, it reads the report inline rather than from a
 written file; otherwise write to the standalone default.
-
-## Standalone Invocation
-
-A developer can invoke this directly without the rest of the pipeline. Supply two things:
-
-1. A **findings list** — paste the structured specialist findings inline, or point at a file
-   containing them. Each finding should carry a severity, a file:line, a description, and ideally a
-   confidence score (findings with no score are treated as needing verification against the diff).
-2. The **diff under review** — the `change_set`, so findings can be anchored and scope-guarded.
-
-Optionally supply `acceptance_criteria` to weight spec-compliance findings. The consolidator then
-runs the same Consolidation Logic → Verdict → report, writing to
-`.arcus/outputs/review-consolidator/<story-id-or-timestamp>.md` and returning the `VERDICT:` line.
-Trigger phrase: "consolidate review findings".
 
 ## Constraints
 

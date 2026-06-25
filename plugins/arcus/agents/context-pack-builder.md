@@ -45,7 +45,7 @@ This skill runs a bundled helper script (`match_flows.py`) via shell. Because th
 - Explicitly capture any gaps or ambiguities in the "Assumptions / Gaps" section.
 
 ### Step 5: Persist
-- Write the final document to the output path (default `.arcus/outputs/context-pack-builder/<story-id-or-timestamp>.md` for standalone mode; orchestrators provide an explicit path).
+- Write the final document to the output path (default `.arcus/outputs/context-pack-builder/<story-id-or-timestamp>.md` when no explicit path is passed; the dispatcher may override it).
 - Overwrite if it already exists.
 
 ## Success Criteria
@@ -69,8 +69,8 @@ This skill runs a bundled helper script (`match_flows.py`) via shell. Because th
 ### Inputs
 | Input | Type | Description | Typical source |
 |-------|------|-------------|----------------|
-| `story` | markdown or text | The user story requirement describing what needs to be built | orchestrator passes it / standalone user supplies it |
-| `repo_context` | directory path | Path to shared repository context artifacts (flows, scope, map, patterns) | orchestrator passes it / standalone user supplies it |
+| `story` | markdown or text | The user story requirement describing what needs to be built | orchestrator passes it |
+| `repo_context` | directory path | Path to shared repository context artifacts (flows, scope, map, patterns) | orchestrator passes it |
 
 ### Outputs
 - **`context_pack`** (markdown) — Story-to-code correlations: relevant business flows (linked), likely working areas, repository patterns, testing conventions, and identified gaps or assumptions.
@@ -83,15 +83,11 @@ This skill runs a bundled helper script (`match_flows.py`) via shell. Because th
 
 ## Caller Guidance
 
-This capability receives **named inputs**, not file paths. How they arrive depends on the caller:
+This capability receives **named inputs**, not file paths. They are passed by the dispatching skill or orchestrator:
 
 - **Pipeline (via an orchestrator/coordinator)**: the caller resolves the ARCUS workspace paths and
   passes the **content** of each input plus an explicit `output_path`. The capability constructs no
   ARCUS paths itself.
-- **Standalone (a developer who has never used ARCUS)**: the user supplies the required inputs
-  (`story`, `repo_context`) directly — pasted inline or as a file they point to. Optional inputs absent →
-  proceed without them and note the omission. Output defaults to
-  `.arcus/outputs/context-pack-builder/<story-id-or-timestamp>.md`.
 
 The skill body below is written in terms of the named inputs; it never reads a hard-coded ARCUS
 workspace path.

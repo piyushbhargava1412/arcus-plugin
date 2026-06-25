@@ -143,12 +143,6 @@ FINDINGS:
 - **No binary verdict** — let the `code-reviewer` coordinator judge.
 - **Model tier**: `medium`
 
-## Standalone Invocation
-
-A developer can invoke this reviewer directly by supplying the `change_set` (a diff, or "the changes on my branch vs <base>"), the `base_ref` (the base branch or commit to compare against), and optionally the `context_pack` (story-to-code correlations including architecture context). The reviewer returns its severity-tagged findings as described in the Output Format section above.
-
-Note that organic/automatic invocation remains disabled — this reviewer only runs when explicitly asked or dispatched by the code-reviewer coordinator.
-
 ## Contract
 
 > Layer: **capability** — atomic, stateless, given declared inputs → produce one output. No checkpoint reads/writes, no branch ops, no ARCUS path construction.
@@ -156,9 +150,9 @@ Note that organic/automatic invocation remains disabled — this reviewer only r
 ### Inputs
 | Input | Type | Description | Typical source |
 |-------|------|-------------|----------------|
-| `change_set` | git diff output | The branch diff showing files and hunks changed | orchestrator passes it / standalone user supplies it |
-| `base_ref` | git ref | The base branch or commit to compare against | orchestrator passes it / standalone user supplies it |
-| `context_pack` | markdown | Story-to-code correlations including architecture context (optional) | orchestrator passes it / standalone user supplies it |
+| `change_set` | git diff output | The branch diff showing files and hunks changed | orchestrator passes it |
+| `base_ref` | git ref | The base branch or commit to compare against | orchestrator passes it |
+| `context_pack` | markdown | Story-to-code correlations including architecture context (optional) | orchestrator passes it |
 
 ### Outputs
 - **`history_review_findings`** (structured text) — List of findings with severity tags (warning/suggestion), each with concrete git signal evidence (prior fix/revert overlap, deliberate-marker removal, or re-added reverted code).

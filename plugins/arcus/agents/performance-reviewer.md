@@ -29,8 +29,8 @@ resource risks — not micro-optimizations or speculative tuning.
 ### Inputs
 | Input | Type | Description | Typical source |
 |-------|------|-------------|----------------|
-| `change_set` | git diff | The branch diff with changed files and hunks | orchestrator passes it / standalone user supplies branch |
-| `repo_conventions` | markdown | Architecture patterns, performance guardrails, and coding conventions | orchestrator passes relevant section from context pack / standalone user supplies it |
+| `change_set` | git diff | The branch diff with changed files and hunks | orchestrator passes it |
+| `repo_conventions` | markdown | Architecture patterns, performance guardrails, and coding conventions | orchestrator passes relevant section from context pack |
 
 ### Outputs
 - **`performance_findings`** (structured report) — Concrete performance regressions and resource risks with severity, confidence, and file:line references.
@@ -89,9 +89,3 @@ Only report findings with confidence ≥ 80; drop anything below that threshold 
 - **Changed code only**: Review what the diff introduces or modifies, not the whole repo.
 - **Verify before flagging**: Confirm the path is actually hot or the data set realistically large.
 - **Measurable over speculative**: If the impact is negligible at expected scale, don't flag it.
-
-## Standalone Invocation
-
-A developer can invoke this reviewer directly by supplying the `change_set` (a diff, or "the changes on my branch vs <base>") and optionally the `repo_conventions` / `repo_context`. The reviewer returns its severity-tagged findings as described in the Output Format section above.
-
-Note that organic/automatic invocation remains disabled — this reviewer only runs when explicitly asked or dispatched by the code-reviewer coordinator.

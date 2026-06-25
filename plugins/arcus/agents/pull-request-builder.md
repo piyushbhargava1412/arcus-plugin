@@ -44,7 +44,7 @@ have reconciled shared context artifacts. Detect and render those updates from t
 
 ### Step 3: Final Artifact Generation
 - Run the full test suite one last time on the feature branch.
-- Save the final, synthesized PR description to the output path (default `.arcus/outputs/pull-request-builder/<story-id-or-timestamp>.md` for standalone mode; orchestrators provide an explicit path).
+- Save the final, synthesized PR description to the output path (default `.arcus/outputs/pull-request-builder/<story-id-or-timestamp>.md` when no explicit path is passed; the dispatcher may override it).
 - Ensure the description includes a high-level summary, the list of changed files, and evidence of successful verification.
 
 ## Success Criteria
@@ -77,11 +77,11 @@ handoff**. Once the pull request is created and `closure` is marked complete, th
 ### Inputs
 | Input | Type | Description | Typical source |
 |-------|------|-------------|----------------|
-| `story` | markdown or text | The original user story requirement | orchestrator passes it / standalone user supplies it |
-| `change_set` | git diff output | The full branch diff showing all changes | orchestrator passes it / standalone user supplies it |
-| `spec_grounding` | markdown | Technical decisions (optional) | orchestrator passes it / standalone user supplies it |
-| `implementation_plan` | markdown | Task breakdown (optional) | orchestrator passes it / standalone user supplies it |
-| `test_matrix` | markdown | Verification evidence (optional) | orchestrator passes it / standalone user supplies it |
+| `story` | markdown or text | The original user story requirement | orchestrator passes it |
+| `change_set` | git diff output | The full branch diff showing all changes | orchestrator passes it |
+| `spec_grounding` | markdown | Technical decisions (optional) | orchestrator passes it |
+| `implementation_plan` | markdown | Task breakdown (optional) | orchestrator passes it |
+| `test_matrix` | markdown | Verification evidence (optional) | orchestrator passes it |
 
 ### Outputs
 - **`pull_request_description`** (markdown) — Professional PR summary with high-level overview, categorized changes (features/fixes/tests), context updates (if any), and verification evidence.
@@ -94,20 +94,11 @@ handoff**. Once the pull request is created and `closure` is marked complete, th
 
 ## Caller Guidance
 
-This capability receives **named inputs**, not file paths. How they arrive depends on the caller:
+This capability receives **named inputs**, not file paths. They are passed by the dispatching skill or orchestrator:
 
 - **Pipeline (via an orchestrator/coordinator)**: the caller resolves the ARCUS workspace paths and
   passes the **content** of each input plus an explicit `output_path`. The capability constructs no
   ARCUS paths itself.
-- **Standalone (a developer who has never used ARCUS)**: the user supplies the required inputs
-  (`story`, `change_set`) directly — pasted inline or as a file they point to. Optional inputs (`spec_grounding`, `implementation_plan`, `test_matrix`) absent →
-  proceed without them and note the omission. Output defaults to
-  `.arcus/outputs/pull-request-builder/<story-id-or-timestamp>.md`.
 
 The skill body below is written in terms of the named inputs; it never reads a hard-coded ARCUS
 workspace path.
-
-## Standalone Invocation
-
-A developer can invoke this capability standalone by supplying the `change_set` (the full branch diff showing all changes) and the `story` (the original user story requirement). Optionally, they can provide `spec_grounding`, `implementation_plan`, and `test_matrix` for richer PR context. The capability generates a professional PR description/summary with a high-level overview, categorized changes (features/fixes/tests), context updates (if any), and verification evidence, and writes it to the output path (default `.arcus/outputs/pull-request-builder/<story-id-or-timestamp>.md`).
-

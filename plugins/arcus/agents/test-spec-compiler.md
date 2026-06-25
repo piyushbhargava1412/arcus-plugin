@@ -43,7 +43,7 @@ Read the named inputs:
 
 ### Step 5: Persist the Test Plan
 - Use `./assets/test-plan-template.md` to structure the final matrix.
-- Write the output to the output path (default `.arcus/outputs/test-spec-compiler/<story-id-or-timestamp>.md` for standalone mode; orchestrators provide an explicit path).
+- Write the output to the output path (default `.arcus/outputs/test-spec-compiler/<story-id-or-timestamp>.md` when no explicit path is passed; the dispatcher may override it).
 
 ## Success Criteria
 - **Comprehensive**: Covers Happy Path, Edge Cases, and expected Failures.
@@ -85,9 +85,9 @@ Resume later with: "implement <STORY_ID>"
 ### Inputs
 | Input | Type | Description | Typical source |
 |-------|------|-------------|----------------|
-| `implementation_plan` | markdown | Task breakdown with Definition of Done per task | orchestrator passes it / standalone user supplies it |
-| `spec_grounding` | markdown | Technical decisions including error-handling choices (optional) | orchestrator passes it / standalone user supplies it |
-| `context_pack` | markdown | Testing patterns and relevant flows (optional) | orchestrator passes it / standalone user supplies it |
+| `implementation_plan` | markdown | Task breakdown with Definition of Done per task | orchestrator passes it |
+| `spec_grounding` | markdown | Technical decisions including error-handling choices (optional) | orchestrator passes it |
+| `context_pack` | markdown | Testing patterns and relevant flows (optional) | orchestrator passes it |
 
 ### Outputs
 - **`test_matrix`** (markdown) — Multi-layered test plan categorized by functional, edge case, and error handling; each test case mapped to a specific task ID with complexity classification and pattern alignment.
@@ -100,15 +100,11 @@ Resume later with: "implement <STORY_ID>"
 
 ## Caller Guidance
 
-This capability receives **named inputs**, not file paths. How they arrive depends on the caller:
+This capability receives **named inputs**, not file paths. They are passed by the dispatching skill or orchestrator:
 
 - **Pipeline (via an orchestrator/coordinator)**: the caller resolves the ARCUS workspace paths and
   passes the **content** of each input plus an explicit `output_path`. The capability constructs no
   ARCUS paths itself.
-- **Standalone (a developer who has never used ARCUS)**: the user supplies the required inputs
-  (`implementation_plan`) directly — pasted inline or as a file they point to. Optional inputs (`spec_grounding`, `context_pack`) absent →
-  proceed without them and note the omission. Output defaults to
-  `.arcus/outputs/test-spec-compiler/<story-id-or-timestamp>.md`.
 
 The skill body below is written in terms of the named inputs; it never reads a hard-coded ARCUS
 workspace path.

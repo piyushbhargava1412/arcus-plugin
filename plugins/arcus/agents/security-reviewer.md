@@ -30,8 +30,8 @@ NOT to flag is what keeps this signal-rich.
 ### Inputs
 | Input | Type | Description | Typical source |
 |-------|------|-------------|----------------|
-| `change_set` | git diff | The branch diff with changed files and hunks | orchestrator passes it / standalone user supplies branch |
-| `repo_conventions` | markdown | Architecture patterns, security guardrails, and coding conventions | orchestrator passes relevant section from context pack / standalone user supplies it |
+| `change_set` | git diff | The branch diff with changed files and hunks | orchestrator passes it |
+| `repo_conventions` | markdown | Architecture patterns, security guardrails, and coding conventions | orchestrator passes relevant section from context pack |
 
 ### Outputs
 - **`security_findings`** (structured report) — Exploitable vulnerabilities and concrete security risks with severity, confidence, and file:line references.
@@ -89,9 +89,3 @@ Only report findings with confidence ≥ 80; drop anything below that threshold 
 - **Changed code only**: Don't audit the whole repo; review what the diff introduces or modifies.
 - **Verify before flagging**: Read the surrounding source to confirm the issue is real and reachable.
 - **Concrete over speculative**: If you can't describe how it's exploited, don't flag it.
-
-## Standalone Invocation
-
-A developer can invoke this reviewer directly by supplying the `change_set` (a diff, or "the changes on my branch vs <base>") and optionally the `repo_conventions` / `repo_context`. The reviewer returns its severity-tagged findings as described in the Output Format section above.
-
-Note that organic/automatic invocation remains disabled — this reviewer only runs when explicitly asked or dispatched by the code-reviewer coordinator.

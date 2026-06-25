@@ -48,10 +48,10 @@ found, original code preserved."
 ### Inputs
 | Input | Type | Description | Typical source |
 |-------|------|-------------|----------------|
-| `file_set` / `change_set` | list of file paths or diff | The changed files to simplify | the code-simplifier coordinator (dispatched per task) passes the changed files; standalone user supplies a file list |
-| `test_command` | command string | How to verify — the command that must stay green before and after mutation | the coordinator passes it; standalone user supplies it |
+| `file_set` / `change_set` | list of file paths or diff | The changed files to simplify | the code-simplifier coordinator (dispatched per task) passes the changed files |
+| `test_command` | command string | How to verify — the command that must stay green before and after mutation | the coordinator passes it |
 | `repo_conventions` | text / artifact refs | *(optional)* The simplicity/style conventions to apply | read at runtime from repository convention artifacts (e.g. `AGENTS.md`, `CLAUDE.md`, `context-pack.md`, `.context/testing-patterns.md`, `.context/design-and-coding-patterns.md`) if not supplied |
-| `acceptance_criteria` | markdown or text | *(optional)* The DoD the simplification must not violate (guards test pruning) | the coordinator passes the task DoD; standalone user supplies it if relevant |
+| `acceptance_criteria` | markdown or text | *(optional)* The DoD the simplification must not violate (guards test pruning) | the coordinator passes the task DoD |
 
 ### Outputs
 - **`result_status`** — a result status of `SIMPLIFIED` or `REVERTED`, plus a short summary:
@@ -65,7 +65,7 @@ found, original code preserved."
   **Contractual token — mandatory.** The result is consumed by automated callers that gate on the
   token, so the **final line** of your response MUST begin with exactly `SIMPLIFIED` or `REVERTED`
   (uppercase, verbatim). Prose-only conclusions such as "Done" or "Simplified the function" do **not**
-  satisfy the contract. Emit the token even when invoked standalone by a human.
+  satisfy the contract. Emit the token in every case.
   Output convention: when a written artifact is produced standalone, default to
   `.arcus/outputs/simplify-and-verify/<story-id-or-timestamp>.md`. The capability never asks the user
   where to write; pipeline callers set the path. When dispatched by the coordinator, the result is
@@ -137,20 +137,6 @@ the failure. `REVERTED` is a valid outcome, not a failure.
 
 In both cases the contractual token (`SIMPLIFIED` / `REVERTED`) MUST appear verbatim as the start of
 the final line — automated callers parse it.
-
-## Standalone Invocation
-
-A user can invoke this capability directly without any ARCUS pipeline, by supplying the two required
-inputs:
-
-- **`file_set`** — a list of changed files to simplify (e.g. "simplify and verify these files:
-  `src/parser.py`, `src/lexer.py`").
-- **`test_command`** — the command that must stay green (e.g. `pytest tests/unit`).
-
-Optionally, the user may point at `repo_conventions` and/or `acceptance_criteria`; if absent, the
-capability sources conventions from repository artifacts and proceeds, noting the omission. The
-capability applies the mechanics above and returns `SIMPLIFIED` or `REVERTED`. If a written artifact
-is requested standalone, it defaults to `.arcus/outputs/simplify-and-verify/<story-id-or-timestamp>.md`.
 
 ## Constraints
 

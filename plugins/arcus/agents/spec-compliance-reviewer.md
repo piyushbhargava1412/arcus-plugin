@@ -112,9 +112,9 @@ ISSUES:
 ### Inputs
 | Input | Type | Description | Typical source |
 |-------|------|-------------|----------------|
-| `acceptance_criteria` | markdown or text | Definition of Done for the task being verified | orchestrator passes it / standalone user supplies it |
-| `claimed_files` | list of file paths | Files the implementer reports as modified | orchestrator passes it / standalone user supplies it |
-| `change_set` | git diff or file contents | The actual code changes to review | orchestrator passes it / standalone user supplies it |
+| `acceptance_criteria` | markdown or text | Definition of Done for the task being verified | orchestrator passes it |
+| `claimed_files` | list of file paths | Files the implementer reports as modified | orchestrator passes it |
+| `change_set` | git diff or file contents | The actual code changes to review | orchestrator passes it |
 
 ### Outputs
 - **`compliance_verdict`** (structured text) — Binary verdict (PASS or FAIL) with issue list categorized as MISSING, EXTRA, or WRONG requirements; each issue includes file:line references.
@@ -127,15 +127,11 @@ ISSUES:
 
 ## Caller Guidance
 
-This capability receives **named inputs**, not file paths. How they arrive depends on the caller:
+This capability receives **named inputs**, not file paths. They are passed by the dispatching skill or orchestrator:
 
 - **Pipeline (via an orchestrator/coordinator)**: the caller resolves the ARCUS workspace paths and
   passes the **content** of each input plus an explicit `output_path`. The capability constructs no
   ARCUS paths itself.
-- **Standalone (a developer who has never used ARCUS)**: the user supplies the required inputs
-  (`acceptance_criteria`, `claimed_files`, `change_set`) directly — pasted inline or as a file they point to. Optional inputs absent →
-  proceed without them and note the omission. Output defaults to
-  `.arcus/outputs/spec-compliance-reviewer/<story-id-or-timestamp>.md`.
 
 The skill body below is written in terms of the named inputs; it never reads a hard-coded ARCUS
 workspace path.

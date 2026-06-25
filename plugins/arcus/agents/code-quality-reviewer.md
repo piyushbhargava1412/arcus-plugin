@@ -26,9 +26,9 @@ Reviews implementation code for quality concerns — pattern fidelity, clean str
 ### Inputs
 | Input | Type | Description | Typical source |
 |-------|------|-------------|----------------|
-| `change_set` | git diff | The branch diff with all files changed by this story | orchestrator passes it / standalone user supplies branch |
-| `repo_conventions` | markdown | Architecture patterns, design/coding conventions, testing patterns, and repository guidelines | orchestrator passes relevant sections from context pack + `.context/` artifacts / standalone user supplies it |
-| `acceptance_criteria` | markdown | Definition of Done for the tasks in this story | orchestrator passes it / standalone user supplies acceptance criteria |
+| `change_set` | git diff | The branch diff with all files changed by this story | orchestrator passes it |
+| `repo_conventions` | markdown | Architecture patterns, design/coding conventions, testing patterns, and repository guidelines | orchestrator passes relevant sections from context pack + `.context/` artifacts |
+| `acceptance_criteria` | markdown | Definition of Done for the tasks in this story | orchestrator passes it |
 
 ### Outputs
 - **`quality_findings`** (structured report) — Pattern fidelity violations, structural issues, maintainability concerns, error-handling gaps, test quality issues, and dead code, with severity, confidence, and file:line references.
@@ -128,9 +128,3 @@ A test that meaningfully guards behaviour is never "excessive" — only redundan
 - **Signal over noise**: Style preferences are `suggestion` at most, and usually dropped. Only surface things that would cause real problems as `critical`/`warning`.
 - **Be specific**: Every finding must include a file:line reference.
 - **No manufactured findings**: If the code is clean, return an empty FINDINGS list. Don't invent issues.
-
-## Standalone Invocation
-
-A developer can invoke this reviewer directly by supplying the `change_set` (a diff, or "the changes on my branch vs <base>"), optionally the `repo_conventions` / `repo_context`, and optionally the `acceptance_criteria`. The reviewer returns its severity-tagged findings as described in the Output section above.
-
-Note that organic/automatic invocation remains disabled — this reviewer only runs when explicitly asked or dispatched by the code-reviewer coordinator.
