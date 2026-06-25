@@ -25,7 +25,7 @@ section('skills.mjs');
 {
   // Will fail until skills.mjs is implemented (RED phase)
   try {
-    const { parseFrontmatter, walkSkills, tierOf, DISPATCHED_ONLY, ADVISORY_REVIEWERS,
+    const { parseFrontmatter, walkSkills, walkAll, tierOf, DISPATCHED_ONLY, ADVISORY_REVIEWERS,
             VALID_TIERS, tierCounts, SKILLS_DIR, readJSON, lineCount, repoRoot }
       = await import('../lib/skills.mjs');
 
@@ -46,9 +46,11 @@ section('skills.mjs');
     assert(secFM['disable-model-invocation'] === true || secFM['disable-model-invocation'] === 'true',
            'disable-model-invocation is truthy for security-reviewer');
 
-    // Test 3: walkSkills returns at least 26 entries
+    // Test 3: the union of skills+agents has at least 26 entries (roster lower bound,
+    // surface-independent — items moving skills/->agents/ stay counted)
     const allSkills = walkSkills();
-    assert(allSkills.length >= 26, `walkSkills returns at least 26 skills, got ${allSkills.length}`);
+    const allItems = walkAll();
+    assert(allItems.length >= 26, `walkAll returns at least 26 skills+agents, got ${allItems.length}`);
 
     // Test 4: every skill has a valid tier
     let invalidTierCount = 0;
@@ -61,30 +63,31 @@ section('skills.mjs');
     }
     assert(invalidTierCount === 0, `all skills have valid tiers (found ${invalidTierCount} invalid)`);
 
-    // Test 5: every DISPATCHED_ONLY skill exists and has disable-model-invocation
+    // Test 5: every DISPATCHED_ONLY name exists (in skills OR agents) and has
+    // disable-model-invocation. Resolved over the union so the move is surface-independent.
     let missingDispatched = 0;
     for (const name of DISPATCHED_ONLY) {
-      const skill = allSkills.find(s => s.name === name);
-      if (!skill) {
-        console.error(`  DISPATCHED_ONLY skill not found: ${name}`);
+      const item = allItems.find(s => s.name === name);
+      if (!item) {
+        console.error(`  DISPATCHED_ONLY item not found: ${name}`);
         missingDispatched++;
-      } else if (!skill.frontmatter['disable-model-invocation']) {
-        console.error(`  DISPATCHED_ONLY skill missing disable-model-invocation: ${name}`);
+      } else if (!item.frontmatter['disable-model-invocation']) {
+        console.error(`  DISPATCHED_ONLY item missing disable-model-invocation: ${name}`);
         missingDispatched++;
       }
     }
-    assert(missingDispatched === 0, `all DISPATCHED_ONLY skills exist and have disable-model-invocation (${missingDispatched} issues)`);
+    assert(missingDispatched === 0, `all DISPATCHED_ONLY items exist and have disable-model-invocation (${missingDispatched} issues)`);
 
-    // Test 6: every ADVISORY_REVIEWERS skill exists
+    // Test 6: every ADVISORY_REVIEWERS name exists (in skills OR agents)
     let missingAdvisory = 0;
     for (const name of ADVISORY_REVIEWERS) {
-      const skill = allSkills.find(s => s.name === name);
-      if (!skill) {
-        console.error(`  ADVISORY_REVIEWERS skill not found: ${name}`);
+      const item = allItems.find(s => s.name === name);
+      if (!item) {
+        console.error(`  ADVISORY_REVIEWERS item not found: ${name}`);
         missingAdvisory++;
       }
     }
-    assert(missingAdvisory === 0, `all ADVISORY_REVIEWERS skills exist (${missingAdvisory} missing)`);
+    assert(missingAdvisory === 0, `all ADVISORY_REVIEWERS items exist (${missingAdvisory} missing)`);
 
     // Test 7: tierCounts returns expected distribution
     const counts = tierCounts();

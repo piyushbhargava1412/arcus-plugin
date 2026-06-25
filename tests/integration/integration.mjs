@@ -4,8 +4,8 @@
 // non-zero on any failure.
 
 import { assert, section, exitWithReport } from '../lib/assert.mjs';
-import { walkSkills, readJSON, repoRoot, VALID_TIERS, ADVISORY_REVIEWERS } from '../lib/skills.mjs';
-import { checkManifests, checkFrontmatter, checkLineBudget, checkAdvisoryReadOnly, checkCapabilityNoState, checkNoInlinedDomain, checkCrossRefs, checkCapabilityHasEvalSpec } from '../lib/checks.mjs';
+import { walkSkills, walkAgents, walkAll, readJSON, repoRoot, VALID_TIERS, ADVISORY_REVIEWERS } from '../lib/skills.mjs';
+import { checkManifests, checkFrontmatter, checkLineBudget, checkAdvisoryReadOnly, checkCapabilityNoState, checkNoInlinedDomain, checkCrossRefs, checkCapabilityHasEvalSpec, checkAgentFrontmatter } from '../lib/checks.mjs';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -36,112 +36,118 @@ section('L1-1: Manifest validity');
 
 section('L1-2: Frontmatter validity');
 {
-  const skills = walkSkills();
+  const items = walkAll();
   let frontmatterFailures = 0;
 
-  for (const skill of skills) {
-    const result = checkFrontmatter({
-      name: skill.name,
-      dir: skill.dir,
-      frontmatter: skill.frontmatter,
-      body: skill.body
-    });
+  for (const item of items) {
+    // Skills use checkFrontmatter; agents use the agent-surface analogue.
+    const result = item.surface === 'agent'
+      ? checkAgentFrontmatter({ name: item.name, frontmatter: item.frontmatter })
+      : checkFrontmatter({
+          name: item.name,
+          dir: item.dir,
+          frontmatter: item.frontmatter,
+          body: item.body
+        });
 
     if (!result.ok) {
       frontmatterFailures++;
-      console.error(`  ${skill.name}: ${result.errors.join('; ')}`);
+      console.error(`  ${item.surface} ${item.name}: ${result.errors.join('; ')}`);
     }
   }
 
-  assert(frontmatterFailures === 0, `L1-2: all ${skills.length} skills have valid frontmatter (${frontmatterFailures} failures)`);
+  assert(frontmatterFailures === 0, `L1-2: all ${items.length} skills+agents have valid frontmatter (${frontmatterFailures} failures)`);
 }
 
 section('L1-3: Line budget');
 {
-  const skills = walkSkills();
+  const items = walkAll();
   let budgetFailures = 0;
 
-  for (const skill of skills) {
+  for (const item of items) {
     // Read full file text to get accurate line count
-    const fullText = readFileSync(skill.path, 'utf-8');
+    const fullText = readFileSync(item.path, 'utf-8');
 
     const result = checkLineBudget({
-      name: skill.name,
-      body: skill.body,
+      name: item.name,
+      body: item.body,
       fullText
     });
 
     if (!result.ok) {
       budgetFailures++;
-      console.error(`  ${skill.name}: ${result.errors.join('; ')}`);
+      console.error(`  ${item.surface} ${item.name}: ${result.errors.join('; ')}`);
     }
   }
 
-  assert(budgetFailures === 0, `L1-3: all ${skills.length} skills are within 500-line budget (${budgetFailures} failures)`);
+  assert(budgetFailures === 0, `L1-3: all ${items.length} skills+agents are within 500-line budget (${budgetFailures} failures)`);
 }
 
 section('L1-4: Advisory reviewers are read-only');
 {
-  const skills = walkSkills();
+  const items = walkAll();
   let advisoryFailures = 0;
+  let advisoryChecked = 0;
 
-  for (const skill of skills) {
-    // Only check advisory reviewers
-    if (!ADVISORY_REVIEWERS.has(skill.name)) {
+  for (const item of items) {
+    // Advisory membership is resolved over the union — a reviewer is checked whether
+    // it lives in skills/ or agents/.
+    if (!ADVISORY_REVIEWERS.has(item.name)) {
       continue;
     }
+    advisoryChecked++;
 
     const result = checkAdvisoryReadOnly({
-      name: skill.name,
-      frontmatter: skill.frontmatter,
+      name: item.name,
+      frontmatter: item.frontmatter,
       advisorySet: ADVISORY_REVIEWERS
     });
 
     if (!result.ok) {
       advisoryFailures++;
-      console.error(`  ${skill.name}: ${result.errors.join('; ')}`);
+      console.error(`  ${item.surface} ${item.name}: ${result.errors.join('; ')}`);
     }
   }
 
-  assert(advisoryFailures === 0, `L1-4: all ${ADVISORY_REVIEWERS.size} advisory reviewers are read-only (${advisoryFailures} failures)`);
+  assert(advisoryFailures === 0, `L1-4: all ${advisoryChecked} advisory reviewers are read-only (${advisoryFailures} failures)`);
 }
 
 section('L1-5: Capabilities hold no orchestration state');
 {
-  const skills = walkSkills();
+  const items = walkAll();
   let stateFailures = 0;
 
-  for (const skill of skills) {
-    const tier = skill.frontmatter.layer;
+  for (const item of items) {
+    const tier = item.frontmatter.layer;
 
-    // Only check capabilities
+    // Only check capabilities (skill OR agent)
     if (tier !== 'capability') {
       continue;
     }
 
     const result = checkCapabilityNoState({
-      name: skill.name,
+      name: item.name,
       tier,
-      body: skill.body
+      body: item.body
     });
 
     if (!result.ok) {
       stateFailures++;
-      console.error(`  ${skill.name}: ${result.errors.join('; ')}`);
+      console.error(`  ${item.surface} ${item.name}: ${result.errors.join('; ')}`);
     }
   }
 
-  const capabilityCount = skills.filter(s => s.frontmatter.layer === 'capability').length;
+  const capabilityCount = items.filter(s => s.frontmatter.layer === 'capability').length;
   assert(stateFailures === 0, `L1-5: all ${capabilityCount} capabilities hold no orchestration state (${stateFailures} failures)`);
 }
 
 section('L1-6: Orchestrators/coordinators no inlined domain logic (advisory)');
 {
-  const skills = walkSkills();
+  const items = walkAll();
   let totalWarnings = 0;
 
-  for (const skill of skills) {
-    const tier = skill.frontmatter.layer;
+  for (const item of items) {
+    const tier = item.frontmatter.layer;
 
     // Only check orchestrators and coordinators
     if (tier !== 'orchestrator' && tier !== 'coordinator') {
@@ -149,18 +155,18 @@ section('L1-6: Orchestrators/coordinators no inlined domain logic (advisory)');
     }
 
     const result = checkNoInlinedDomain({
-      name: skill.name,
+      name: item.name,
       tier,
-      body: skill.body
+      body: item.body
     });
 
     if (result.warnings && result.warnings.length > 0) {
       totalWarnings += result.warnings.length;
-      console.log(`  WARNING: ${skill.name}: ${result.warnings.join('; ')}`);
+      console.log(`  WARNING: ${item.surface} ${item.name}: ${result.warnings.join('; ')}`);
     }
   }
 
-  const orchCoordCount = skills.filter(s => s.frontmatter.layer === 'orchestrator' || s.frontmatter.layer === 'coordinator').length;
+  const orchCoordCount = items.filter(s => s.frontmatter.layer === 'orchestrator' || s.frontmatter.layer === 'coordinator').length;
   console.log(`  L1-6: checked ${orchCoordCount} orchestrators/coordinators, found ${totalWarnings} warnings (advisory only)`);
   // Note: This check never fails - it only warns
   assert(true, 'L1-6: advisory check completed (warnings above are informational)');
@@ -168,53 +174,55 @@ section('L1-6: Orchestrators/coordinators no inlined domain logic (advisory)');
 
 section('L1-7: Cross-skill references resolve');
 {
-  const skills = walkSkills();
-  const knownSkillNames = new Set(skills.map(s => s.name));
+  const items = walkAll();
+  // Cross-references resolve over the UNION of both surfaces: an `arcus:<name>` token
+  // is valid whether <name> is a skill directory or an agent file.
+  const knownSkillNames = new Set(items.map(s => s.name));
   let refFailures = 0;
 
-  for (const skill of skills) {
+  for (const item of items) {
     const result = checkCrossRefs({
-      name: skill.name,
-      body: skill.body,
+      name: item.name,
+      body: item.body,
       knownSkillNames
     });
 
     if (!result.ok) {
       refFailures++;
-      console.error(`  ${skill.name}: ${result.errors.join('; ')}`);
+      console.error(`  ${item.surface} ${item.name}: ${result.errors.join('; ')}`);
     }
   }
 
-  assert(refFailures === 0, `L1-7: all ${skills.length} skills have valid cross-references (${refFailures} failures)`);
+  assert(refFailures === 0, `L1-7: all ${items.length} skills+agents have valid cross-references (${refFailures} failures)`);
 }
 
 section('L1-8: Bundled-resource paths resolve');
 {
-  const skills = walkSkills();
+  const items = walkAll();
   const { checkResourcePaths } = await import('../lib/checks.mjs');
   let resourceFailures = 0;
 
-  for (const skill of skills) {
-    // Injected fileExists predicate rooted at skill dir
+  for (const item of items) {
+    // Injected fileExists predicate rooted at the item dir (skill dir, or AGENTS_DIR for agents)
     const fileExists = (resourcePath) => {
-      const fullPath = join(skill.dir, resourcePath);
+      const fullPath = join(item.dir, resourcePath);
       return existsSync(fullPath);
     };
 
     const result = checkResourcePaths({
-      name: skill.name,
-      dir: skill.dir,
-      body: skill.body,
+      name: item.name,
+      dir: item.dir,
+      body: item.body,
       fileExists
     });
 
     if (!result.ok) {
       resourceFailures++;
-      console.error(`  ${skill.name}: ${result.errors.join('; ')}`);
+      console.error(`  ${item.surface} ${item.name}: ${result.errors.join('; ')}`);
     }
   }
 
-  assert(resourceFailures === 0, `L1-8: all ${skills.length} skills have valid resource paths (${resourceFailures} failures)`);
+  assert(resourceFailures === 0, `L1-8: all ${items.length} skills+agents have valid resource paths (${resourceFailures} failures)`);
 }
 
 section('L1-9: Hooks integrity');
@@ -243,23 +251,23 @@ section('L1-9: Hooks integrity');
 
 section('L1-10: Single model-resolution point');
 {
-  const skills = walkSkills();
+  const items = walkAll();
   const { checkNoInlineModel } = await import('../lib/checks.mjs');
   let modelFailures = 0;
 
-  for (const skill of skills) {
+  for (const item of items) {
     const result = checkNoInlineModel({
-      name: skill.name,
-      body: skill.body
+      name: item.name,
+      body: item.body
     });
 
     if (!result.ok) {
       modelFailures++;
-      console.error(`  ${skill.name}: ${result.errors.join('; ')}`);
+      console.error(`  ${item.surface} ${item.name}: ${result.errors.join('; ')}`);
     }
   }
 
-  assert(modelFailures === 0, `L1-10: all ${skills.length} skills use arcus:model-strategy (${modelFailures} failures)`);
+  assert(modelFailures === 0, `L1-10: all ${items.length} skills+agents use arcus:model-strategy (${modelFailures} failures)`);
 }
 
 section('L1-11: Artifact-schema validation (live checkpoint + real artifacts)');
@@ -309,27 +317,43 @@ section('L1-11: Artifact-schema validation (live checkpoint + real artifacts)');
 
 section('L1-12: Every capability owns a Layer-2 eval spec');
 {
-  const skills = walkSkills();
+  const items = walkAll();
   const specsDir = join(repoRoot, 'tests/e2e/evals/specs');
 
-  // Injected predicate: does specs/<skill>/evals.json exist?
+  // Injected predicate: does specs/<name>/evals.json exist?
   const specExists = (skillName) => existsSync(join(specsDir, skillName, 'evals.json'));
 
   let evalSpecFailures = 0;
-  for (const skill of skills) {
+  for (const item of items) {
     const result = checkCapabilityHasEvalSpec({
-      name: skill.name,
-      tier: skill.frontmatter.layer,
+      name: item.name,
+      tier: item.frontmatter.layer,
       specExists
     });
     if (!result.ok) {
       evalSpecFailures++;
-      console.error(`  ${skill.name}: ${result.errors.join('; ')}`);
+      console.error(`  ${item.surface} ${item.name}: ${result.errors.join('; ')}`);
     }
   }
 
-  const capabilityCount = skills.filter(s => s.frontmatter.layer === 'capability').length;
+  const capabilityCount = items.filter(s => s.frontmatter.layer === 'capability').length;
   assert(evalSpecFailures === 0, `L1-12: all ${capabilityCount} capabilities own a Layer-2 eval spec (${evalSpecFailures} missing)`);
+}
+
+section('L1-13: Agent frontmatter validity (agent surface)');
+{
+  const agents = walkAgents();
+  let agentFmFailures = 0;
+
+  for (const agent of agents) {
+    const result = checkAgentFrontmatter({ name: agent.name, frontmatter: agent.frontmatter });
+    if (!result.ok) {
+      agentFmFailures++;
+      console.error(`  agent ${agent.name}: ${result.errors.join('; ')}`);
+    }
+  }
+
+  assert(agentFmFailures === 0, `L1-13: all ${agents.length} agents have valid frontmatter (${agentFmFailures} failures)`);
 }
 
 exitWithReport();
