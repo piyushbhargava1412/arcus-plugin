@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`plugins/arcus/agents/<name>.md`, flat files) are model-only, dispatched **by name** from a
   skill/orchestrator, and never user-facing. Resulting layout: **16 skill dirs + 13 agent files**.
   Canonical agent frontmatter (`name`, `description`, `layer`, `tools`, `disallowed-tools`, `model`,
-  `color`) is documented in `plugins/arcus/agents/README.md`.
+  `color`) is documented in `plugins/arcus/agents.md`.
 - **L1-13 `checkAgentFrontmatter`.** A new Layer-1 static check governing the agent surface (name ==
   basename, description, valid `layer`, tier-word `model`), with good/planted-bad fixtures; the
   planted-violation coverage map is bumped to **13** checks.

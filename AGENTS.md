@@ -41,7 +41,7 @@ An item is an **agent** if no human would type a trigger for it, it already runs
 subagent, and it needs no main-thread dialogue. It is a **skill** if it is a user-facing entry point,
 needs main-thread dialogue/gates, or is a stateful driver owning the user conversation. The canonical
 agent frontmatter (`name`, `description`, `layer`, `tools`, `disallowed-tools`, `model`, `color`) is
-documented in [`plugins/arcus/agents/README.md`](plugins/arcus/agents/README.md). The test harness
+documented in [`plugins/arcus/agents.md`](plugins/arcus/agents.md). The test harness
 resolves every `arcus:<name>` cross-reference against the **union** of skill dirs + agent files
 (`walkAll()` in `tests/lib/skills.mjs`).
 

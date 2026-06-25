@@ -707,7 +707,7 @@ function checkCapabilityHasEvalSpec({ name, tier, specExists }) {
  *
  * Agents are flat `plugins/arcus/agents/<name>.md` files. This is the agent-surface
  * analogue of checkFrontmatter (which governs skills). It enforces the canonical
- * Claude Code agent frontmatter documented in plugins/arcus/agents/README.md:
+ * Claude Code agent frontmatter documented in plugins/arcus/agents.md:
  *   - name present, == file basename, lowercase kebab-case, no reserved words
  *   - description present, <= 1024 chars
  *   - layer present and in VALID_TIERS (the role axis survives on agents)
