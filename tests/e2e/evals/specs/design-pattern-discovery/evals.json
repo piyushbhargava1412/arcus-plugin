@@ -1,0 +1,48 @@
+{
+  "skill_name": "design-pattern-discovery",
+  "cost_budget": { "max_tokens": 60000, "max_seconds": 180 },
+  "evals": [
+    {
+      "id": "dpd-extracts-shared-conventions-and-avoid-from-outlier",
+      "prompt": "Discover and persist this repository's shared design and coding patterns to .context/design-and-coding-patterns.md, including a curated Avoid list. The repo map and scope are provided in the fixture; source is under src/.",
+      "mode": "autonomous",
+      "kind": "judged",
+      "fixture": {
+        "files": {
+          ".context/repo_map.md": "<!-- context-meta\nverification-commit: aaa111\ngenerated-at: 2026-06-24T00:00:00Z\nconfidence: high\n-->\n# Repo Map\nSource root: src/. Layering: handlers -> services.\n",
+          ".context/repo_scope.md": "<!-- context-meta\nverification-commit: aaa111\ngenerated-at: 2026-06-24T00:00:00Z\nconfidence: high\n-->\n# Repo Scope\nNode service. Guardrail: errors are returned as Result objects, never thrown across layer boundaries.\n",
+          "src/services/user_service.js": "// Result-type convention + structured logger\nconst { logger } = require('../lib/logger');\nfunction createUser(input) {\n  if (!input.email) {\n    logger.warn('createUser.invalid', { reason: 'missing email' });\n    return { ok: false, error: 'EMAIL_REQUIRED' };\n  }\n  return { ok: true, value: { id: 1, email: input.email } };\n}\nmodule.exports = { createUser };\n",
+          "src/services/order_service.js": "const { logger } = require('../lib/logger');\nfunction placeOrder(input) {\n  if (!input.items) {\n    logger.warn('placeOrder.invalid', { reason: 'no items' });\n    return { ok: false, error: 'ITEMS_REQUIRED' };\n  }\n  return { ok: true, value: { id: 9, items: input.items } };\n}\nmodule.exports = { placeOrder };\n",
+          "src/services/payment_service.js": "const { logger } = require('../lib/logger');\nfunction charge(input) {\n  if (!input.amount) {\n    logger.warn('charge.invalid', { reason: 'no amount' });\n    return { ok: false, error: 'AMOUNT_REQUIRED' };\n  }\n  return { ok: true, value: { id: 3, amount: input.amount } };\n}\nmodule.exports = { charge };\n",
+          "src/services/legacy_refund_service.js": "// OUTLIER: throws raw errors and uses console.log instead of the Result type + logger\nfunction refund(input) {\n  if (!input.amount) {\n    console.log('refund failed: no amount');\n    throw new Error('no amount');\n  }\n  return { id: 7, amount: input.amount };\n}\nmodule.exports = { refund };\n"
+        }
+      },
+      "expectations": [
+        { "text": "Extracts the real shared conventions present in at least three files: functions return a Result object ({ ok, value } / { ok, error }) instead of throwing, and use the structured logger (logger.warn with an event name and context object).", "tier": "critical" },
+        { "text": "Documented patterns are evidence-based and cite the actual fixture files, not generic best-practice advice or libraries/patterns that do not appear in the source.", "tier": "critical" },
+        { "text": "Produces an Avoid list grounded in the outlier (legacy_refund_service.js): a prescriptive rule against throwing raw errors across layer boundaries and against using console.log instead of the structured logger, framed as a rule rather than an inventory of offending files.", "tier": "quality" }
+      ]
+    },
+    {
+      "id": "dpd-naming-and-structure-conventions-evidence-based",
+      "prompt": "Baseline this repository's coding conventions and persist them to .context/design-and-coding-patterns.md with an Avoid section. Use the provided repo map and scope.",
+      "mode": "autonomous",
+      "kind": "judged",
+      "fixture": {
+        "files": {
+          ".context/repo_map.md": "<!-- context-meta\nverification-commit: bbb222\ngenerated-at: 2026-06-24T00:00:00Z\nconfidence: high\n-->\n# Repo Map\nSource root: src/handlers (one handler file per command, snake_case file names).\n",
+          ".context/repo_scope.md": "<!-- context-meta\nverification-commit: bbb222\ngenerated-at: 2026-06-24T00:00:00Z\nconfidence: high\n-->\n# Repo Scope\nCommand dispatcher: each command has its own handler module exporting a handle() function.\n",
+          "src/handlers/create_widget_handler.py": "def handle(cmd):\n    return {\"created\": cmd[\"name\"]}\n",
+          "src/handlers/delete_widget_handler.py": "def handle(cmd):\n    return {\"deleted\": cmd[\"id\"]}\n",
+          "src/handlers/update_widget_handler.py": "def handle(cmd):\n    return {\"updated\": cmd[\"id\"]}\n",
+          "src/handlers/MiscHandler.py": "# OUTLIER: CamelCase file name and a non-standard exported entrypoint name\ndef run(cmd):\n    return cmd\n"
+        }
+      },
+      "expectations": [
+        { "text": "Identifies the recurring naming/structure convention seen in at least three files: one handler module per command, snake_case file names ending in _handler, each exporting a handle(cmd) function.", "tier": "critical" },
+        { "text": "Conventions are grounded in the actual handler files rather than asserting generic Python or architectural advice not present in the fixture.", "tier": "critical" },
+        { "text": "Builds an Avoid rule from the MiscHandler.py outlier — e.g. do not use CamelCase handler file names or a non-standard entrypoint (run) instead of handle — expressed as a prescriptive rule.", "tier": "quality" }
+      ]
+    }
+  ]
+}

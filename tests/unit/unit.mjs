@@ -1,9 +1,9 @@
 // Layer-1 UNIT suite: runs the pure L1 checks against tests/fixtures/ (good
 // inputs must pass; planted-bad inputs must fail — the DoD #1 guarantee), plus
 // self-tests of the assert helper. Uses the module-level default counter; later
-// tasks append more sections here. `node tests/unit.mjs` exits non-zero on any
+// tasks append more sections here. `node tests/unit/unit.mjs` exits non-zero on any
 // failure.
-import { assert, section, makeCounter, pass, fail, exitWithReport } from './lib/assert.mjs';
+import { assert, section, makeCounter, pass, fail, exitWithReport } from '../lib/assert.mjs';
 
 // --- assert.mjs self-tests (isolated counter, so they never pollute the suite) ---
 section('assert.mjs');
@@ -27,7 +27,7 @@ section('skills.mjs');
   try {
     const { parseFrontmatter, walkSkills, tierOf, DISPATCHED_ONLY, ADVISORY_REVIEWERS,
             VALID_TIERS, tierCounts, SKILLS_DIR, readJSON, lineCount, repoRoot }
-      = await import('./lib/skills.mjs');
+      = await import('../lib/skills.mjs');
 
     // Test 1: parseFrontmatter on spec-finalizer
     const fs = await import('node:fs/promises');
@@ -111,8 +111,8 @@ section('skills.mjs');
 section('L1-1..L1-3');
 {
   try {
-    const { checkManifests, checkFrontmatter, checkLineBudget } = await import('./lib/checks.mjs');
-    const { walkSkills, readJSON, parseFrontmatter, lineCount, repoRoot } = await import('./lib/skills.mjs');
+    const { checkManifests, checkFrontmatter, checkLineBudget } = await import('../lib/checks.mjs');
+    const { walkSkills, readJSON, parseFrontmatter, lineCount, repoRoot } = await import('../lib/skills.mjs');
     const fs = await import('node:fs/promises');
     const path = await import('node:path');
     const { existsSync } = await import('node:fs');
@@ -203,12 +203,12 @@ section('L1-4..L1-7');
 {
   try {
     const { checkAdvisoryReadOnly, checkCapabilityNoState, checkNoInlinedDomain, checkCrossRefs }
-      = await import('./lib/checks.mjs');
+      = await import('../lib/checks.mjs');
     const { walkSkills, parseFrontmatter, ADVISORY_REVIEWERS }
-      = await import('./lib/skills.mjs');
+      = await import('../lib/skills.mjs');
     const fs = await import('node:fs/promises');
     const path = await import('node:path');
-    const { repoRoot } = await import('./lib/skills.mjs');
+    const { repoRoot } = await import('../lib/skills.mjs');
 
     // Get all skills for cross-ref validation
     const allSkills = walkSkills();
@@ -356,8 +356,8 @@ section('L1-4..L1-7');
 section('L1-8..L1-10');
 {
   try {
-    const { checkResourcePaths, checkHooks, checkNoInlineModel } = await import('./lib/checks.mjs');
-    const { walkSkills, readJSON, parseFrontmatter, repoRoot } = await import('./lib/skills.mjs');
+    const { checkResourcePaths, checkHooks, checkNoInlineModel } = await import('../lib/checks.mjs');
+    const { walkSkills, readJSON, parseFrontmatter, repoRoot } = await import('../lib/skills.mjs');
     const fs = await import('node:fs/promises');
     const path = await import('node:path');
     const { existsSync } = await import('node:fs');
@@ -512,8 +512,8 @@ section('L1-8..L1-10');
 section('L1-11');
 {
   try {
-    const { validateJsonSchema, checkArtifactSections } = await import('./lib/checks.mjs');
-    const { readJSON, repoRoot } = await import('./lib/skills.mjs');
+    const { validateJsonSchema, checkArtifactSections } = await import('../lib/checks.mjs');
+    const { readJSON, repoRoot } = await import('../lib/skills.mjs');
     const fs = await import('node:fs/promises');
     const path = await import('node:path');
 
@@ -618,11 +618,47 @@ section('L1-11');
   }
 }
 
+// --- L1-12 check (capability owns a Layer-2 eval spec) ---
+section('L1-12');
+{
+  try {
+    const { checkCapabilityHasEvalSpec } = await import('../lib/checks.mjs');
+
+    // GOOD: a capability whose spec exists passes.
+    const present = checkCapabilityHasEvalSpec({
+      name: 'spec-finalizer', tier: 'capability', specExists: () => true
+    });
+    assert(present.ok === true, 'checkCapabilityHasEvalSpec passes when the capability has an eval spec');
+
+    // PLANTED-BAD: a capability with NO spec fails (the "hard-to-test" gate).
+    const missing = checkCapabilityHasEvalSpec({
+      name: 'lonely-capability', tier: 'capability', specExists: () => false
+    });
+    assert(missing.ok === false, 'checkCapabilityHasEvalSpec fails when a capability has no eval spec');
+    assert(missing.errors.length > 0 && missing.errors.join(' ').includes('lonely-capability'),
+           'checkCapabilityHasEvalSpec names the spec-less capability');
+
+    // NOT APPLICABLE: non-capabilities are exempt even with no spec.
+    const coord = checkCapabilityHasEvalSpec({
+      name: 'kick-off', tier: 'coordinator', specExists: () => false
+    });
+    assert(coord.ok === true, 'checkCapabilityHasEvalSpec exempts non-capabilities (coordinator)');
+    const orch = checkCapabilityHasEvalSpec({
+      name: 'arcus-controller', tier: 'orchestrator', specExists: () => false
+    });
+    assert(orch.ok === true, 'checkCapabilityHasEvalSpec exempts non-capabilities (orchestrator)');
+
+    pass('L1-12 check passed');
+  } catch (err) {
+    fail(`L1-12 check failed: ${err.message}`);
+  }
+}
+
 // --- eval-harness lintSpec (PR-2 / PR-4 planted-violation discipline) ---
 section('lintSpec (eval harness)');
 {
   try {
-    const { lintSpec } = await import('./e2e/evals/run-evals.mjs');
+    const { lintSpec } = await import('../e2e/evals/run-evals.mjs');
 
     // GOOD: a valid contractual-token spec lints clean.
     const goodSpec = {
@@ -672,6 +708,146 @@ section('lintSpec (eval harness)');
   }
 }
 
+// --- eval-harness grading upgrade (transcript reduction + file-system assertions) ---
+section('eval harness grading upgrade');
+{
+  try {
+    const { parseJsonl, collectAssistantText, collectToolCalls, buildTranscript, gradeFileAssertions, buildSkillPrompt, lintSpec }
+      = await import('../e2e/evals/run-evals.mjs');
+    const fsMod = await import('node:fs');
+    const osMod = await import('node:os');
+    const pathMod = await import('node:path');
+
+    // parseJsonl: keeps valid events, skips unparseable lines.
+    const events = parseJsonl(
+      '{"type":"assistant","message":{"content":[{"type":"text","text":"hi"}]}}\n' +
+      'not json\n' +
+      '{"type":"result","result":"done","total_cost_usd":0.01}'
+    );
+    assert(events.length === 2, 'parseJsonl keeps valid events and skips unparseable lines');
+
+    // collectAssistantText: concatenates assistant text blocks.
+    assert(collectAssistantText(events) === 'hi', 'collectAssistantText extracts assistant prose');
+
+    // collectToolCalls: renders tool name + a short argument hint.
+    const toolEvents = parseJsonl(
+      '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Edit","input":{"file_path":"src/x.js"}}]}}'
+    );
+    const calls = collectToolCalls(toolEvents);
+    assert(calls.length === 1 && calls[0].includes('Edit') && calls[0].includes('src/x.js'),
+      'collectToolCalls renders name + argument hint');
+
+    // buildTranscript: composes prose + tools + final result.
+    const transcript = buildTranscript('prose', ['Edit(src/x.js)'], 'final');
+    assert(transcript.includes('prose') && transcript.includes('Tools used') && transcript.includes('final'),
+      'buildTranscript composes prose + tools + result');
+
+    // buildSkillPrompt: preserves the case prompt and appends eval-mode guidance.
+    const wrapped = buildSkillPrompt({ prompt: 'do the thing' });
+    assert(wrapped.startsWith('do the thing') && wrapped.includes('Eval mode:'),
+      'buildSkillPrompt keeps the prompt and adds eval-mode guidance');
+
+    // gradeFileAssertions over a real temp project dir.
+    const dir = fsMod.mkdtempSync(pathMod.join(osMod.tmpdir(), 'arcus-fa-'));
+    fsMod.writeFileSync(pathMod.join(dir, 'made.txt'), 'hello world');
+    const okEv = { fixture: { files: {} }, assertions: { required_files: ['made.txt'], required_file_substrings: { 'made.txt': ['hello'] } } };
+    assert(gradeFileAssertions(okEv, dir).passed === true, 'gradeFileAssertions passes when required files + substrings present');
+    const missingEv = { fixture: { files: {} }, assertions: { required_files: ['nope.txt'] } };
+    assert(gradeFileAssertions(missingEv, dir).passed === false, 'gradeFileAssertions fails on a missing required file');
+    // unchanged_files: identical fixture file passes; a mutated one fails.
+    fsMod.writeFileSync(pathMod.join(dir, 'keep.txt'), 'orig');
+    const unchangedEv = { fixture: { files: { 'keep.txt': 'orig' } }, assertions: { unchanged_files: ['keep.txt'] } };
+    assert(gradeFileAssertions(unchangedEv, dir).passed === true, 'gradeFileAssertions passes when unchanged_files match');
+    fsMod.writeFileSync(pathMod.join(dir, 'keep.txt'), 'MUTATED');
+    assert(gradeFileAssertions(unchangedEv, dir).passed === false, 'gradeFileAssertions fails when an unchanged_file was modified');
+    fsMod.rmSync(dir, { recursive: true, force: true });
+
+    // lint: accepts well-formed file assertions for ANY skill (no allowlist gate).
+    const goodFa = {
+      skill_name: 'repository-context-builder',
+      evals: [{ id: 'fa', prompt: 'p', mode: 'autonomous', kind: 'judged',
+        fixture: { files: {} }, expectations: [{ text: 'writes a file', tier: 'quality' }],
+        assertions: { required_files: ['AGENTS.md'], required_file_substrings: { 'AGENTS.md': ['Navigation'] } } }]
+    };
+    assert(lintSpec(goodFa).ok === true, `lintSpec accepts well-formed file assertions (got ${lintSpec(goodFa).errors?.join('; ') || 'ok'})`);
+
+    // lint: rejects a malformed file assertion (required_files not an array).
+    const badFa = {
+      skill_name: 'repository-context-builder',
+      evals: [{ id: 'fa', prompt: 'p', mode: 'autonomous', kind: 'judged',
+        fixture: { files: {} }, expectations: [{ text: 'writes a file', tier: 'quality' }],
+        assertions: { required_files: 'AGENTS.md' } }]
+    };
+    const badRes = lintSpec(badFa);
+    assert(badRes.ok === false && badRes.errors.join(' ').includes('required_files'),
+      'lintSpec rejects required_files that is not an array');
+
+    pass('eval-harness grading-upgrade helpers are automatically tested');
+  } catch (err) {
+    fail(`eval grading-upgrade tests failed: ${err.message}`);
+  }
+}
+
+// --- trigger matcher (Layer-4 run-triggers.mjs pure functions) ---
+section('trigger matcher (L4)');
+{
+  try {
+    const { extractTriggerPhrases, compilePhrase, buildMatchers, resolveQuery, validateCorpus }
+      = await import('../e2e/triggers/run-triggers.mjs');
+
+    // extractTriggerPhrases: keeps multi-word / placeholder phrases, drops bare single words.
+    const phrases = extractTriggerPhrases('Trigger on "implement <STORY>", "plan the implementation", and "Avoid".');
+    assert(phrases.includes('implement <STORY>'), 'extractTriggerPhrases keeps placeholder phrases');
+    assert(phrases.includes('plan the implementation'), 'extractTriggerPhrases keeps multi-word phrases');
+    assert(!phrases.includes('Avoid'), 'extractTriggerPhrases drops bare single-word quotes');
+
+    // A synthetic two-skill table proves start-anchoring + placeholder matching + specificity.
+    const table = [
+      { name: 'controller', matchers: ['implement <STORY>', 'plan <STORY>'].map(compilePhrase) },
+      { name: 'reviewer', matchers: ['review <STORY>', 'code review <STORY>'].map(compilePhrase) }
+    ];
+
+    const r1 = resolveQuery('implement ARC-0042', table);
+    assert(r1.matched.has('controller') && r1.winner === 'controller', 'resolveQuery fires controller on "implement <STORY>"');
+
+    // Specificity: "code review X" must win over the shorter "review X".
+    const r2 = resolveQuery('code review ARC-0042', table);
+    assert(r2.winner === 'reviewer', 'resolveQuery picks the most specific (longest-literal) matcher');
+
+    // Start-anchored: a trigger word mid-sentence must NOT fire (no false positive).
+    const r3 = resolveQuery('please tell me how to implement a linked list', table);
+    assert(r3.matched.size === 0 && r3.winner === 'none', 'resolveQuery is start-anchored — no mid-sentence false positive');
+
+    // validateCorpus: a dispatched-only owner as a POSITIVE is an L4-1 violation.
+    const organic = new Set(['controller', 'reviewer']);
+    const badPop = validateCorpus(
+      [{ query: 'q', owner: 'security-reviewer' }, { query: 'n', owner: 'none' }],
+      organic
+    );
+    assert(badPop.ok === false, 'validateCorpus rejects a dispatched-only skill named as a positive owner (L4-1)');
+    assert(badPop.errors.join(' ').toLowerCase().includes('dispatched-only'),
+           'validateCorpus L4-1 error explains the dispatched-only violation');
+
+    // validateCorpus: too-few negatives is an L4-2 violation.
+    const fewNeg = validateCorpus(
+      [{ query: 'a', owner: 'controller' }, { query: 'b', owner: 'reviewer' }, { query: 'c', owner: 'none' }],
+      organic
+    );
+    assert(fewNeg.ok === false, 'validateCorpus rejects <40% negatives (L4-2)');
+
+    // validateCorpus: a well-formed corpus passes.
+    const okCorpus = validateCorpus(
+      [{ query: 'a', owner: 'controller' }, { query: 'n1', owner: 'none' }, { query: 'n2', owner: 'none' }],
+      organic
+    );
+    assert(okCorpus.ok === true, `validateCorpus accepts a well-formed corpus (got ${okCorpus.errors.join('; ') || 'ok'})`);
+
+    pass('trigger matcher tests passed');
+  } catch (err) {
+    fail(`trigger matcher tests failed: ${err.message}`);
+  }
+}
+
 // --- planted-violation coverage map ---
 section('planted-violation coverage map');
 {
@@ -691,14 +867,15 @@ section('planted-violation coverage map');
     'L1-8',  // checkResourcePaths: good=spec-finalizer, bad=dead-resource
     'L1-9',  // checkHooks: good=real hooks.json, bad=bad-hooks.json
     'L1-10', // checkNoInlineModel: good=model-strategy & implementation-runner, bad=inline-model
-    'L1-11'  // validateJsonSchema + checkArtifactSections: good=inline+markdown, bad=bad-checkpoint+bad-plan
+    'L1-11', // validateJsonSchema + checkArtifactSections: good=inline+markdown, bad=bad-checkpoint+bad-plan
+    'L1-12'  // checkCapabilityHasEvalSpec: good=spec present, bad=capability with no spec (injected predicate)
   ];
 
-  assert(coveredChecks.length === 11,
-         `coverage map lists all 11 L1 checks (got ${coveredChecks.length})`);
+  assert(coveredChecks.length === 12,
+         `coverage map lists all 12 L1 checks (got ${coveredChecks.length})`);
 
-  // Verify the list is exactly L1-1 through L1-11
-  for (let i = 1; i <= 11; i++) {
+  // Verify the list is exactly L1-1 through L1-12
+  for (let i = 1; i <= 12; i++) {
     const checkId = `L1-${i}`;
     assert(coveredChecks.includes(checkId),
            `coverage map includes ${checkId}`);

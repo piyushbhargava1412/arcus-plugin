@@ -1,0 +1,52 @@
+{
+  "skill_name": "performance-reviewer",
+  "cost_budget": { "max_tokens": 45000, "max_seconds": 120 },
+  "evals": [
+    {
+      "id": "perf-detects-n-plus-one",
+      "prompt": "Performance review this diff for concrete, measurable regressions and resource risks in the changed code only. change_set is in change_set.diff. Return severity-tagged findings.",
+      "mode": "autonomous",
+      "kind": "judged",
+      "fixture": {
+        "files": {
+          "change_set.diff": "diff --git a/src/orders.js b/src/orders.js\n--- a/src/orders.js\n+++ b/src/orders.js\n@@ -5,4 +5,12 @@\n+export async function loadOrders(userIds, db) {\n+  const orders = [];\n+  for (const id of userIds) {\n+    const row = await db.query('SELECT * FROM orders WHERE user_id = $1', [id]);\n+    orders.push(row);\n+  }\n+  return orders;\n+}\n"
+        }
+      },
+      "expectations": [
+        {
+          "text": "Detects the N+1 query pattern — one database query per element of userIds inside the loop — and reports it as a finding with a severity and a file:line reference.",
+          "tier": "critical"
+        },
+        {
+          "text": "Stays in the performance domain and does not flood the report with out-of-domain security or style nits.",
+          "tier": "quality"
+        }
+      ],
+      "assertions": {
+        "required_substrings": [],
+        "forbidden_substrings": []
+      }
+    },
+    {
+      "id": "perf-clean-diff-no-false-positives",
+      "prompt": "Performance review this diff for concrete, measurable regressions and resource risks in the changed code only. change_set is in change_set.diff. Return severity-tagged findings.",
+      "mode": "autonomous",
+      "kind": "judged",
+      "fixture": {
+        "files": {
+          "change_set.diff": "diff --git a/src/orders.js b/src/orders.js\n--- a/src/orders.js\n+++ b/src/orders.js\n@@ -5,4 +5,7 @@\n+export async function loadOrders(userIds, db) {\n+  return db.query('SELECT * FROM orders WHERE user_id = ANY($1)', [userIds]);\n+}\n"
+        }
+      },
+      "expectations": [
+        {
+          "text": "Reports no performance findings (or only an explicit 'No performance findings.') because the single batched query is efficient — it does not invent a micro-optimization or speculative scaling concern.",
+          "tier": "quality"
+        }
+      ],
+      "assertions": {
+        "required_substrings": [],
+        "forbidden_substrings": []
+      }
+    }
+  ]
+}

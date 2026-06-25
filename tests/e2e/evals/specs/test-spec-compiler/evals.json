@@ -1,0 +1,52 @@
+{
+  "skill_name": "test-spec-compiler",
+  "cost_budget": { "max_tokens": 60000, "max_seconds": 180 },
+  "evals": [
+    {
+      "id": "tsc-matrix-covers-each-task-happy-and-edge",
+      "prompt": "Compile a test matrix / verification plan from the supplied implementation plan. implementation_plan: the file plan.md.",
+      "mode": "autonomous",
+      "kind": "judged",
+      "fixture": {
+        "files": {
+          "plan.md": "# Implementation Plan — AUTH-12 Password strength\n\n## Tasks\n\n### Task 1 — Add validatePasswordStrength(password)\nReturns true when the password is at least 8 chars and contains a digit; false otherwise.\nDoD: pure function, no I/O.\n\n### Task 2 — Wire validation into signup()\nWhen validatePasswordStrength returns false, signup() rejects with a 400 'weak password' error before hashing.\nDoD: existing valid-signup behaviour unchanged.\n"
+        }
+      },
+      "expectations": [
+        {
+          "text": "Produces a test matrix that covers the behaviour of both Task 1 and Task 2, each with at least a happy-path case and at least one edge or error case (e.g. short password, password with no digit, rejection path returning 400).",
+          "tier": "critical"
+        },
+        {
+          "text": "Defines verification metrics / expected outcomes for the test cases before any code is written, suitable as a Definition of Done the runner can satisfy.",
+          "tier": "critical"
+        },
+        {
+          "text": "Each test case is traceable to a specific task in the plan (Task 1 or Task 2) rather than an undifferentiated list.",
+          "tier": "quality"
+        }
+      ]
+    },
+    {
+      "id": "tsc-includes-regression-and-error-handling",
+      "prompt": "Design a test suite from this implementation plan. implementation_plan: the file plan.md.",
+      "mode": "autonomous",
+      "kind": "judged",
+      "fixture": {
+        "files": {
+          "plan.md": "# Implementation Plan — CART-7 Apply discount code\n\n## Tasks\n\n### Task 1 — applyDiscount(cart, code)\nReturns cart total reduced by the code's percentage. Unknown codes return the unchanged total.\nDoD: existing checkout total for carts without a code must remain unchanged.\n\n### Task 2 — Reject expired codes\nWhen a code is past its expiry date, applyDiscount returns the unchanged total and logs the rejection.\n"
+        }
+      },
+      "expectations": [
+        {
+          "text": "Includes explicit error-handling and edge cases for both unknown codes and expired codes, not just the happy-path discount application.",
+          "tier": "critical"
+        },
+        {
+          "text": "Calls out a regression check that carts with no discount code still produce the unchanged checkout total, per Task 1's stated Definition of Done.",
+          "tier": "quality"
+        }
+      ]
+    }
+  ]
+}

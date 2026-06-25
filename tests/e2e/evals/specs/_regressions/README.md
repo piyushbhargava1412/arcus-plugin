@@ -1,26 +1,32 @@
-# Regression Corpus (PR-8) — append-only
+# Regression Corpus — append-only
 
-This directory holds the **append-only regression corpus**: every time a real eval
-failure is observed and fixed, the failing case (prompt + fixture + the expectation
-it violated) is captured here so the regression can never silently return.
+This directory is an **append-only folder** for regression eval cases. There is no
+dedicated runner: cases here are graded by `pnpm test:evals` (the live `claude` CLI),
+exactly like any other capability eval spec.
 
-> **Status: DEFERRED.** No regression cases exist yet. The corpus is populated only
-> once Layer-2 evals run for real against an LLM judge. See
-> [`ARCUS-TESTING-DEFERRED.md`](../../../../ARCUS-TESTING-DEFERRED.md).
+Use it when a skill misbehaves in a way that doesn't map cleanly to a single capability's
+spec, or when you simply want to park the failing case here. Otherwise, prefer adding the
+case directly to the responsible skill's spec at `specs/<skill>/evals.json`.
 
 ## Rules
 
-- **Append-only.** Cases are added, never edited or removed. A case captures the
-  exact failure that motivated it.
-- **One file per regression**, named `<skill>__<short-slug>.json`, in the same
-  per-case shape as a `specs/<skill>/evals.json` eval entry.
+- **Append-only.** Cases are added, never edited or removed. A case captures the exact
+  failure that motivated it, so the regression can never silently return.
+- **One file per regression**, named `<skill>__<short-slug>.json`, in the same per-case
+  shape as a `specs/<skill>/evals.json` eval entry (prompt + fixture + tiered expectations
+  + optional assertions), plus optional regression metadata (`regression: true`,
+  `story_id`, `discovered`, `summary`).
 
-## Red-first runbook
+## Runbook
 
-When a regression is discovered:
+When a skill misbehaves in real use:
 
-1. Reproduce it as a new eval case and add it here. Run it — it MUST be **RED**
-   first (proving it captures the real defect).
-2. Fix the skill (or its inputs).
-3. Re-run — the case turns **GREEN**. Commit the case alongside the fix.
-4. Never delete the case; future runs guard against the regression returning.
+1. **Capture the repro as an eval case** — add it under the responsible skill's spec, or
+   here as `<skill>__<slug>.json` if it doesn't fit one capability.
+2. **Prove it fails** — run `pnpm test:evals` and confirm the case grades RED for the right
+   reason (the skill produces the buggy output). This proves the case captures the real
+   defect.
+3. **Fix the skill** (edit the `SKILL.md` prompt, adjust capability contracts, etc.).
+4. **Re-run `pnpm test:evals`** and confirm the case now grades GREEN.
+5. **Commit the case alongside the fix.** Never delete it; future runs guard against the
+   regression returning.

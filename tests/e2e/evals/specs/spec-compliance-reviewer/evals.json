@@ -1,0 +1,66 @@
+{
+  "skill_name": "spec-compliance-reviewer",
+  "cost_budget": { "max_tokens": 45000, "max_seconds": 120 },
+  "evals": [
+    {
+      "id": "scr-pass-implementation-satisfies-spec",
+      "prompt": "Review whether this implementation matches its task acceptance criteria. acceptance_criteria: 'Add a function `add(a, b)` to src/math.js that returns the sum of its two arguments.' claimed_files: src/math.js. change_set is the diff below. Emit the binary per-task verdict.",
+      "mode": "autonomous",
+      "kind": "deterministic",
+      "fixture": {
+        "files": {
+          "acceptance_criteria.md": "## Definition of Done\n- Add a function `add(a, b)` to `src/math.js` that returns the sum of its two arguments.\n",
+          "change_set.diff": "diff --git a/src/math.js b/src/math.js\nnew file mode 100644\n--- /dev/null\n+++ b/src/math.js\n@@ -0,0 +1,3 @@\n+export function add(a, b) {\n+  return a + b;\n+}\n"
+        }
+      },
+      "expectations": [
+        {
+          "text": "Emits exactly the contractual token VERDICT: PASS because the implemented add(a, b) satisfies the single acceptance-criteria requirement.",
+          "tier": "critical"
+        },
+        {
+          "text": "Does not emit VERDICT: FAIL and does not invent any MISSING/EXTRA/WRONG issues against clean, conformant code.",
+          "tier": "critical"
+        },
+        {
+          "text": "Reasoning traces the requirement to the actual code in src/math.js rather than trusting the implementer's claims.",
+          "tier": "quality"
+        }
+      ],
+      "assertions": {
+        "required_substrings": ["VERDICT: PASS"],
+        "forbidden_substrings": ["VERDICT: FAIL"]
+      }
+    },
+    {
+      "id": "scr-fail-missing-requirement",
+      "prompt": "Review whether this implementation matches its task acceptance criteria. acceptance_criteria: 'Add a function `add(a, b)` to src/math.js that returns the sum, AND a function `sub(a, b)` that returns the difference.' claimed_files: src/math.js. change_set is the diff below. Emit the binary per-task verdict.",
+      "mode": "autonomous",
+      "kind": "deterministic",
+      "fixture": {
+        "files": {
+          "acceptance_criteria.md": "## Definition of Done\n- Add a function `add(a, b)` to `src/math.js` that returns the sum of its two arguments.\n- Add a function `sub(a, b)` to `src/math.js` that returns the difference (a - b).\n",
+          "change_set.diff": "diff --git a/src/math.js b/src/math.js\nnew file mode 100644\n--- /dev/null\n+++ b/src/math.js\n@@ -0,0 +1,3 @@\n+export function add(a, b) {\n+  return a + b;\n+}\n"
+        }
+      },
+      "expectations": [
+        {
+          "text": "Emits exactly the contractual token VERDICT: FAIL because the required sub(a, b) function is absent from the change set.",
+          "tier": "critical"
+        },
+        {
+          "text": "Lists the unmet requirement as a [MISSING] issue identifying sub(a, b) as not implemented, with a file reference.",
+          "tier": "quality"
+        },
+        {
+          "text": "Stays strictly on correctness-vs-spec — does not flag style, naming, or quality opinions.",
+          "tier": "quality"
+        }
+      ],
+      "assertions": {
+        "required_substrings": ["VERDICT: FAIL"],
+        "forbidden_substrings": ["VERDICT: PASS"]
+      }
+    }
+  ]
+}

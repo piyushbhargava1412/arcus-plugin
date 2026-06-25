@@ -1,0 +1,52 @@
+{
+  "skill_name": "security-reviewer",
+  "cost_budget": { "max_tokens": 45000, "max_seconds": 120 },
+  "evals": [
+    {
+      "id": "sec-detects-sql-injection",
+      "prompt": "Security review this diff for exploitable or concretely dangerous vulnerabilities in the changed code only. change_set is in change_set.diff. Return severity-tagged findings.",
+      "mode": "autonomous",
+      "kind": "judged",
+      "fixture": {
+        "files": {
+          "change_set.diff": "diff --git a/src/users.js b/src/users.js\n--- a/src/users.js\n+++ b/src/users.js\n@@ -10,6 +10,9 @@\n+export async function findUser(req, db) {\n+  const name = req.query.name;\n+  const sql = \"SELECT * FROM users WHERE name = '\" + name + \"'\";\n+  return db.query(sql);\n+}\n"
+        }
+      },
+      "expectations": [
+        {
+          "text": "Detects the SQL injection introduced by string-concatenating untrusted req.query.name into the query and reports it as a finding with a critical (or at least warning) severity and a file:line reference.",
+          "tier": "critical"
+        },
+        {
+          "text": "Stays in the security domain and does not flood the report with out-of-domain code-quality or performance nits.",
+          "tier": "quality"
+        }
+      ],
+      "assertions": {
+        "required_substrings": [],
+        "forbidden_substrings": []
+      }
+    },
+    {
+      "id": "sec-clean-diff-no-false-positives",
+      "prompt": "Security review this diff for exploitable or concretely dangerous vulnerabilities in the changed code only. change_set is in change_set.diff. Return severity-tagged findings.",
+      "mode": "autonomous",
+      "kind": "judged",
+      "fixture": {
+        "files": {
+          "change_set.diff": "diff --git a/src/users.js b/src/users.js\n--- a/src/users.js\n+++ b/src/users.js\n@@ -10,6 +10,9 @@\n+export async function findUser(name, db) {\n+  return db.query('SELECT * FROM users WHERE name = $1', [name]);\n+}\n"
+        }
+      },
+      "expectations": [
+        {
+          "text": "Reports no security findings (or only an explicit 'No security findings.') because the parameterized query is safe — it does not invent a theoretical or speculative vulnerability.",
+          "tier": "quality"
+        }
+      ],
+      "assertions": {
+        "required_substrings": [],
+        "forbidden_substrings": []
+      }
+    }
+  ]
+}

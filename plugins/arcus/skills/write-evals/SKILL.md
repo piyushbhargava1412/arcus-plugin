@@ -76,7 +76,10 @@ The harness this authors for grades each case in one of three ways:
       ],
       "assertions": {
         "required_substrings": [],
-        "forbidden_substrings": []
+        "forbidden_substrings": [],
+        "required_files": [],
+        "required_file_substrings": { "<path>": ["<substring>"] },
+        "unchanged_files": []
       }
     }
   ]
@@ -98,6 +101,14 @@ spec passes immediately.
   contractual-token skill (`simplify-and-verify`, `spec-compliance-reviewer`). For
   every other skill, leave it empty and express the behaviour as tiered expectations
   instead. `forbidden_substrings` may be used to forbid leaked tokens regardless.
+- **W-2c (file-system assertions, any skill).** When a skill's contract is a *file effect*
+  (creates/edits/leaves-untouched files), assert it directly against the throwaway project
+  the skill runs in — these are allowed for every skill, no allowlist:
+  - `required_files` — paths that MUST exist after the run.
+  - `required_file_substrings` — `{ path: [substring, …] }`; each substring must be present in that file.
+  - `unchanged_files` — paths the skill MUST leave byte-identical to their `fixture.files` seed.
+  Use these for skills whose value is observable on disk (e.g. context/AGENTS.md generation,
+  file refactors) rather than only in prose.
 - **One case per observable behaviour.** Do not bundle multiple behaviours into one
   case. Prefer small, focused fixtures.
 - **Pick `kind` by how the behaviour is checkable.** Fixed emitted token →
@@ -135,11 +146,12 @@ allowlist. Fix any violation inline.
 Write the updated `specs/<target_skill>/evals.json`.
 
 **Step 6 — Prove the new case is RED for the right reason (W-1).**
-Run the eval harness in dry-run, filtered to ONLY the new case (the harness honours a
-skill/id filter). Confirm: (a) the spec lints clean, and (b) the new case is reported
-`red (not yet run)` — i.e. red because it has not yet been executed against a graded
-run, not red because the spec is malformed. A lint error here means the draft is
-wrong, not red-first — go back to Step 4.
+Run the eval harness in lint-only mode (`pnpm test:evals:lint`, or filter to the target
+skill/id). Confirm the spec lints clean (PR-2 / PR-4). The case is red-first by
+construction: it asserts a behaviour the current skill does not yet exhibit, so it would
+FAIL when graded live against the `claude` CLI. A lint error here means the draft is
+malformed, not red-first — go back to Step 4. (Live grading is `pnpm test:evals`; that
+costs money and is not part of authoring.)
 
 **Step 7 — Stop.**
 Report the spec path, the cases added, and the red-first confirmation. Do NOT run the
@@ -154,9 +166,9 @@ action — authoring one spec is the whole job.
 - **W-2 (lint-honouring).** The spec respects PR-2 (no naked substrings off the
   contractual-token allowlist) and PR-4 (every expectation is tiered) at author time,
   so the harness lint passes on the first run.
-- **W-3 (self-meta-eval, deferred).** As a category capability, `write-evals` will
-  itself have a meta-eval (does it author good red-first specs?). That meta-eval is
-  **deferred** — see `ARCUS-TESTING-DEFERRED.md`.
+- **W-3 (self-meta-eval).** As a category capability, `write-evals` has its own
+  meta-eval (does it author good red-first specs?) at
+  `tests/e2e/evals/specs/write-evals/evals.json`, graded like any other capability.
 
 ## Constraints
 

@@ -1,0 +1,70 @@
+{
+  "skill_name": "review-consolidator",
+  "cost_budget": { "max_tokens": 50000, "max_seconds": 150 },
+  "evals": [
+    {
+      "id": "rc-dedup-and-block-on-critical",
+      "prompt": "Consolidate these specialist review findings into a single calibrated verdict. specialist_findings is in findings.json, the diff under review is in change_set.diff. Deduplicate overlapping findings, drop low-confidence noise, calibrate severity, and emit one verdict.",
+      "mode": "autonomous",
+      "kind": "judged",
+      "fixture": {
+        "files": {
+          "findings.json": "[\n  { \"specialist\": \"security\", \"severity\": \"critical\", \"file\": \"src/db.js:14\", \"description\": \"SQL built by string concatenation of req.query.id — injectable\", \"confidence\": 95 },\n  { \"specialist\": \"code-quality\", \"severity\": \"warning\", \"file\": \"src/db.js:14\", \"description\": \"Query string concatenation is unsafe; use parameterized query\", \"confidence\": 88 },\n  { \"specialist\": \"performance\", \"severity\": \"suggestion\", \"file\": \"src/db.js:9\", \"description\": \"Could cache the connection\", \"confidence\": 40 },\n  { \"specialist\": \"code-quality\", \"severity\": \"suggestion\", \"file\": \"src/db.js:3\", \"description\": \"Prefer const over let for unreassigned binding\", \"confidence\": 70 }\n]\n",
+          "change_set.diff": "diff --git a/src/db.js b/src/db.js\n--- a/src/db.js\n+++ b/src/db.js\n@@ -1,5 +9,8 @@\n+export function getUser(req) {\n+  const id = req.query.id;\n+  return conn.query('SELECT * FROM users WHERE id = ' + id);\n+}\n"
+        }
+      },
+      "expectations": [
+        {
+          "text": "Deduplicates the two findings at src/db.js:14 (security critical and code-quality warning about the same SQL concatenation) into a single retained finding rather than listing it twice.",
+          "tier": "critical"
+        },
+        {
+          "text": "Returns CHANGES_REQUESTED because a genuine critical (SQL injection) is present.",
+          "tier": "critical"
+        },
+        {
+          "text": "Drops the confidence < 80 noise (the connection-caching suggestion at confidence 40) before deciding the verdict.",
+          "tier": "quality"
+        },
+        {
+          "text": "Emits exactly one verdict line and groups findings by the section that fits their nature.",
+          "tier": "quality"
+        }
+      ],
+      "assertions": {
+        "required_substrings": [],
+        "forbidden_substrings": []
+      }
+    },
+    {
+      "id": "rc-approve-minor-nits-only",
+      "prompt": "Consolidate these specialist review findings into a single calibrated verdict. specialist_findings is in findings.json, the diff under review is in change_set.diff. Bias for signal over noise: minor nits in otherwise-clean code should still approve.",
+      "mode": "autonomous",
+      "kind": "judged",
+      "fixture": {
+        "files": {
+          "findings.json": "[\n  { \"specialist\": \"code-quality\", \"severity\": \"suggestion\", \"file\": \"src/format.js:4\", \"description\": \"Variable name `s` could be more descriptive\", \"confidence\": 85 },\n  { \"specialist\": \"performance\", \"severity\": \"suggestion\", \"file\": \"src/format.js:6\", \"description\": \"Template literal slightly faster than concat here; negligible\", \"confidence\": 82 }\n]\n",
+          "change_set.diff": "diff --git a/src/format.js b/src/format.js\nnew file mode 100644\n--- /dev/null\n+++ b/src/format.js\n@@ -0,0 +1,7 @@\n+export function greet(name) {\n+  const s = 'Hello, ';\n+  return s + name + '!';\n+}\n"
+        }
+      },
+      "expectations": [
+        {
+          "text": "Returns APPROVE because only non-blocking suggestions remain and there is no production risk.",
+          "tier": "critical"
+        },
+        {
+          "text": "Does not manufacture a CHANGES_REQUESTED block out of a firehose of low-severity style notes.",
+          "tier": "quality"
+        },
+        {
+          "text": "Surfaces the minor nits as comments/suggestions rather than escalating their severity.",
+          "tier": "quality"
+        }
+      ],
+      "assertions": {
+        "required_substrings": [],
+        "forbidden_substrings": []
+      }
+    }
+  ]
+}

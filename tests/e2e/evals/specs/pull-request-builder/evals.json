@@ -1,0 +1,56 @@
+{
+  "skill_name": "pull-request-builder",
+  "cost_budget": { "max_tokens": 60000, "max_seconds": 180 },
+  "evals": [
+    {
+      "id": "prb-summarizes-diff-accurately",
+      "prompt": "Summarize the supplied change set and produce a pull request description. story: AUTH-12 \"Reject weak passwords at signup.\" change_set: the file change.diff.",
+      "mode": "autonomous",
+      "kind": "judged",
+      "fixture": {
+        "files": {
+          "change.diff": "diff --git a/src/auth/password.js b/src/auth/password.js\nnew file mode 100644\n--- /dev/null\n+++ b/src/auth/password.js\n@@\n+export function validatePasswordStrength(password) {\n+  return password.length >= 8 && /[0-9]/.test(password);\n+}\ndiff --git a/src/auth/signup.js b/src/auth/signup.js\n--- a/src/auth/signup.js\n+++ b/src/auth/signup.js\n@@\n-  const { email, password } = req.body;\n+  const { email, password } = req.body;\n+  if (!validatePasswordStrength(password)) {\n+    throw new HttpError(400, 'weak password');\n+  }\n   const hash = hashPassword(password);\ndiff --git a/test/auth/password.test.js b/test/auth/password.test.js\nnew file mode 100644\n--- /dev/null\n+++ b/test/auth/password.test.js\n@@\n+test('rejects short passwords', () => {\n+  assert.equal(validatePasswordStrength('a1'), false);\n+});\n"
+        }
+      },
+      "expectations": [
+        {
+          "text": "Accurately summarizes WHAT changed (a new validatePasswordStrength function, wiring a weak-password 400 rejection into signup, and a new password test) and WHY (the AUTH-12 intent of rejecting weak passwords).",
+          "tier": "critical"
+        },
+        {
+          "text": "Does not fabricate changes that are absent from the diff (e.g. no claims about login, billing, password hashing changes, or migrations).",
+          "tier": "critical"
+        },
+        {
+          "text": "References the AUTH-12 story and structures the PR description into clear sections such as a high-level summary, categorized changes (features/tests), and changed files.",
+          "tier": "quality"
+        }
+      ]
+    },
+    {
+      "id": "prb-categorizes-fix-and-test-changes",
+      "prompt": "Create a pull request description from the supplied change set. story: CART-9 \"Fix discount total miscalculation on empty carts.\" change_set: the file change.diff.",
+      "mode": "autonomous",
+      "kind": "judged",
+      "fixture": {
+        "files": {
+          "change.diff": "diff --git a/src/cart/discount.js b/src/cart/discount.js\n--- a/src/cart/discount.js\n+++ b/src/cart/discount.js\n@@\n-  const total = cart.items.reduce((s, i) => s + i.price, 0);\n-  return total * (1 - rate);\n+  if (cart.items.length === 0) return 0;\n+  const total = cart.items.reduce((s, i) => s + i.price, 0);\n+  return total * (1 - rate);\ndiff --git a/test/cart/discount.test.js b/test/cart/discount.test.js\n--- a/test/cart/discount.test.js\n+++ b/test/cart/discount.test.js\n@@\n+test('empty cart total is 0', () => {\n+  assert.equal(applyDiscount({ items: [] }, 0.1), 0);\n+});\n"
+        }
+      },
+      "expectations": [
+        {
+          "text": "Accurately describes the fix (empty carts now return a 0 total instead of mis-applying the discount rate) and references the CART-9 story.",
+          "tier": "critical"
+        },
+        {
+          "text": "Reflects only the two files actually touched (the discount fix and its test) and does not invent unrelated changes.",
+          "tier": "critical"
+        },
+        {
+          "text": "Categorizes the change set into structured sections distinguishing the fix from the added test.",
+          "tier": "quality"
+        }
+      ]
+    }
+  ]
+}

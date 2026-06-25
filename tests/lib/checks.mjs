@@ -666,6 +666,42 @@ function checkArtifactSections(markdownText, requiredSections) {
   return { ok: errors.length === 0, errors };
 }
 
+/**
+ * L1-12: Every capability skill owns a Layer-2 eval spec.
+ *
+ * The Layer-2 strategy mandates one `tests/e2e/evals/specs/<skill>/evals.json` per
+ * `layer: capability` skill. This static check makes that obligation a hard gate: if a
+ * capability is added without an eval spec, integration fails — there is no
+ * "hard-to-test" capability.
+ *
+ * Pure: the disk lookup is injected via `specExists(skillName) => boolean`, so the
+ * function performs no I/O itself (mirrors checkResourcePaths/checkHooks).
+ *
+ * @param {Object} input
+ * @param {string} input.name - Skill name (directory name)
+ * @param {string} input.tier - The skill's `layer` value
+ * @param {(skillName: string) => boolean} input.specExists - Predicate: does
+ *        tests/e2e/evals/specs/<skillName>/evals.json exist?
+ * @returns {{ ok: boolean, errors: string[] }}
+ */
+function checkCapabilityHasEvalSpec({ name, tier, specExists }) {
+  const errors = [];
+
+  // Only capabilities carry the Layer-2 eval obligation.
+  if (tier !== 'capability') {
+    return { ok: true, errors };
+  }
+
+  if (!specExists(name)) {
+    errors.push(
+      `${name}: capability has no Layer-2 eval spec ` +
+      `(expected tests/e2e/evals/specs/${name}/evals.json)`
+    );
+  }
+
+  return { ok: errors.length === 0, errors };
+}
+
 export {
   validateJsonSchema,
   checkArtifactSections,
@@ -678,5 +714,6 @@ export {
   checkCrossRefs,
   checkResourcePaths,
   checkHooks,
-  checkNoInlineModel
+  checkNoInlineModel,
+  checkCapabilityHasEvalSpec
 };

@@ -40,7 +40,7 @@ It provides orchestrator skills, supporting skills, and deterministic helper scr
 ## Tech Stack Signals
 | Category | Signals | Evidence |
 |---|---|---|
-| Languages | Markdown, Bash, TypeScript, JSON, Python, JavaScript (Node ESM) | `README.md`, `plugins/arcus/scripts/*.sh`, `site/.vitepress/config.ts`, `plugins/arcus/.claude-plugin/plugin.json`, `plugins/arcus/skills/context-pack-builder/scripts/match_flows.py`, `tests/*.mjs` |
+| Languages | Markdown, Bash, TypeScript, JSON, Python, JavaScript (Node ESM) | `README.md`, `plugins/arcus/scripts/*.sh`, `site/.vitepress/config.ts`, `plugins/arcus/.claude-plugin/plugin.json`, `plugins/arcus/skills/context-pack-builder/scripts/match_flows.py`, `tests/**/*.mjs` |
 | Frameworks / tooling | VitePress, vitepress-plugin-mermaid, GitHub Actions | `site/package.json`, `site/.vitepress/config.ts`, `.github/workflows/docs.yml`, `.github/workflows/tests.yml` |
 | Dependency manager(s) | pnpm (`pnpm@10.32.1`) | `site/package.json`, `site/pnpm-lock.yaml`, `package.json` (repo root + docs site) |
 

@@ -1,0 +1,203 @@
+{
+  "skill_name": "spec-finalizer",
+  "cost_budget": { "max_tokens": 60000, "max_seconds": 180 },
+  "evals": [
+    {
+      "id": "l2-4-dialogue-asks-one-at-a-time-recommended-shape",
+      "prompt": "Finalize and ground this user story in DIALOGUE mode against the supplied files. Run a completeness audit, resolve what you confidently can, and interview the user on the highest-impact open questions. Inputs: story=story.md, context_pack=context_pack.md, mode=dialogue.",
+      "mode": "dialogue",
+      "kind": "judged",
+      "fixture": {
+        "files": {
+          "story.md": "# STORY-2401: Export account activity report\n\nAs an admin I want to export a report of account activity so I can audit usage.\n\n- The report should cover recent activity.\n- Export it in a suitable format.\n- Make it available to authorized users.\n",
+          "context_pack.md": "# Context Pack: STORY-2401\n\n## Flows\n- Existing reports under `src/reports/` are generated as CSV via `csvExporter`.\n- Authorization uses the `requireRole('admin')` middleware in `src/auth/roles.ts`.\n\n## Patterns\n- Time windows elsewhere default to a 30-day rolling window (`src/reports/usage.ts`).\n- Background generation uses the `jobQueue` for any report over 10k rows.\n"
+        }
+      },
+      "expectations": [
+        {
+          "text": "Asks the user clarifying questions one at a time about genuinely ambiguous, high-impact gaps (such as the report time window or export format), folding each answer in before asking the next, rather than dumping all questions at once.",
+          "tier": "critical"
+        },
+        {
+          "text": "Each question it asks presents exactly one option explicitly marked Recommended with a one-line rationale, plus an explicit option for the user to provide their own custom answer.",
+          "tier": "critical"
+        },
+        {
+          "text": "Does not ask about ambiguities that have an obvious repository precedent (e.g. CSV export format, admin authorization, 30-day window); it resolves those silently by grounding in the context pack patterns.",
+          "tier": "quality"
+        },
+        {
+          "text": "Records the user's answers into a Dialogue Answers section of the grounded spec, treating the user's answer as authoritative over its own tentative pick.",
+          "tier": "quality"
+        }
+      ]
+    },
+    {
+      "id": "l2-4-autonomous-never-blocks-logs-assumptions",
+      "prompt": "Finalize and ground this user story in AUTONOMOUS (afk) mode against the supplied files. You cannot talk to the user. Resolve every ambiguity with the safest option and flag weak picks. Inputs: story=story.md, context_pack=context_pack.md, mode=autonomous.",
+      "mode": "autonomous",
+      "kind": "judged",
+      "fixture": {
+        "files": {
+          "story.md": "# STORY-2401: Export account activity report\n\nAs an admin I want to export a report of account activity so I can audit usage.\n\n- The report should cover recent activity.\n- Export it in a suitable format.\n- Make it available to authorized users.\n",
+          "context_pack.md": "# Context Pack: STORY-2401\n\n## Flows\n- Existing reports under `src/reports/` are generated as CSV via `csvExporter`.\n- Authorization uses the `requireRole('admin')` middleware in `src/auth/roles.ts`.\n\n## Patterns\n- Time windows elsewhere default to a 30-day rolling window (`src/reports/usage.ts`).\n- Background generation uses the `jobQueue` for any report over 10k rows.\n"
+        }
+      },
+      "expectations": [
+        {
+          "text": "Never blocks for user input and asks the user no questions; it auto-resolves every ambiguity with the safest available option and proceeds to a fully resolved grounded spec.",
+          "tier": "critical"
+        },
+        {
+          "text": "Flags any weak / low-confidence resolution with a LOW CONFIDENCE marker and logs the assumption it made rather than leaving the gap unresolved.",
+          "tier": "critical"
+        },
+        {
+          "text": "Leaves the Dialogue Answers section empty or omits it entirely, since no dialogue occurred in autonomous mode.",
+          "tier": "quality"
+        }
+      ]
+    },
+    {
+      "id": "l2-5-high-blast-radius-low-confidence-asked-in-dialogue",
+      "prompt": "Finalize and ground this user story in DIALOGUE mode against the supplied files. Inputs: story=story.md, context_pack=context_pack.md, mode=dialogue.",
+      "mode": "dialogue",
+      "kind": "judged",
+      "fixture": {
+        "files": {
+          "story.md": "# STORY-2402: Bulk-delete inactive customer accounts\n\nAs an operator I want to bulk-delete inactive customer accounts to clean up the system.\n\n- Inactive accounts should be removed.\n- This should happen automatically.\n",
+          "context_pack.md": "# Context Pack: STORY-2402\n\n## Flows\n- Account records in `src/accounts/` are currently only soft-deleted (`deleted_at` timestamp), never hard-deleted.\n- Account data is referenced by `orders`, `invoices`, and `audit_log` tables.\n\n## Constraints\n- There is no precedent in the repo for permanently destroying customer data, and no defined retention policy.\n"
+        }
+      },
+      "expectations": [
+        {
+          "text": "Identifies the destruction semantics (hard-delete vs soft-delete) and the definition of 'inactive' as low-confidence, high-blast-radius ambiguities given the lack of repo precedent and the downstream foreign-key references.",
+          "tier": "critical"
+        },
+        {
+          "text": "Because this is dialogue mode, it ASKS the user about the high-blast-radius low-confidence ambiguity (presenting a Recommended option plus a custom-answer option) rather than silently auto-resolving it.",
+          "tier": "critical"
+        }
+      ]
+    },
+    {
+      "id": "l2-5-high-blast-radius-low-confidence-flagged-needs-input-autonomous",
+      "prompt": "Finalize and ground this user story in AUTONOMOUS (afk) mode against the supplied files. You cannot talk to the user. Inputs: story=story.md, context_pack=context_pack.md, mode=autonomous.",
+      "mode": "autonomous",
+      "kind": "judged",
+      "fixture": {
+        "files": {
+          "story.md": "# STORY-2402: Bulk-delete inactive customer accounts\n\nAs an operator I want to bulk-delete inactive customer accounts to clean up the system.\n\n- Inactive accounts should be removed.\n- This should happen automatically.\n",
+          "context_pack.md": "# Context Pack: STORY-2402\n\n## Flows\n- Account records in `src/accounts/` are currently only soft-deleted (`deleted_at` timestamp), never hard-deleted.\n- Account data is referenced by `orders`, `invoices`, and `audit_log` tables.\n\n## Constraints\n- There is no precedent in the repo for permanently destroying customer data, and no defined retention policy.\n"
+        }
+      },
+      "expectations": [
+        {
+          "text": "Does not block; it auto-resolves the destruction-semantics ambiguity with the safest option (e.g. soft-delete, matching existing repo behaviour) and flags it as LOW CONFIDENCE in the grounded spec.",
+          "tier": "critical"
+        },
+        {
+          "text": "Surfaces the high-blast-radius low-confidence ambiguity in a machine-readable NEEDS_INPUT escalation block in its return message, with a reason of low-confidence and the tentative option it selected.",
+          "tier": "critical"
+        }
+      ]
+    },
+    {
+      "id": "l2-5-trivial-ambiguity-auto-resolved-both-modes",
+      "prompt": "Finalize and ground this user story in DIALOGUE mode against the supplied files. Inputs: story=story.md, context_pack=context_pack.md, mode=dialogue.",
+      "mode": "dialogue",
+      "kind": "judged",
+      "fixture": {
+        "files": {
+          "story.md": "# STORY-2403: Add a created-at timestamp to comments\n\nAs a user I want each comment to show when it was created.\n\n- Display the creation time on each comment.\n",
+          "context_pack.md": "# Context Pack: STORY-2403\n\n## Patterns\n- All entities in `src/db/models/` already store timestamps as UTC ISO-8601 strings in a `created_at` column.\n- The UI renders timestamps via the shared `formatRelativeTime()` helper.\n"
+        }
+      },
+      "expectations": [
+        {
+          "text": "Treats the timestamp format / storage / display as a trivial ambiguity with a clear repository precedent and auto-resolves it with a logged assumption, without asking the user, even though this is dialogue mode.",
+          "tier": "critical"
+        },
+        {
+          "text": "Grounds the resolution in the existing repo conventions (UTC ISO-8601 created_at column, formatRelativeTime helper) rather than inventing a new format.",
+          "tier": "quality"
+        }
+      ]
+    },
+    {
+      "id": "l2-6-grounding-with-context-pack-fast-path",
+      "prompt": "Finalize and ground this user story in AUTONOMOUS mode. A context pack is provided, so use it as the primary grounding source. Inputs: story=story.md, context_pack=context_pack.md, mode=autonomous.",
+      "mode": "autonomous",
+      "kind": "judged",
+      "fixture": {
+        "files": {
+          "story.md": "# STORY-2404: Rate-limit the login endpoint\n\nAs a security engineer I want the login endpoint rate-limited to slow down brute-force attacks.\n\n- Limit how often login can be attempted.\n",
+          "context_pack.md": "# Context Pack: STORY-2404\n\n## Flows\n- The login endpoint is `POST /auth/login` in `src/auth/login.ts`.\n- A shared `rateLimiter` middleware exists in `src/middleware/rateLimiter.ts` using a sliding window keyed by IP.\n\n## Patterns\n- Other sensitive endpoints apply `rateLimiter({ window: '1m', max: 10 })`.\n"
+        }
+      },
+      "expectations": [
+        {
+          "text": "Detects the same core ambiguities (the rate-limit threshold/window, the keying dimension such as IP vs account, and the over-limit response behaviour) and grounds its resolutions in the supplied context pack patterns.",
+          "tier": "critical"
+        },
+        {
+          "text": "Reaches its resolutions efficiently by leaning on the context pack as the primary grounding source rather than re-deriving repository structure from scratch.",
+          "tier": "quality"
+        }
+      ]
+    },
+    {
+      "id": "l2-6-grounding-with-repo-no-pack-full-scan-path",
+      "prompt": "Finalize and ground this user story in AUTONOMOUS mode. No context pack is provided; ground the story directly against the repository source files supplied. Inputs: story=story.md, mode=autonomous.",
+      "mode": "autonomous",
+      "kind": "judged",
+      "fixture": {
+        "files": {
+          "story.md": "# STORY-2404: Rate-limit the login endpoint\n\nAs a security engineer I want the login endpoint rate-limited to slow down brute-force attacks.\n\n- Limit how often login can be attempted.\n",
+          "src/auth/login.ts": "export async function login(req, res) {\n  const { email, password } = req.body;\n  const user = await verifyCredentials(email, password);\n  if (!user) return res.status(401).json({ error: 'invalid' });\n  return res.json({ token: issueToken(user) });\n}\n",
+          "src/middleware/rateLimiter.ts": "// Sliding-window limiter keyed by IP. Usage: rateLimiter({ window: '1m', max: 10 })\nexport function rateLimiter(opts) {\n  return (req, res, next) => { /* ...sliding window by req.ip... */ next(); };\n}\n",
+          "src/api/password-reset.ts": "import { rateLimiter } from '../middleware/rateLimiter';\nexport const middleware = rateLimiter({ window: '1m', max: 10 });\n"
+        }
+      },
+      "expectations": [
+        {
+          "text": "Notes that no context pack was provided and grounds the story by scanning the supplied repository source files directly.",
+          "tier": "critical"
+        },
+        {
+          "text": "Detects the same core ambiguities as the context-pack case (rate-limit threshold/window, keying dimension such as IP vs account, and over-limit response behaviour), demonstrating that ambiguity detection is equivalent regardless of whether grounding came from a context pack or a direct repo scan.",
+          "tier": "quality"
+        },
+        {
+          "text": "Grounds its resolutions in the discovered repo patterns (the existing rateLimiter middleware keyed by IP and the window/max=10 usage on password-reset) rather than inventing unsupported defaults.",
+          "tier": "quality"
+        }
+      ]
+    },
+    {
+      "id": "l2-6-story-only-no-repo-emits-grounding-source-marker",
+      "prompt": "Finalize and ground this user story in AUTONOMOUS mode. There is no context pack and no repository source to ground against — only the story itself. Inputs: story=story.md, mode=autonomous.",
+      "mode": "autonomous",
+      "kind": "judged",
+      "fixture": {
+        "files": {
+          "story.md": "# STORY-2405: Send a welcome email on signup\n\nAs a new user I want to receive a welcome email when I sign up.\n\n- Send an email after signup.\n- Include a getting-started link.\n"
+        }
+      },
+      "expectations": [
+        {
+          "text": "Emits a 'grounding-source: story-only' marker in the grounded spec, explicitly signalling that no context pack or repository evidence was available and the grounding rests on the story alone.",
+          "tier": "critical"
+        },
+        {
+          "text": "Still produces a fully resolved grounded spec, auto-resolving ambiguities with the safest defaults and flagging them as LOW CONFIDENCE since they could not be grounded in repository evidence.",
+          "tier": "critical"
+        },
+        {
+          "text": "Does not fabricate specific repository patterns, file paths, or conventions that were never provided.",
+          "tier": "quality"
+        }
+      ]
+    }
+  ]
+}

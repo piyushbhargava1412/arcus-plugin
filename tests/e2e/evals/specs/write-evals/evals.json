@@ -1,0 +1,74 @@
+{
+  "skill_name": "write-evals",
+  "cost_budget": { "max_tokens": 60000, "max_seconds": 180 },
+  "evals": [
+    {
+      "id": "we-judged-skill-red-first-spec",
+      "prompt": "Write evals for the target skill described in fixture file plugins/arcus/skills/uppercase-namer/SKILL.md. This is a judged-kind capability (NOT a contractual-token skill): given a snake_case identifier it returns the UPPER_SNAKE_CASE form. Author an evals.json that tests this rename behaviour and prove the new case is red-first against the current skill. observed_behaviour: converting a snake_case identifier to UPPER_SNAKE_CASE.",
+      "mode": "autonomous",
+      "kind": "judged",
+      "fixture": {
+        "files": {
+          "plugins/arcus/skills/uppercase-namer/SKILL.md": "---\nname: uppercase-namer\ndescription: Given a single snake_case identifier, return its UPPER_SNAKE_CASE form and nothing else. Trigger on \"uppercase this name\".\nlayer: capability\nstandalone: true\n---\n\n# Uppercase Namer\n\n## Contract\n\n### Inputs\n| Input | Type | Description |\n|-------|------|-------------|\n| `identifier` | string | A snake_case identifier, e.g. `user_id` |\n\n### Outputs\n- **`upper_name`** (string) — the identifier uppercased, e.g. `USER_ID`. No other text.\n\n## Mechanics\n1. Read the supplied snake_case identifier.\n2. Uppercase every character, preserving underscores.\n3. Return only the resulting UPPER_SNAKE_CASE string.\n",
+          "BEHAVIOUR_TO_TEST.md": "Test: does write-evals author a valid, lint-clean, red-first evals.json for uppercase-namer that covers the snake_case -> UPPER_SNAKE_CASE rename behaviour?\n"
+        }
+      },
+      "expectations": [
+        {
+          "text": "Produces an evals.json that would LINT CLEAN: skill_name is \"uppercase-namer\", evals is a non-empty array, and every expectation carries a tier of critical or quality (PR-4).",
+          "tier": "critical"
+        },
+        {
+          "text": "Because uppercase-namer is NOT on the contractual-token allowlist, the authored spec leaves assertions.required_substrings empty/absent (PR-2) and expresses the rename behaviour as tiered judged expectations instead of naked substrings.",
+          "tier": "critical"
+        },
+        {
+          "text": "The authored case is red-first (PR-1): run immediately against the current skill it is reported red (not yet run) because no graded judge run has executed, not red because the spec is malformed.",
+          "tier": "critical"
+        },
+        {
+          "text": "The fixture is a tiny well-formed target SKILL.md and the expectation maps to a real observable behaviour of uppercase-namer (snake_case input -> UPPER_SNAKE_CASE output).",
+          "tier": "quality"
+        }
+      ],
+      "assertions": {
+        "required_substrings": [],
+        "forbidden_substrings": ["checkpoint.sh", "next stage", "VERDICT:"]
+      }
+    },
+    {
+      "id": "we-contractual-token-skill-allows-substrings",
+      "prompt": "Write evals for the target skill described in fixture file plugins/arcus/skills/gate-verdict/SKILL.md. This IS a contractual-token skill on the allowlist (spec-compliance-reviewer family): it emits the fixed token VERDICT: PASS or VERDICT: FAIL. Author an evals.json that asserts the correct contractual token and prove the new case is red-first. observed_behaviour: emitting exactly one of the fixed VERDICT tokens.",
+      "mode": "autonomous",
+      "kind": "deterministic",
+      "fixture": {
+        "files": {
+          "plugins/arcus/skills/gate-verdict/SKILL.md": "---\nname: spec-compliance-reviewer\ndescription: Review a change set against its acceptance criteria and emit a single contractual verdict token. Trigger on \"check spec compliance\".\nlayer: capability\nstandalone: true\n---\n\n# Spec Compliance Reviewer (gate-verdict)\n\n## Contract\n\n### Inputs\n| Input | Type | Description |\n|-------|------|-------------|\n| `change_set` | diff | The code change under review |\n| `acceptance_criteria` | text | The criteria the change must satisfy |\n\n### Outputs\n- Emits exactly one contractual token: `VERDICT: PASS` when all criteria hold, otherwise `VERDICT: FAIL`. No other verdict text.\n\n## Mechanics\n1. Compare the change set against each acceptance criterion.\n2. If every criterion is satisfied, emit `VERDICT: PASS`; otherwise emit `VERDICT: FAIL`.\n",
+          "BEHAVIOUR_TO_TEST.md": "Test: does write-evals author a valid, lint-clean, red-first evals.json for a contractual-token skill (spec-compliance-reviewer) that correctly USES assertions.required_substrings for the VERDICT token?\n"
+        }
+      },
+      "expectations": [
+        {
+          "text": "Produces an evals.json that would LINT CLEAN: skill_name matches the allowlisted contractual-token skill (spec-compliance-reviewer), evals is non-empty, and every expectation carries a tier (PR-4).",
+          "tier": "critical"
+        },
+        {
+          "text": "Because the target IS a contractual-token skill, the authored spec correctly populates assertions.required_substrings with the fixed token (e.g. \"VERDICT:\") rather than omitting it — proving PR-2 permits substrings for allowlisted skills.",
+          "tier": "critical"
+        },
+        {
+          "text": "The authored case is red-first (PR-1): run immediately against the current skill it is reported red (not yet run), not red because of a malformed spec.",
+          "tier": "critical"
+        },
+        {
+          "text": "The fixture is a tiny well-formed target SKILL.md and the assertion maps to a real observable behaviour of the target skill (emitting exactly one VERDICT token).",
+          "tier": "quality"
+        }
+      ],
+      "assertions": {
+        "required_substrings": [],
+        "forbidden_substrings": ["checkpoint.sh", "next stage"]
+      }
+    }
+  ]
+}

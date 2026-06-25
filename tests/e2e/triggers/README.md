@@ -4,9 +4,12 @@ Tests that the right skill activates (and the wrong ones do NOT) for a corpus of
 natural-language trigger phrases. Guards the `description:` trigger phrasing in every
 `SKILL.md` against over- and under-triggering.
 
-> **Status: DEFERRED.** No trigger corpus exists yet. The runner
-> (`run-triggers.mjs`) is a stub that prints deferred and exits 0. See
-> [`ARCUS-TESTING-DEFERRED.md`](../../../ARCUS-TESTING-DEFERRED.md).
+> **Status: IMPLEMENTED (zero-token).** The runner
+> ([`run-triggers.mjs`](./run-triggers.mjs)) runs via `pnpm test:triggers`. It loads
+> `corpus.json` (74 cases), validates population (L4-1/L4-2), grades activation
+> **deterministically** against `SKILL.md` trigger phrasing (no LLM, no network), and
+> gates (activation ≥80%, false-positive ≤10%) — currently activation 100%, FP 0%. It
+> runs on every push.
 
 ## Intended scope
 

@@ -1,0 +1,44 @@
+{
+  "skill_name": "context-drift-sync",
+  "cost_budget": { "max_tokens": 70000, "max_seconds": 180 },
+  "evals": [
+    {
+      "id": "cds-syncs-only-affected-artifact",
+      "prompt": "Sync the context drift for this branch (standalone). An approved branch diff is provided in DIFF.patch. Assess whether the diff materially changed any shared .context/ artifact and surgically sync only the affected ones, leaving the rest untouched. FACTS-ONLY — do not read story artifacts.",
+      "mode": "autonomous",
+      "kind": "judged",
+      "fixture": {
+        "files": {
+          ".context/repo_map.md": "<!-- context-meta\nverification-commit: base000\ngenerated-at: 2026-06-20T00:00:00Z\nconfidence: high\n-->\n# Repo Map\n## Entry Surfaces\n- src/routes/todos.ts (HTTP /todos)\n",
+          ".context/testing-patterns.md": "<!-- context-meta\nverification-commit: base000\ngenerated-at: 2026-06-20T00:00:00Z\nconfidence: high\n-->\n# Testing Patterns\nRunner: vitest. Execution: vitest run.\n",
+          ".context/flows/todo-listing.md": "<!-- context-meta\nverification-commit: base000\ngenerated-at: 2026-06-20T00:00:00Z\nconfidence: high\n-->\n# Flow: Todo Listing\nEntry Points: src/routes/todos.ts (GET /todos)\nCore Path: todos.ts -> TodoService.list\nScope: src/routes/todos.ts, src/services/todo_service.ts\n",
+          "DIFF.patch": "diff --git a/src/routes/todos.ts b/src/routes/todos.ts\n--- a/src/routes/todos.ts\n+++ b/src/routes/todos.ts\n@@\n export const todoRouter = Router();\n todoRouter.get('/', (_req, res) => res.json(TodoService.list()));\n+todoRouter.delete('/:id', (req, res) => { TodoService.remove(req.params.id); res.sendStatus(204); });\n"
+        }
+      },
+      "expectations": [
+        { "text": "Recognizes that the diff adds a new HTTP endpoint (DELETE /todos/:id) on an existing entry surface and flags only the artifacts whose listed scope that materially changes — the repo_map entry surfaces and the todo-listing flow (which owns src/routes/todos.ts).", "tier": "critical" },
+        { "text": "Leaves unaffected artifacts untouched — testing-patterns.md is not edited and its context-meta verification-commit is not bumped, since the diff changed no test framework, layer, or command.", "tier": "critical" },
+        { "text": "Is diff-driven and facts-only: it reasons solely from the diff and the .context/ artifact contents, does not read or invoke any story artifacts (plan/grounded-spec/context-pack/test-plan), and does not invent drift beyond what the diff actually changed.", "tier": "quality" }
+      ]
+    },
+    {
+      "id": "cds-noop-on-pure-internal-refactor",
+      "prompt": "Sync the context drift for this branch (standalone). An approved branch diff is provided in DIFF.patch. Assess materiality against the shared .context/ artifacts and sync only what materially changed. FACTS-ONLY.",
+      "mode": "autonomous",
+      "kind": "judged",
+      "fixture": {
+        "files": {
+          ".context/repo_map.md": "<!-- context-meta\nverification-commit: base111\ngenerated-at: 2026-06-20T00:00:00Z\nconfidence: high\n-->\n# Repo Map\n## Entry Surfaces\n- src/routes/todos.ts (HTTP /todos)\n",
+          ".context/testing-patterns.md": "<!-- context-meta\nverification-commit: base111\ngenerated-at: 2026-06-20T00:00:00Z\nconfidence: high\n-->\n# Testing Patterns\nRunner: vitest. Execution: vitest run.\n",
+          ".context/flows/todo-listing.md": "<!-- context-meta\nverification-commit: base111\ngenerated-at: 2026-06-20T00:00:00Z\nconfidence: high\n-->\n# Flow: Todo Listing\nEntry Points: src/routes/todos.ts (GET /todos)\nCore Path: todos.ts -> TodoService.list\nScope: src/routes/todos.ts, src/services/todo_service.ts\n",
+          "DIFF.patch": "diff --git a/src/services/todo_service.ts b/src/services/todo_service.ts\n--- a/src/services/todo_service.ts\n+++ b/src/services/todo_service.ts\n@@\n export const TodoService = {\n-  list() { const items = [{ id: 1, title: 'first' }]; return items; }\n+  list() { return [{ id: 1, title: 'first' }]; }\n };\n"
+        }
+      },
+      "expectations": [
+        { "text": "Classifies this as a NO-OP: a pure internal refactor that reshapes the body of TodoService.list without changing any entry point, step, integration, structure, scope, or test crosses no materiality trigger.", "tier": "critical" },
+        { "text": "Makes no edits to any .context/ artifact and does not bump any context-meta verification-commit; reports that there is no material context drift.", "tier": "critical" },
+        { "text": "Reaches the NO-OP conclusion purely from the diff and artifact contents, without reading story artifacts or inventing drift.", "tier": "quality" }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,58 @@
+{
+  "skill_name": "context-pack-builder",
+  "cost_budget": { "max_tokens": 60000, "max_seconds": 180 },
+  "evals": [
+    {
+      "id": "cpb-correlates-story-to-relevant-slice",
+      "prompt": "Build a context pack for the supplied story using the shared repository artifacts in repo_context/. story: AUTH-12 \"Add a password-strength check to the signup endpoint so weak passwords are rejected.\" repo_context: the repo_context/ directory.",
+      "mode": "autonomous",
+      "kind": "judged",
+      "fixture": {
+        "files": {
+          "repo_context/repo_map.md": "# Repo Map\n\n## Top-Level Structure\n- src/auth/ — signup, login, session handling\n- src/billing/ — invoices, payment webhooks\n- src/notify/ — email + SMS dispatch\n\n## Entry Points\n- src/auth/signup.js — POST /signup\n- src/billing/invoice.js — POST /invoice\n",
+          "repo_context/flows/signup.md": "# Signup Flow\n\n## Entry Points\n- POST /signup -> src/auth/signup.js\n\n## Core Path\nValidate body -> hash password -> persist user -> issue session.\n\n## Data Touchpoints\n- users table\n\n## Tests\n- test/auth/signup.test.js\n",
+          "repo_context/flows/billing.md": "# Billing Flow\n\n## Entry Points\n- POST /invoice -> src/billing/invoice.js\n\n## Core Path\nBuild line items -> total -> persist invoice.\n",
+          "src/auth/signup.js": "export function signup(req) {\n  const { email, password } = req.body;\n  if (!email || !password) throw new Error('missing fields');\n  const hash = hashPassword(password);\n  return persistUser({ email, hash });\n}\n",
+          "src/billing/invoice.js": "export function invoice(req) {\n  return persistInvoice(buildLineItems(req.body));\n}\n"
+        }
+      },
+      "expectations": [
+        {
+          "text": "Correctly correlates the password-strength story to the signup flow and the src/auth/signup.js working area, not billing or notify.",
+          "tier": "critical"
+        },
+        {
+          "text": "Produces a minimal context pack containing only the story-relevant flow(s) and working area(s), referencing the signup flow by link rather than copying its full content.",
+          "tier": "critical"
+        },
+        {
+          "text": "Does not dump the entire repository: unrelated areas like billing and notify are excluded from the pack.",
+          "tier": "quality"
+        }
+      ]
+    },
+    {
+      "id": "cpb-no-matching-flow-marks-risk",
+      "prompt": "Build a context pack for the supplied story using the shared artifacts in repo_context/. story: OPS-3 \"Add a Prometheus metrics endpoint for infrastructure monitoring.\" repo_context: the repo_context/ directory.",
+      "mode": "autonomous",
+      "kind": "judged",
+      "fixture": {
+        "files": {
+          "repo_context/repo_map.md": "# Repo Map\n\n## Top-Level Structure\n- src/auth/ — signup, login\n- src/billing/ — invoices\n",
+          "repo_context/flows/signup.md": "# Signup Flow\n\n## Entry Points\n- POST /signup -> src/auth/signup.js\n",
+          "repo_context/flows/billing.md": "# Billing Flow\n\n## Entry Points\n- POST /invoice -> src/billing/invoice.js\n"
+        }
+      },
+      "expectations": [
+        {
+          "text": "Recognizes that no existing flow matches a metrics/monitoring story and marks the Flows section as NONE MATCHED rather than forcing an irrelevant flow.",
+          "tier": "critical"
+        },
+        {
+          "text": "Surfaces the missing-flow situation as a gap or high risk in the pack instead of silently fabricating relevant code areas.",
+          "tier": "quality"
+        }
+      ]
+    }
+  ]
+}

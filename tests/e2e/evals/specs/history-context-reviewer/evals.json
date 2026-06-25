@@ -1,0 +1,55 @@
+{
+  "skill_name": "history-context-reviewer",
+  "cost_budget": { "max_tokens": 45000, "max_seconds": 120 },
+  "evals": [
+    {
+      "id": "hc-detects-removed-deliberate-marker",
+      "prompt": "History/context review this diff against git history. change_set is in change_set.diff; the base-branch context for the touched lines is in base_context.txt and the recent commit log is in git_log.txt. Flag only findings with concrete git signal. Return severity-tagged findings.",
+      "mode": "autonomous",
+      "kind": "judged",
+      "fixture": {
+        "files": {
+          "change_set.diff": "diff --git a/src/retry.js b/src/retry.js\n--- a/src/retry.js\n+++ b/src/retry.js\n@@ -8,7 +8,6 @@ async function call(fn) {\n   for (let i = 0; i < 3; i++) {\n     try { return await fn(); } catch (e) { lastErr = e; }\n-    await sleep(200); // do not remove: backoff prevents thundering-herd on the auth service (load-bearing)\n   }\n   throw lastErr;\n }\n",
+          "base_context.txt": "Lines 5-12 of src/retry.js on the base branch:\n  let lastErr;\n  for (let i = 0; i < 3; i++) {\n    try { return await fn(); } catch (e) { lastErr = e; }\n    await sleep(200); // do not remove: backoff prevents thundering-herd on the auth service (load-bearing)\n  }\n  throw lastErr;\n",
+          "git_log.txt": "abc1234 fix: add backoff between retries to stop thundering-herd on auth service\n9988776 feat: add retry wrapper\n"
+        }
+      },
+      "expectations": [
+        {
+          "text": "Detects that the deleted line carried an explicit deliberate-marker comment ('do not remove', 'load-bearing') and flags its removal as a finding (warning) with a file reference.",
+          "tier": "critical"
+        },
+        {
+          "text": "Grounds the finding in concrete git signal (the deliberate marker and/or the prior fix: commit on the touched line) rather than vague 'this looks important' reasoning, and never emits a critical severity.",
+          "tier": "quality"
+        }
+      ],
+      "assertions": {
+        "required_substrings": [],
+        "forbidden_substrings": []
+      }
+    },
+    {
+      "id": "hc-clean-diff-no-history-signal",
+      "prompt": "History/context review this diff against git history. change_set is in change_set.diff; the recent commit log is in git_log.txt. Flag only findings with concrete git signal. Return severity-tagged findings.",
+      "mode": "autonomous",
+      "kind": "judged",
+      "fixture": {
+        "files": {
+          "change_set.diff": "diff --git a/src/greet.js b/src/greet.js\n--- a/src/greet.js\n+++ b/src/greet.js\n@@ -1,2 +1,3 @@\n export function greet(name) {\n+  if (!name) return 'Hello!';\n   return 'Hello, ' + name + '!';\n }\n",
+          "git_log.txt": "5566778 feat: add greet helper\n1122334 chore: scaffold project\n"
+        }
+      },
+      "expectations": [
+        {
+          "text": "Reports no history-context findings (clean, or skipped) because there is no fix/revert overlap, no removed deliberate marker, and no re-added reverted code — it does not invent a concern without git evidence.",
+          "tier": "quality"
+        }
+      ],
+      "assertions": {
+        "required_substrings": [],
+        "forbidden_substrings": []
+      }
+    }
+  ]
+}

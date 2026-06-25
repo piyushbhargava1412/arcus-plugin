@@ -1,0 +1,45 @@
+{
+  "skill_name": "test-pattern-discovery",
+  "cost_budget": { "max_tokens": 60000, "max_seconds": 180 },
+  "evals": [
+    {
+      "id": "tpd-extracts-actual-testing-conventions",
+      "prompt": "Discover and persist this repository's testing conventions to .context/testing-patterns.md. The repo map and scope are provided in the fixture; tests live under test/.",
+      "mode": "autonomous",
+      "kind": "judged",
+      "fixture": {
+        "files": {
+          ".context/repo_map.md": "<!-- context-meta\nverification-commit: ccc333\ngenerated-at: 2026-06-24T00:00:00Z\nconfidence: high\n-->\n# Repo Map\nTest root: test/. Runner declared in package.json.\n",
+          ".context/repo_scope.md": "<!-- context-meta\nverification-commit: ccc333\ngenerated-at: 2026-06-24T00:00:00Z\nconfidence: high\n-->\n# Repo Scope\nNode library tested with Mocha + chai assertions.\n",
+          "package.json": "{\n  \"name\": \"widget-lib\",\n  \"scripts\": { \"test\": \"mocha test/**/*.spec.js\" },\n  \"devDependencies\": { \"mocha\": \"^10.0.0\", \"chai\": \"^4.3.0\" }\n}\n",
+          "test/user.spec.js": "const { expect } = require('chai');\nconst { createUser } = require('../src/user');\n\ndescribe('createUser', () => {\n  it('returns a user when given a valid email', () => {\n    const result = createUser({ email: 'a@b.com' });\n    expect(result.ok).to.equal(true);\n    expect(result.value.email).to.equal('a@b.com');\n  });\n\n  it('rejects a missing email', () => {\n    const result = createUser({});\n    expect(result.ok).to.equal(false);\n  });\n});\n",
+          "test/order.spec.js": "const { expect } = require('chai');\nconst { placeOrder } = require('../src/order');\n\ndescribe('placeOrder', () => {\n  it('returns an order for valid items', () => {\n    const result = placeOrder({ items: ['x'] });\n    expect(result.ok).to.equal(true);\n  });\n\n  it('rejects empty items', () => {\n    const result = placeOrder({});\n    expect(result.ok).to.equal(false);\n  });\n});\n"
+        }
+      },
+      "expectations": [
+        { "text": "Extracts the actual testing conventions present in the fixture: Mocha as the runner, chai expect() as the assertion style, BDD describe/it structure, *.spec.js naming, and the execution command 'mocha test/**/*.spec.js' from package.json.", "tier": "critical" },
+        { "text": "Conventions are grounded in the supplied test files and package.json, not generic testing advice — it does not claim frameworks, mocking libraries, or assertion styles (e.g. Jest, sinon, assert) that are absent from the fixture.", "tier": "critical" },
+        { "text": "Persists the conventions to .context/testing-patterns.md and selects real fixture files (test/user.spec.js, test/order.spec.js) as canonical examples.", "tier": "quality" }
+      ]
+    },
+    {
+      "id": "tpd-pytest-style-grounded",
+      "prompt": "Baseline our testing conventions and persist them to .context/testing-patterns.md, using the provided repo map and scope.",
+      "mode": "autonomous",
+      "kind": "judged",
+      "fixture": {
+        "files": {
+          ".context/repo_map.md": "<!-- context-meta\nverification-commit: ddd444\ngenerated-at: 2026-06-24T00:00:00Z\nconfidence: high\n-->\n# Repo Map\nTest root: tests/. Python project with pyproject.toml.\n",
+          ".context/repo_scope.md": "<!-- context-meta\nverification-commit: ddd444\ngenerated-at: 2026-06-24T00:00:00Z\nconfidence: high\n-->\n# Repo Scope\nPython package tested with pytest.\n",
+          "pyproject.toml": "[tool.pytest.ini_options]\ntestpaths = [\"tests\"]\n",
+          "tests/test_calc.py": "import pytest\nfrom src.calc import add\n\n@pytest.mark.parametrize(\"a,b,expected\", [(1, 2, 3), (0, 0, 0)])\ndef test_add(a, b, expected):\n    assert add(a, b) == expected\n",
+          "tests/test_format.py": "from src.format import slug\n\ndef test_slug_lowercases():\n    assert slug(\"Hello World\") == \"hello-world\"\n"
+        }
+      },
+      "expectations": [
+        { "text": "Extracts the real pytest conventions from the fixture: pytest runner, test_*.py file naming and test_* function naming, bare assert statements, and the @pytest.mark.parametrize pattern for table-driven cases.", "tier": "critical" },
+        { "text": "Grounds the conventions in the provided test files and pyproject.toml rather than offering generic Python testing advice or naming tools (e.g. unittest, mock) not present in the fixture.", "tier": "critical" }
+      ]
+    }
+  ]
+}

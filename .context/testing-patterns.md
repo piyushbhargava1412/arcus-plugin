@@ -12,8 +12,8 @@ confidence: high
 
 | Layer                | Detected | Root Path(s)                           | Framework / Tool                    |
 |----------------------|----------|----------------------------------------|-------------------------------------|
-| Unit                 | ✅       | `tests/unit.mjs`                       | Node-ESM zero-dependency Layer-1 static checks (planted-bad fixtures) |
-| Integration          | ✅       | `tests/integration.mjs`                | Node-ESM zero-dependency Layer-1 live-tree checks |
+| Unit                 | ✅       | `tests/unit/unit.mjs`                  | Node-ESM zero-dependency Layer-1 static checks (planted-bad fixtures) |
+| Integration          | ✅       | `tests/integration/integration.mjs`   | Node-ESM zero-dependency Layer-1 live-tree checks |
 | Functional           | Scaffolded | `tests/e2e/`                         | Layer 2-4 deferred (contract evals, story tests, trigger harness) |
 | Acceptance / BDD     | ❌       | Not detected                           | Not detected                        |
 | Performance / Load   | ❌       | Not detected                           | Not detected                        |
@@ -24,7 +24,7 @@ confidence: high
 ## Unit & Integration Tests
 
 ### Test Frameworks
-- **Runner**: Node-ESM zero-dependency Layer-1 static suite — `tests/check.mjs` (master runner), `tests/unit.mjs`, `tests/integration.mjs`
+- **Runner**: Node-ESM zero-dependency Layer-1 static suite — `tests/run-tests.mjs` (master runner), `tests/unit/unit.mjs`, `tests/integration/integration.mjs`
 - **Mocking**: Not used — Layer-1 is pure static checks (file reads, JSON parsing, regex matching, cross-references)
 - **Assertions**: Custom hand-rolled `assert` module (`tests/lib/assert.mjs`) — `assertEqual`, `assertTrue`, `assertFalse`, `assertNotNull`, `assertMatches`, with PASS/FAIL counters and red/green diff output
 
@@ -108,10 +108,12 @@ Describe how to run each test type. Verified against `package.json` (repo root),
 
 | Test Type            | Command(s)                                                      | Notes / Prerequisites                                                |
 |----------------------|-----------------------------------------------------------------|-----------------------------------------------------------------------|
-| Unit Tests           | `pnpm test:unit` (or `node tests/unit.mjs`)                     | Layer-1 static checks against planted-bad fixtures; zero dependencies; exit non-zero on failure. |
-| Integration Tests    | `pnpm test:integration` (or `node tests/integration.mjs`)       | Layer-1 static checks against live tree (`plugins/arcus/skills/`, `plugins/arcus/hooks/hooks.json`, `.arcus/` if present); zero dependencies. |
-| Full Layer-1 Suite   | `pnpm test` (or `node tests/check.mjs`)                         | Master runner: runs unit + integration as child processes, aggregates exit codes; runs in CI via `.github/workflows/tests.yml`. |
-| Functional Tests     | `pnpm test:evals`, `pnpm test:triggers` (scaffolded, deferred)  | Layer 2-4 harness: contract evals, story tests, trigger recognition; see `tests/e2e/` and `ARCUS-TESTING-DEFERRED.md`. |
+| Unit Tests           | `pnpm test:unit` (or `node tests/unit/unit.mjs`)               | Layer-1 static checks against planted-bad fixtures; zero dependencies; exit non-zero on failure. |
+| Integration Tests    | `pnpm test:integration` (or `node tests/integration/integration.mjs`) | Layer-1 static checks against live tree (`plugins/arcus/skills/`, `plugins/arcus/hooks/hooks.json`, `.arcus/` if present); zero dependencies. |
+| Full Layer-1 Suite   | `pnpm test` (or `node tests/run-tests.mjs`)                    | Master runner: runs unit, integration, triggers, and eval lint as child processes, aggregates exit codes; runs in CI via `.github/workflows/tests.yml`. |
+| Eval spec lint       | `pnpm test:evals:lint`                                          | Layer-2: lint all 18 capability eval specs (PR-2/PR-4), zero tokens; CI-safe. |
+| Capability evals     | `pnpm test:evals`                                               | Layer-2: grades specs via the live `claude` CLI (needs `claude` on PATH; dollar-budgeted, costs money) — run manually. See `tests/e2e/evals/` and `ARCUS-TESTING-DEFERRED.md`. |
+| Trigger corpus       | `pnpm test:triggers`                                            | Layer-4: deterministic trigger-activation matcher (zero tokens, no LLM); gates activation ≥80% / FP ≤10%. Runs in CI. |
 | Acceptance / BDD     | Not detected — checked: `features/`, `**/*.feature`               | No BDD/acceptance artifacts detected.                               |
 | Performance / Load   | Not detected — checked: `perf/`, `performance/`, `k6/`, `jmeter/` | No performance/load artifacts detected.                             |
 | Shell Script Tests   | `bash plugins/arcus/scripts/tests/checkpoint.test.sh`             | Requires `bash` and `node`; runs standalone without external framework. |
@@ -123,8 +125,8 @@ Describe how to run each test type. Verified against `package.json` (repo root),
 
 | Layer                | File Path                                         | Why it's canonical                                                   |
 |----------------------|---------------------------------------------------|----------------------------------------------------------------------|
-| Unit (Layer-1)       | `tests/unit.mjs`                                  | Demonstrates Layer-1 unit test pattern: planted-bad fixtures + custom assertions; zero-dependency Node ESM. |
-| Integration (Layer-1)| `tests/integration.mjs`                           | Demonstrates Layer-1 integration pattern: live-tree checks against actual skills/hooks/artifacts. |
+| Unit (Layer-1)       | `tests/unit/unit.mjs`                             | Demonstrates Layer-1 unit test pattern: planted-bad fixtures + custom assertions; zero-dependency Node ESM. |
+| Integration (Layer-1)| `tests/integration/integration.mjs`              | Demonstrates Layer-1 integration pattern: live-tree checks against actual skills/hooks/artifacts. |
 | Test Library         | `tests/lib/checks.mjs`                            | All L1-1 through L1-11 check implementations; reused by unit + integration. |
 | Test Utilities       | `tests/lib/assert.mjs`, `tests/lib/skills.mjs`   | Custom assertion primitives (red/green diff, PASS/FAIL counters) + skill/manifest parsing helpers. |
 | Shell Script         | `plugins/arcus/scripts/tests/checkpoint.test.sh` | Custom bash test harness for checkpoint script lifecycle validation; demonstrates setup, assertions, and teardown conventions. |

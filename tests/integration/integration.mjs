@@ -1,11 +1,11 @@
 // Layer-1 INTEGRATION suite: runs the pure L1 checks against the LIVE tree
 // (all skills, manifests). Uses the module-level default counter. Later tasks
-// append more check invocations here. `node tests/integration.mjs` exits
+// append more check invocations here. `node tests/integration/integration.mjs` exits
 // non-zero on any failure.
 
-import { assert, section, exitWithReport } from './lib/assert.mjs';
-import { walkSkills, readJSON, repoRoot, VALID_TIERS, ADVISORY_REVIEWERS } from './lib/skills.mjs';
-import { checkManifests, checkFrontmatter, checkLineBudget, checkAdvisoryReadOnly, checkCapabilityNoState, checkNoInlinedDomain, checkCrossRefs } from './lib/checks.mjs';
+import { assert, section, exitWithReport } from '../lib/assert.mjs';
+import { walkSkills, readJSON, repoRoot, VALID_TIERS, ADVISORY_REVIEWERS } from '../lib/skills.mjs';
+import { checkManifests, checkFrontmatter, checkLineBudget, checkAdvisoryReadOnly, checkCapabilityNoState, checkNoInlinedDomain, checkCrossRefs, checkCapabilityHasEvalSpec } from '../lib/checks.mjs';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -191,7 +191,7 @@ section('L1-7: Cross-skill references resolve');
 section('L1-8: Bundled-resource paths resolve');
 {
   const skills = walkSkills();
-  const { checkResourcePaths } = await import('./lib/checks.mjs');
+  const { checkResourcePaths } = await import('../lib/checks.mjs');
   let resourceFailures = 0;
 
   for (const skill of skills) {
@@ -219,7 +219,7 @@ section('L1-8: Bundled-resource paths resolve');
 
 section('L1-9: Hooks integrity');
 {
-  const { checkHooks } = await import('./lib/checks.mjs');
+  const { checkHooks } = await import('../lib/checks.mjs');
   const hooksJsonPath = join(repoRoot, 'plugins/arcus/hooks/hooks.json');
   const hooksJsonResult = readJSON(hooksJsonPath);
 
@@ -244,7 +244,7 @@ section('L1-9: Hooks integrity');
 section('L1-10: Single model-resolution point');
 {
   const skills = walkSkills();
-  const { checkNoInlineModel } = await import('./lib/checks.mjs');
+  const { checkNoInlineModel } = await import('../lib/checks.mjs');
   let modelFailures = 0;
 
   for (const skill of skills) {
@@ -264,7 +264,7 @@ section('L1-10: Single model-resolution point');
 
 section('L1-11: Artifact-schema validation (live checkpoint + real artifacts)');
 {
-  const { validateJsonSchema, checkArtifactSections } = await import('./lib/checks.mjs');
+  const { validateJsonSchema, checkArtifactSections } = await import('../lib/checks.mjs');
 
   const specDir = join(repoRoot, '.arcus/specs/ARC-0007');
   const schemaResult = readJSON(join(repoRoot, 'tests/schemas/session-checkpoint.schema.json'));
@@ -305,6 +305,31 @@ section('L1-11: Artifact-schema validation (live checkpoint + real artifacts)');
       }
     }
   }
+}
+
+section('L1-12: Every capability owns a Layer-2 eval spec');
+{
+  const skills = walkSkills();
+  const specsDir = join(repoRoot, 'tests/e2e/evals/specs');
+
+  // Injected predicate: does specs/<skill>/evals.json exist?
+  const specExists = (skillName) => existsSync(join(specsDir, skillName, 'evals.json'));
+
+  let evalSpecFailures = 0;
+  for (const skill of skills) {
+    const result = checkCapabilityHasEvalSpec({
+      name: skill.name,
+      tier: skill.frontmatter.layer,
+      specExists
+    });
+    if (!result.ok) {
+      evalSpecFailures++;
+      console.error(`  ${skill.name}: ${result.errors.join('; ')}`);
+    }
+  }
+
+  const capabilityCount = skills.filter(s => s.frontmatter.layer === 'capability').length;
+  assert(evalSpecFailures === 0, `L1-12: all ${capabilityCount} capabilities own a Layer-2 eval spec (${evalSpecFailures} missing)`);
 }
 
 exitWithReport();

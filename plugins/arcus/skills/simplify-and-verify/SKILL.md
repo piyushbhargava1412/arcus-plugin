@@ -25,8 +25,11 @@ applies behaviour-preserving simplifications to those files using repository con
 the supplied test command, and reports the outcome:
 
 - **SIMPLIFIED** — mutations applied and the suite stayed green.
-- **REVERTED** — mutations made the suite go red, so every mutation was rolled back atomically and
-  the working tree was restored to its pre-simplification state.
+- **REVERTED** — the working tree ends in its pre-simplification state. This covers two cases:
+  (a) mutations made the suite go red, so every mutation was rolled back atomically; or
+  (b) **no-op** — no safe simplification candidate was found, so nothing was ever changed.
+  Both end states are identical (original code preserved), so they share the `REVERTED` token and
+  are distinguished only by the reason string.
 
 This capability is a *mutator*: it edits code and re-runs tests. It must **never** self-certify spec
 compliance — that is owned by a separate spec-compliance step. It is language- and framework-agnostic:
@@ -52,7 +55,15 @@ found, original code preserved."
 - **`result_status`** — a result status of `SIMPLIFIED` or `REVERTED`, plus a short summary:
   - `SIMPLIFIED — mutations applied, suite still green. Summary: <one line of what changed>.`
   - `REVERTED   — mutations caused test failure; all changes rolled back. Reason: <one line>.`
-  `SIMPLIFIED` and `REVERTED` are the only valid result tokens; any other output is an error.
+  - `REVERTED   — no simplification candidates identified; code left unchanged.` *(no-op variant)*
+  `SIMPLIFIED` and `REVERTED` are the only valid result tokens; any other output is an error. The
+  no-op case reuses `REVERTED` (original code preserved) with the canonical reason above, so callers
+  that gate on the token need no special handling.
+
+  **Contractual token — mandatory.** The result is consumed by automated callers that gate on the
+  token, so the **final line** of your response MUST begin with exactly `SIMPLIFIED` or `REVERTED`
+  (uppercase, verbatim). Prose-only conclusions such as "Done" or "Simplified the function" do **not**
+  satisfy the contract. Emit the token even when invoked standalone by a human.
   Output convention: when a written artifact is produced standalone, default to
   `.arcus/outputs/simplify-and-verify/<story-id-or-timestamp>.md`. The capability never asks the user
   where to write; pipeline callers set the path. When dispatched by the coordinator, the result is
@@ -100,6 +111,9 @@ supplied). Load `acceptance_criteria` if provided.
 **Step 2 — Identify opportunities**
 List simplification candidates briefly (one line each) before applying any mutations. Do not apply
 changes that cannot be justified against a rule in **Simplification Rules** above.
+If **no** candidate survives this filter, this is a **no-op**: make no edits, skip Steps 3–6, and end
+your response with a final line beginning `REVERTED` and the canonical reason
+`no simplification candidates identified; code left unchanged.`
 
 **Step 3 — Apply mutations**
 Before editing, capture the pre-simplification state of every file you intend to touch so the
@@ -110,13 +124,17 @@ candidates identified in Step 2.
 Execute the supplied `test_command`.
 
 **Step 5 — GREEN path → SIMPLIFIED**
-If the suite is GREEN → return `SIMPLIFIED` with a one-line summary of what was changed.
+If the suite is GREEN → end your response with a final line beginning `SIMPLIFIED` followed by a
+one-line summary of what was changed.
 
 **Step 6 — RED path → REVERTED**
 If the suite is RED → revert **all** mutations atomically (restore the pre-simplification state of
 every file touched in Step 3, leaving the working tree exactly as it was before this capability ran)
-→ return `REVERTED` with an explanation of which mutation caused the failure. `REVERTED` is a valid
-outcome, not a failure.
+→ end your response with a final line beginning `REVERTED` and an explanation of which mutation caused
+the failure. `REVERTED` is a valid outcome, not a failure.
+
+In both cases the contractual token (`SIMPLIFIED` / `REVERTED`) MUST appear verbatim as the start of
+the final line — automated callers parse it.
 
 ## Standalone Invocation
 

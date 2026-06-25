@@ -46,13 +46,13 @@ arcus-plugin/
 │   ├── package.json
 │   └── pnpm-lock.yaml
 ├── tests/
-│   ├── check.mjs                        # Layer-1 master runner
-│   ├── unit.mjs                         # Layer-1 unit tests
-│   ├── integration.mjs                  # Layer-1 integration tests
+│   ├── run-tests.mjs                    # zero-token master runner (unit, integration, triggers, eval lint)
+│   ├── unit/                            # Layer-1 unit tests (unit.mjs)
+│   ├── integration/                    # Layer-1 integration tests (integration.mjs)
 │   ├── lib/                             # zero-dependency test utilities
 │   ├── schemas/                         # artifact schema validators
 │   ├── fixtures/                        # planted-bad test fixtures
-│   └── e2e/                             # Layer 2-4 scaffolding (deferred)
+│   └── e2e/                             # Layer 2-4: triggers/ (corpus routing) + evals/ (capability eval specs)
 ├── package.json                         # repo-root test scripts (Node-ESM suite)
 ├── pnpm-lock.yaml
 ├── CHANGELOG.md
@@ -68,13 +68,13 @@ arcus-plugin/
 | Language(s) | TypeScript | n/a | `site/.vitepress/config.ts` |
 | Language(s) | Python | n/a | `plugins/arcus/skills/context-pack-builder/scripts/match_flows.py` |
 | Language(s) | JSON | n/a | `.claude-plugin/marketplace.json`, `plugins/arcus/hooks/hooks.json`, `plugins/arcus/.claude-plugin/plugin.json` |
-| Language(s) | JavaScript (Node ESM) | n/a | `tests/*.mjs`, `tests/lib/*.mjs`, `tests/e2e/**/*.mjs` |
+| Language(s) | JavaScript (Node ESM) | n/a | `tests/**/*.mjs`, `tests/lib/*.mjs`, `tests/e2e/**/*.mjs` |
 | Framework(s) | VitePress | `^1.6.3` | `site/package.json` |
 | Framework(s) | vitepress-plugin-mermaid, mermaid | `^2.0.17`, `^11.15.0` | `site/package.json`, `site/.vitepress/config.ts` |
 | Dependency Manager | pnpm | `10.32.1` | `site/package.json`, `site/pnpm-lock.yaml`, `package.json` (repo root + docs site) |
 | Build Tool | VitePress CLI via pnpm scripts | n/a | `site/package.json` |
 | Test Framework(s) | Custom bash assertions (script-level) | n/a | `plugins/arcus/scripts/tests/checkpoint.test.sh` |
-| Test Framework(s) | Node-ESM zero-dependency Layer-1 static suite | n/a | `tests/check.mjs`, `tests/unit.mjs`, `tests/integration.mjs`, `tests/lib/` |
+| Test Framework(s) | Node-ESM zero-dependency Layer-1 static suite | n/a | `tests/run-tests.mjs`, `tests/unit/unit.mjs`, `tests/integration/integration.mjs`, `tests/lib/` |
 | IaC / Infrastructure | Not detected | n/a | repository scan (non-ignored files) |
 | Container / Compose | Not detected | n/a | repository scan (non-ignored files) |
 
@@ -121,8 +121,8 @@ arcus-plugin/
 ## Test Locations
 | Test Type | Layer / Framework | Root Path(s) |
 |---|---|---|
-| Unit | Node-ESM zero-dependency Layer-1 static checks | `tests/unit.mjs`, `tests/lib/` |
-| Integration | Node-ESM zero-dependency Layer-1 live-tree checks | `tests/integration.mjs` |
+| Unit | Node-ESM zero-dependency Layer-1 static checks | `tests/unit/unit.mjs`, `tests/lib/` |
+| Integration | Node-ESM zero-dependency Layer-1 live-tree checks | `tests/integration/integration.mjs` |
 | Functional | Deferred (Layer 2-4 scaffolded) | `tests/e2e/` (contract evals, story tests, trigger harness) |
 | Acceptance / BDD | Not detected in non-ignored files | searched `features/`, `**/*.feature`, `cucumber*/`, `behave*/` |
 | Performance / Load | Not detected in non-ignored files | searched `perf/`, `performance/`, `load-test*/`, `k6/`, `jmeter/`, `locust*/` |
@@ -140,15 +140,15 @@ arcus-plugin/
 | `extract_story_id.sh` | Parse story ID from input story markdown | `plugins/arcus/scripts/extract_story_id.sh` |
 | `pr.sh` | Push branch and create PR via `gh pr create` | `plugins/arcus/scripts/pr.sh` |
 | `checkpoint.test.sh` | Validate checkpoint script behavior | `plugins/arcus/scripts/tests/checkpoint.test.sh` |
-| `pnpm test` | Run Layer-1 static test suite (unit + integration) | `package.json` -> `tests/check.mjs` |
-| `pnpm test:unit` | Run Layer-1 unit tests (planted-bad fixtures) | `package.json` -> `tests/unit.mjs` |
-| `pnpm test:integration` | Run Layer-1 integration tests (live tree) | `package.json` -> `tests/integration.mjs` |
+| `pnpm test` | Run zero-token test suite (unit + integration + triggers + eval lint) | `package.json` -> `tests/run-tests.mjs` |
+| `pnpm test:unit` | Run Layer-1 unit tests (planted-bad fixtures) | `package.json` -> `tests/unit/unit.mjs` |
+| `pnpm test:integration` | Run Layer-1 integration tests (live tree) | `package.json` -> `tests/integration/integration.mjs` |
 
 ## CI/CD Workflows
 | Workflow | Trigger | Key Stages (build / test / deploy) | Path |
 |---|---|---|---|
 | `docs` | push to `main` on `site/**` and workflow file; pull_request on same paths; manual dispatch | build: checkout + pnpm/setup-node + `pnpm install --frozen-lockfile` + `pnpm run docs:build`; deploy: GitHub Pages deploy on `main` non-PR; explicit test stages not defined | `.github/workflows/docs.yml` |
-| `tests` | push, pull_request, manual dispatch | test: checkout + pnpm/setup-node + `pnpm test` (runs Layer-1 static suite: unit + integration); no deploy | `.github/workflows/tests.yml` |
+| `tests` | push, pull_request, manual dispatch | test: checkout + pnpm/setup-node + `pnpm test` (runs the zero-token tiers: unit + integration + triggers + eval lint); no deploy | `.github/workflows/tests.yml` |
 
 ## Documentation
 | Document | Purpose | Path |
@@ -169,8 +169,8 @@ arcus-plugin/
 | Other languages | Detected | bash, markdown, json |
 | IaC (Terraform / CDK / CF) | Not found | no IaC manifests detected |
 | Dependency manager(s) | Detected | pnpm manifests in `site/` and repo root |
-| Unit tests | Detected | Node-ESM Layer-1 static suite (`tests/unit.mjs`) |
-| Integration tests | Detected | Node-ESM Layer-1 live-tree checks (`tests/integration.mjs`) |
+| Unit tests | Detected | Node-ESM Layer-1 static suite (`tests/unit/unit.mjs`) |
+| Integration tests | Detected | Node-ESM Layer-1 live-tree checks (`tests/integration/integration.mjs`) |
 | Functional tests | Scaffolded | Layer 2-4 deferred (`tests/e2e/`) |
 | Acceptance / BDD tests | Not found | none detected |
 | Performance / load tests | Not found | none detected |

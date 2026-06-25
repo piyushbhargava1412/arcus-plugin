@@ -1,0 +1,49 @@
+{
+  "skill_name": "flow-and-scope-discovery",
+  "cost_budget": { "max_tokens": 60000, "max_seconds": 180 },
+  "evals": [
+    {
+      "id": "fsd-identifies-grounded-flows-one-file-each",
+      "prompt": "Discover and persist the business flows for this repository. Write one file per discrete flow under .context/flows/. repo_structure and repo_boundaries are provided in the fixture (.context/repo_map.md and .context/repo_scope.md); the source is under src/.",
+      "mode": "autonomous",
+      "kind": "judged",
+      "fixture": {
+        "files": {
+          ".context/repo_map.md": "<!-- context-meta\nverification-commit: abc123\ngenerated-at: 2026-06-24T00:00:00Z\nconfidence: high\n-->\n# Repo Map\n## Entry Surfaces\n- src/controllers/registration_controller.js (HTTP POST /register)\n- src/controllers/payment_webhook_controller.js (HTTP POST /webhooks/payment)\n",
+          ".context/repo_scope.md": "<!-- context-meta\nverification-commit: abc123\ngenerated-at: 2026-06-24T00:00:00Z\nconfidence: high\n-->\n# Repo Scope\nA service that registers users and processes inbound payment webhooks.\n",
+          "src/controllers/registration_controller.js": "const { UserService } = require('../services/user_service');\nfunction register(req, res) {\n  const user = UserService.create(req.body);\n  res.json(user);\n}\nmodule.exports = { register };\n",
+          "src/services/user_service.js": "const { UserRepository } = require('../repositories/user_repository');\nconst UserService = {\n  create(data) { return UserRepository.insert(data); }\n};\nmodule.exports = { UserService };\n",
+          "src/repositories/user_repository.js": "const UserRepository = { insert(data) { return { id: 1, ...data }; } };\nmodule.exports = { UserRepository };\n",
+          "src/controllers/payment_webhook_controller.js": "const { PaymentService } = require('../services/payment_service');\nfunction handleWebhook(req, res) {\n  PaymentService.record(req.body);\n  res.sendStatus(200);\n}\nmodule.exports = { handleWebhook };\n",
+          "src/services/payment_service.js": "const PaymentService = { record(event) { return { recorded: true, event }; } };\nmodule.exports = { PaymentService };\n"
+        }
+      },
+      "expectations": [
+        { "text": "Identifies the two business flows that are actually present in the code: user registration (register controller -> UserService -> UserRepository) and payment webhook handling (webhook controller -> PaymentService).", "tier": "critical" },
+        { "text": "Does not invent flows that are absent from the code (e.g. authentication, refunds, notifications, reporting) — every flow it names is traceable to an entry point in the fixture source.", "tier": "critical" },
+        { "text": "Persists each flow as its own separate file under .context/flows/ (one file per flow, kebab-case), and does not produce a single aggregated all-flows document.", "tier": "quality" },
+        { "text": "Each flow file traces the real path through the actual files (controller -> service -> repository) using concrete file paths from the fixture.", "tier": "quality" }
+      ]
+    },
+    {
+      "id": "fsd-single-flow-no-overgeneralization",
+      "prompt": "Discover and persist the business flows for this repository into .context/flows/. The repo map and scope are provided in the fixture.",
+      "mode": "autonomous",
+      "kind": "judged",
+      "fixture": {
+        "files": {
+          ".context/repo_map.md": "<!-- context-meta\nverification-commit: def456\ngenerated-at: 2026-06-24T00:00:00Z\nconfidence: high\n-->\n# Repo Map\n## Entry Surfaces\n- src/api/orders_controller.py (HTTP POST /orders)\n",
+          ".context/repo_scope.md": "<!-- context-meta\nverification-commit: def456\ngenerated-at: 2026-06-24T00:00:00Z\nconfidence: high\n-->\n# Repo Scope\nAn order-intake service: accepts an order and persists it.\n",
+          "src/api/orders_controller.py": "from src.services.order_service import OrderService\n\ndef create_order(payload):\n    return OrderService.place(payload)\n",
+          "src/services/order_service.py": "from src.repos.order_repo import OrderRepo\n\nclass OrderService:\n    @staticmethod\n    def place(payload):\n        return OrderRepo.save(payload)\n",
+          "src/repos/order_repo.py": "class OrderRepo:\n    @staticmethod\n    def save(payload):\n        return {\"id\": 1, **payload}\n"
+        }
+      },
+      "expectations": [
+        { "text": "Identifies exactly the one business flow present (order placement: orders_controller -> OrderService -> OrderRepo) and grounds it in the actual fixture files.", "tier": "critical" },
+        { "text": "Does not over-generalize or fabricate additional flows (no inventory, payments, shipping, or cancellation flows) since only one entry surface exists in the fixture.", "tier": "critical" },
+        { "text": "Writes the single flow as its own file under .context/flows/ rather than an aggregated summary document.", "tier": "quality" }
+      ]
+    }
+  ]
+}

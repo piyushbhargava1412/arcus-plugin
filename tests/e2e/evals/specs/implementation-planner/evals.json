@@ -1,0 +1,80 @@
+{
+  "skill_name": "implementation-planner",
+  "cost_budget": { "max_tokens": 60000, "max_seconds": 180 },
+  "evals": [
+    {
+      "id": "ip-dialogue-scores-approaches-and-interviews-user",
+      "prompt": "You are the implementation-planner capability running in DIALOGUE mode. Using the grounded spec in grounded-spec.md and the context pack in context_pack.md, design the technical approach and produce the implementation_plan. Generate and score the candidate approaches, then interview me on the design-approach choice before decomposing the work into tasks.",
+      "mode": "dialogue",
+      "kind": "judged",
+      "fixture": {
+        "files": {
+          "grounded-spec.md": "# Grounded Spec: Add rate limiting to the public search endpoint\n\n## Context Grounding\nThe `/search` HTTP handler lives in `src/api/search.js` and currently has no throttling. The repo already has an in-memory cache util in `src/lib/cache.js`.\n\n## Resolved Ambiguities\n- Limit is per client IP.\n- Default budget: 60 requests per minute.\n- Over-limit responses return HTTP 429 with a `Retry-After` header.\n\n## Implementation Boundary\nTouch only the search request path and a new limiter module. Do NOT change the cache util's public API.\n\n## Guardrail Check\nNo new external dependencies without justification.\n",
+          "context_pack.md": "# Context Pack\n\n## Relevant Flows\n- [Search Request Path](.context/flows/search-request-path.md)\n\n## Key Files\n- `src/api/search.js` — the search HTTP handler (entry point).\n- `src/lib/cache.js` — existing in-memory cache, TTL-based eviction.\n\n## Constraints\n- Single-process Node service today; no shared store across instances.\n",
+          "src/api/search.js": "import { search } from '../lib/searchIndex.js';\n\nexport async function handleSearch(req, res) {\n  const q = req.query.q || '';\n  const hits = await search(q);\n  res.json({ hits });\n}\n"
+        }
+      },
+      "expectations": [
+        { "text": "Generates at least two distinct candidate approaches and records a scored comparison of them (e.g. a table scoring each on axes such as blast radius, backward-compat, and complexity) before choosing.", "tier": "critical" },
+        { "text": "Before producing the final task list, asks the user to choose the design approach as an interview question that lists the candidates, marks exactly one option as Recommended with a one-line rationale, and offers a custom-answer option.", "tier": "critical" },
+        { "text": "Decomposes the story into atomic tasks where each task is a single logical concern carrying its own Definition of Done / tests, rather than one large monolithic step.", "tier": "critical" },
+        { "text": "Honors the grounded constraints (per-IP limit, 60/min, HTTP 429 with Retry-After, no change to the cache util's public API) rather than relitigating them.", "tier": "quality" },
+        { "text": "Records the design dialogue (question, options including the Recommended marker, and the user's choice) in a dedicated design-dialogue section of the plan.", "tier": "quality" }
+      ]
+    },
+    {
+      "id": "ip-autonomous-auto-selects-and-never-blocks",
+      "prompt": "You are the implementation-planner capability running in AUTONOMOUS (afk) mode. Using the grounded spec in grounded-spec.md and the context pack in context_pack.md, produce the implementation_plan end to end without stopping for any input.",
+      "mode": "autonomous",
+      "kind": "judged",
+      "fixture": {
+        "files": {
+          "grounded-spec.md": "# Grounded Spec: Persist user notification preferences\n\n## Context Grounding\nNotification preferences are read in `src/notify/dispatcher.js` but are currently hard-coded. The repo uses a SQLite store accessed via `src/db/store.js`.\n\n## Resolved Ambiguities\n- Preferences are per user, keyed by `userId`.\n- Three channels: email, sms, push, each a boolean.\n- Unset preferences default to email=true, sms=false, push=false.\n\n## Implementation Boundary\nTouch the dispatcher read path and add a preferences table/accessor. Do NOT alter unrelated dispatcher logic.\n\n## Guardrail Check\nReuse the existing store module; no new ORM.\n",
+          "context_pack.md": "# Context Pack\n\n## Relevant Flows\n- [Notification Dispatch](.context/flows/notification-dispatch.md)\n\n## Key Files\n- `src/notify/dispatcher.js` — reads preferences, sends per channel.\n- `src/db/store.js` — thin SQLite accessor (run, get, all).\n\n## Constraints\n- Migrations live in `migrations/` as numbered SQL files.\n"
+        }
+      },
+      "expectations": [
+        { "text": "Generates at least two distinct scored candidate approaches and auto-selects one, recording an explicit score-based rationale for the chosen approach.", "tier": "critical" },
+        { "text": "Never blocks for user input: it does not ask an interview question and runs the planning end to end, leaving the design-dialogue section empty or omitted.", "tier": "critical" },
+        { "text": "Decomposes the story into atomic tasks where each task is a single independently-testable concern with its own Definition of Done.", "tier": "critical" },
+        { "text": "Respects the grounded constraints (per-user keying, the three boolean channels with their defaults, reuse of the existing store module, no new ORM).", "tier": "quality" },
+        { "text": "Sequences the tasks in a dependency-respecting order (e.g. schema/accessor before the dispatcher read path).", "tier": "quality" }
+      ]
+    },
+    {
+      "id": "ip-autonomous-avoids-monolithic-decomposition",
+      "prompt": "You are the implementation-planner capability running in AUTONOMOUS mode. The grounded spec in grounded-spec.md describes a feature with several clearly separable concerns. Produce the implementation_plan and break the work down into a proper sequence of tasks.",
+      "mode": "autonomous",
+      "kind": "judged",
+      "fixture": {
+        "files": {
+          "grounded-spec.md": "# Grounded Spec: Add CSV export to the reports page\n\n## Context Grounding\nThe reports page renders from `src/reports/view.js`. There is an existing JSON export at `src/reports/exportJson.js`.\n\n## Resolved Ambiguities\n- New endpoint `GET /reports/export.csv`.\n- CSV columns mirror the JSON export fields, in the same order.\n- A new download button is added to the reports view.\n- Empty result sets still return a valid CSV with only the header row.\n\n## Implementation Boundary\nAdd a CSV serializer, the new route, and the UI button. Do NOT change the JSON export behaviour.\n\n## Guardrail Check\nNo new CSV library; hand-roll the serializer (fields are simple scalars).\n",
+          "context_pack.md": "# Context Pack\n\n## Relevant Flows\n- [Reports Rendering](.context/flows/reports-rendering.md)\n\n## Key Files\n- `src/reports/view.js` — renders the reports page.\n- `src/reports/exportJson.js` — existing JSON export, the field-order reference.\n## Constraints\n- Routes are registered in `src/router.js`.\n"
+        }
+      },
+      "expectations": [
+        { "text": "Produces multiple atomic tasks (each one concern: serializer, route, UI button, empty-set handling) rather than a single monolithic do-everything task.", "tier": "critical" },
+        { "text": "Each task is independently testable and carries its own Definition of Done with verification (tests).", "tier": "critical" },
+        { "text": "Still generates and scores at least two candidate approaches and records the chosen one with rationale.", "tier": "critical" },
+        { "text": "Each task is traceable back to a requirement in the spec (CSV columns mirror JSON order, header-only CSV for empty sets, the download button).", "tier": "quality" }
+      ]
+    },
+    {
+      "id": "ip-dialogue-recommends-exactly-one-with-rationale",
+      "prompt": "You are the implementation-planner capability running in DIALOGUE mode. From the grounded spec in grounded-spec.md, generate and score candidate approaches and present the design-approach interview question to me.",
+      "mode": "dialogue",
+      "kind": "judged",
+      "fixture": {
+        "files": {
+          "grounded-spec.md": "# Grounded Spec: Retry failed webhook deliveries\n\n## Context Grounding\nWebhooks are sent from `src/webhooks/send.js`. Failures are currently logged and dropped.\n\n## Resolved Ambiguities\n- Retry up to 3 times with exponential backoff.\n- A delivery is failed on non-2xx response or timeout.\n- Permanently-failed deliveries are recorded for later inspection.\n\n## Implementation Boundary\nAdd retry/backoff around the send path and a dead-letter record. Do NOT change the webhook payload shape.\n\n## Guardrail Check\nPrefer in-process retry over introducing a queue unless justified.\n"
+        }
+      },
+      "expectations": [
+        { "text": "Generates at least two distinct candidate approaches (e.g. in-process retry vs. a queued/background retry) and scores them before presenting the choice.", "tier": "critical" },
+        { "text": "Presents a single interview question that marks exactly one option as Recommended with a one-line rationale and includes an explicit option for the user to propose their own approach.", "tier": "critical" },
+        { "text": "Does not commit to a final task decomposition before the user answers the design-approach question (the user's pick is treated as authoritative).", "tier": "critical" },
+        { "text": "The recommended option is consistent with the grounded guardrail preferring in-process retry over a queue unless justified.", "tier": "quality" }
+      ]
+    }
+  ]
+}

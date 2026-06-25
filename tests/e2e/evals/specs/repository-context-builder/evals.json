@@ -1,0 +1,44 @@
+{
+  "skill_name": "repository-context-builder",
+  "cost_budget": { "max_tokens": 70000, "max_seconds": 180 },
+  "evals": [
+    {
+      "id": "rcb-builds-repo-map-and-scope-grounded",
+      "prompt": "Build the baseline repository context for this repository. Analyze the structure and generate .context/repo_map.md and .context/repo_scope.md. repository_root is the fixture root.",
+      "mode": "autonomous",
+      "kind": "judged",
+      "fixture": {
+        "files": {
+          "package.json": "{\n  \"name\": \"todo-api\",\n  \"version\": \"1.0.0\",\n  \"scripts\": {\n    \"build\": \"tsc -p tsconfig.json\",\n    \"lint\": \"eslint src --ext .ts\",\n    \"test\": \"vitest run\"\n  },\n  \"dependencies\": { \"express\": \"^4.18.0\" },\n  \"devDependencies\": { \"typescript\": \"^5.4.0\", \"vitest\": \"^1.0.0\", \"eslint\": \"^8.0.0\" }\n}\n",
+          "tsconfig.json": "{ \"compilerOptions\": { \"outDir\": \"dist\", \"strict\": true } }\n",
+          "README.md": "# todo-api\nA small Express REST API for managing todo items.\n",
+          "src/server.ts": "import express from 'express';\nimport { todoRouter } from './routes/todos';\nconst app = express();\napp.use('/todos', todoRouter);\napp.listen(3000);\n",
+          "src/routes/todos.ts": "import { Router } from 'express';\nimport { TodoService } from '../services/todo_service';\nexport const todoRouter = Router();\ntodoRouter.get('/', (_req, res) => res.json(TodoService.list()));\n",
+          "src/services/todo_service.ts": "export const TodoService = {\n  list() { return [{ id: 1, title: 'first' }]; }\n};\n"
+        }
+      },
+      "expectations": [
+        { "text": "Produces repo_map.md grounded in evidence: detects the TypeScript/Node tech stack (express dependency, vitest, tsc), the src/ structure (server.ts entry point, routes/, services/), and the build/lint/test commands taken from package.json scripts.", "tier": "critical" },
+        { "text": "Produces repo_scope.md describing the repository's purpose and core responsibility (an Express REST API for managing todo items) grounded in the README and source, not invented domains.", "tier": "critical" },
+        { "text": "Both artifacts are written under .context/ and carry a context-meta block.", "tier": "quality" },
+        { "text": "Does not fabricate technologies, languages, entry surfaces, or commands that are absent from the fixture (e.g. claiming a database, a CI workflow, or a Python/Java layer that does not exist); flags such areas as not found rather than inventing them.", "tier": "quality" }
+      ]
+    },
+    {
+      "id": "rcb-flags-evidence-gaps-not-invent",
+      "prompt": "Build or refresh the shared repository context (.context/repo_map.md and .context/repo_scope.md) for this repository. repository_root is the fixture root.",
+      "mode": "autonomous",
+      "kind": "judged",
+      "fixture": {
+        "files": {
+          "go.mod": "module example.com/pinger\n\ngo 1.22\n",
+          "main.go": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tfmt.Println(ping())\n}\n\nfunc ping() string { return \"pong\" }\n"
+        }
+      },
+      "expectations": [
+        { "text": "Produces repo_map.md grounded in the actual fixture: detects Go (go.mod, go 1.22) as the tech stack and main.go as the CLI entry point.", "tier": "critical" },
+        { "text": "Does not invent absent surfaces — with no test files, no CI workflow, and no lint config present, it records those build/quality/test areas as not found / not present rather than fabricating commands or a test framework.", "tier": "quality" }
+      ]
+    }
+  ]
+}
