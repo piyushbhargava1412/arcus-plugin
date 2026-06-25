@@ -107,6 +107,43 @@ section('skills.mjs');
   }
 }
 
+// --- walkAgents / walkAll (agent-surface awareness) ---
+section('skills.mjs: agents surface');
+{
+  try {
+    const { walkSkills, walkAgents, walkAll, AGENTS_DIR, parseFrontmatter }
+      = await import('../lib/skills.mjs');
+
+    // walkAgents returns an array (possibly empty pre-migration); never throws.
+    const agents = walkAgents();
+    assert(Array.isArray(agents), 'walkAgents returns an array');
+
+    // README.md is documentation, never an agent.
+    assert(!agents.some(a => a.name === 'README' || a.name.toLowerCase() === 'readme'),
+           'walkAgents skips README.md (not a dispatched persona)');
+
+    // Every walked agent is a flat file tagged surface:'agent' with a name == basename.
+    for (const a of agents) {
+      assert(a.surface === 'agent', `agent ${a.name} is tagged surface:'agent'`);
+      assert(a.path.endsWith(`${a.name}.md`), `agent ${a.name} path matches its basename`);
+    }
+
+    // walkAll is the union of both surfaces with no duplicates.
+    const all = walkAll();
+    const skills = walkSkills();
+    assert(all.length === skills.length + agents.length,
+           `walkAll() is the union of skills (${skills.length}) + agents (${agents.length}), got ${all.length}`);
+    const skillNames = new Set(skills.map(s => s.name));
+    assert(all.every(i => i.surface === 'skill' || i.surface === 'agent'),
+           'every walkAll item is tagged with a surface');
+    assert(skills.every(s => skillNames.has(s.name)), 'walkAll preserves skill entries');
+
+    pass('walkAgents/walkAll tests passed');
+  } catch (err) {
+    fail(`walkAgents/walkAll tests failed: ${err.message}`);
+  }
+}
+
 // --- L1-1, L1-2, L1-3 checks ---
 section('L1-1..L1-3');
 {
