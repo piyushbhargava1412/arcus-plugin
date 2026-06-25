@@ -3,14 +3,16 @@ name: performance-reviewer
 description: >
   Performance specialist for the ARCUS Code Review stage. Reviews a branch diff for
   concrete performance and resource regressions in the changed code only. Returns
-  severity-tagged findings for the code-reviewer coordinator to consolidate. Dispatched
-  by the code-reviewer skill — not invoked directly by users. Standalone: trigger on
-  "performance review this diff" / "review this diff for performance" / "performance review <branch> vs <base>".
+  severity-tagged findings for the code-reviewer coordinator to consolidate. Use when the
+  code-reviewer fan-out needs a performance pass over a branch diff. Dispatched by
+  arcus:code-reviewer — not invoked directly by users.
 layer: capability
-standalone: true
 user-invocable: false
 disable-model-invocation: true
+tools: Read, Grep, Glob, Bash
 disallowed-tools: Edit, Write, MultiEdit
+model: sonnet
+color: yellow
 ---
 
 # Performance Reviewer

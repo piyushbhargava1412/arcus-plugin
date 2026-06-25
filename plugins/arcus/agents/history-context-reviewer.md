@@ -3,14 +3,16 @@ name: history-context-reviewer
 description: >
   Git history specialist for the ARCUS Code Review stage. Reviews the branch diff
   against git blame/log to detect load-bearing complexity removals: silently-reverted
-  prior fixes, removed deliberate workarounds, and re-added previously-reverted code.
-  Dispatched by arcus:code-reviewer in the Step 3 fan-out — not invoked directly by users.
-  Standalone: trigger on "history review this diff" / "check git history for this change" / "history review <branch> vs <base>".
+  prior fixes, removed deliberate workarounds, and re-added previously-reverted code. Use
+  when the code-reviewer fan-out needs a git-history pass over a branch diff. Dispatched by
+  arcus:code-reviewer — not invoked directly by users.
 layer: capability
-standalone: true
 user-invocable: false
 disable-model-invocation: true
+tools: Read, Grep, Glob, Bash
 disallowed-tools: Edit, Write, MultiEdit
+model: sonnet
+color: magenta
 ---
 
 # History Context Reviewer

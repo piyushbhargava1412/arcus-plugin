@@ -3,14 +3,16 @@ name: security-reviewer
 description: >
   Security specialist for the ARCUS Code Review stage. Reviews a branch diff for
   exploitable or concretely dangerous vulnerabilities in the changed code only. Returns
-  severity-tagged findings for the code-reviewer coordinator to consolidate. Dispatched
-  by the code-reviewer skill — not invoked directly by users. Standalone: trigger on
-  "security review this diff" / "review this diff for vulnerabilities" / "security review <branch> vs <base>".
+  severity-tagged findings for the code-reviewer coordinator to consolidate. Use when the
+  code-reviewer fan-out needs a security pass over a branch diff. Dispatched by
+  arcus:code-reviewer — not invoked directly by users.
 layer: capability
-standalone: true
 user-invocable: false
 disable-model-invocation: true
+tools: Read, Grep, Glob, Bash
 disallowed-tools: Edit, Write, MultiEdit
+model: sonnet
+color: red
 ---
 
 # Security Reviewer

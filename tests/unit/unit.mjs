@@ -36,8 +36,9 @@ section('skills.mjs');
     assert(specFM.name === 'spec-finalizer', 'parseFrontmatter extracts name from spec-finalizer');
     assert(tierOf(specFM) === 'capability', 'tierOf reads layer field as capability for spec-finalizer');
 
-    // Test 2: parseFrontmatter on security-reviewer
-    const secReviewerText = await fs.readFile(`${SKILLS_DIR}/security-reviewer/SKILL.md`, 'utf-8');
+    // Test 2: parseFrontmatter on security-reviewer (now an AGENT — flat file under agents/)
+    const { AGENTS_DIR } = await import('../lib/skills.mjs');
+    const secReviewerText = await fs.readFile(`${AGENTS_DIR}/security-reviewer.md`, 'utf-8');
     const secFM = parseFrontmatter(secReviewerText);
     assert(Array.isArray(secFM['disallowed-tools']), 'disallowed-tools is parsed as an array');
     assert(secFM['disallowed-tools'].includes('Edit'), 'disallowed-tools contains Edit');
@@ -244,19 +245,20 @@ section('L1-4..L1-7');
   try {
     const { checkAdvisoryReadOnly, checkCapabilityNoState, checkNoInlinedDomain, checkCrossRefs }
       = await import('../lib/checks.mjs');
-    const { walkSkills, parseFrontmatter, ADVISORY_REVIEWERS }
+    const { walkSkills, walkAll, parseFrontmatter, ADVISORY_REVIEWERS }
       = await import('../lib/skills.mjs');
     const fs = await import('node:fs/promises');
     const path = await import('node:path');
     const { repoRoot } = await import('../lib/skills.mjs');
 
-    // Get all skills for cross-ref validation
-    const allSkills = walkSkills();
+    // Use the union (skills + agents) so advisory reviewers (now agents) and
+    // cross-references to agents resolve.
+    const allSkills = walkAll();
     const knownSkillNames = new Set(allSkills.map(s => s.name));
 
-    // Test L1-4: checkAdvisoryReadOnly passes on real advisory reviewer (security-reviewer)
+    // Test L1-4: checkAdvisoryReadOnly passes on real advisory reviewer (security-reviewer, now an agent)
     const securityReviewer = allSkills.find(s => s.name === 'security-reviewer');
-    assert(securityReviewer !== undefined, 'security-reviewer skill exists');
+    assert(securityReviewer !== undefined, 'security-reviewer agent exists');
 
     const secResult = checkAdvisoryReadOnly({
       name: securityReviewer.name,

@@ -1,14 +1,18 @@
 ---
 name: spec-compliance-reviewer
 description: >
-  Review whether an implementation matches its specification. Verifies code against
-  the task's Definition of Done from the implementation plan. Returns PASS or structured issue list.
-  Used by the orchestrator after each task implementation.
+  Review whether an implementation matches its specification. Verifies code against the
+  task's Definition of Done from the implementation plan. Returns PASS or a structured issue
+  list. Use when the orchestrator needs a per-task spec-compliance check or the code-reviewer
+  needs a holistic spec pass. Dispatched by arcus:subagent-task-dispatcher and
+  arcus:code-reviewer — not invoked directly by users.
 layer: capability
-standalone: true
 user-invocable: false
 disable-model-invocation: true
+tools: Read, Grep, Glob, Bash
 disallowed-tools: Edit, Write, MultiEdit
+model: sonnet
+color: green
 ---
 
 # Spec Compliance Reviewer

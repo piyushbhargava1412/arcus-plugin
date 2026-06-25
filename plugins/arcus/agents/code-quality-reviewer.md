@@ -2,14 +2,16 @@
 name: code-quality-reviewer
 description: >
   Review implementation code for quality: pattern fidelity, clean structure, test coverage,
-  and maintainability. Returns severity-tagged findings. Dispatched holistically by the
-  code-reviewer coordinator over the whole branch diff — not invoked per task. Standalone:
-  trigger on "code quality review this diff" / "quality review this diff" / "code quality review <branch> vs <base>".
+  and maintainability. Returns severity-tagged findings. Use when the code-reviewer coordinator
+  needs a holistic code-quality pass over the whole branch diff. Dispatched by arcus:code-reviewer
+  — not invoked directly by users.
 layer: capability
-standalone: true
 user-invocable: false
 disable-model-invocation: true
+tools: Read, Grep, Glob, Bash
 disallowed-tools: Edit, Write, MultiEdit
+model: sonnet
+color: blue
 ---
 
 # Code Quality Reviewer
