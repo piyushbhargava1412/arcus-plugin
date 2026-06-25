@@ -23,7 +23,7 @@ sync only the affected sections** — never regenerate.
 This stage is deliberately **FACTS-ONLY** and **token-efficient**. It reads **no story artifacts** —
 no `plan.md`, no `grounded-spec.md`, no `context-pack.md`, no `test-plan.md`. Planning intent is irrelevant;
 only what the diff actually changed and what the `.context/` artifacts actually say matter. The strict
-trigger catalog in [`references/drift-triggers.md`](references/drift-triggers.md) is the sole authority
+trigger catalog in [`"$ARCUS_HOME"/agent-resources/context-drift-sync/references/drift-triggers.md`]("$ARCUS_HOME"/agent-resources/context-drift-sync/references/drift-triggers.md) is the sole authority
 for materiality — this skill **references** it and does not restate its triggers.
 
 **NO-OP is the default outcome; sync is the exception.** A pure internal refactor (logic reshaped, names
@@ -142,12 +142,12 @@ Map each changed file to candidate artifacts using each artifact's **own listed 
 file's Entry Points / Core Path / Scope; `repo_map`'s module/script/config/test listings; `repo_scope`'s
 ownership/integration listings; `testing-patterns`' framework/layer/command listings; `design-and-coding-patterns`'
 pattern/convention/idiom listings), applying the
-strict triggers in [`references/drift-triggers.md`](references/drift-triggers.md).
+strict triggers in [`"$ARCUS_HOME"/agent-resources/context-drift-sync/references/drift-triggers.md`]("$ARCUS_HOME"/agent-resources/context-drift-sync/references/drift-triggers.md).
 
 After mapping to existing artifacts, run a **new-flow completeness check**:
 
 1. Scan the diff for any new flow surface as defined in the "new flow surface" trigger in
-   `references/drift-triggers.md` (HTTP handlers, listeners, jobs, UI routes, new public
+   `"$ARCUS_HOME"/agent-resources/context-drift-sync/references/drift-triggers.md` (HTTP handlers, listeners, jobs, UI routes, new public
    cross-cutting service methods, new outbound integration entries, etc.).
 2. For each candidate, check whether **any** existing `.context/flows/*.md` file already covers it
    (i.e. the candidate appears in that file's Entry Points, Core Path, or Scope). Read the existing
@@ -165,7 +165,7 @@ trigger is genuinely crossed. Never read hunks for files that map to no artifact
 
 ### Step 5 — Strict materiality gate
 
-Flag an artifact **only if at least one trigger** from `references/drift-triggers.md` is crossed.
+Flag an artifact **only if at least one trigger** from `"$ARCUS_HOME"/agent-resources/context-drift-sync/references/drift-triggers.md` is crossed.
 A change that crosses no trigger is a **NO-OP** for that artifact. The gate is deliberately strict.
 
 ### Step 6 — NO-OP short-circuit
@@ -207,7 +207,7 @@ For each **flagged** artifact:
      accurate but not re-generated.
 4. **Flow add/remove → also update `AGENTS.md`.** If the change introduces a **new flow file** or
    **removes** one (the set of flow files changes), regenerate the `AGENTS.md` **Business Flows index**
-   and **Navigation table** per the AGENTS.md Flow-Index Rule in `references/drift-triggers.md`. In-place
+   and **Navigation table** per the AGENTS.md Flow-Index Rule in `"$ARCUS_HOME"/agent-resources/context-drift-sync/references/drift-triggers.md`. In-place
    edits to the body of an existing flow file, `repo_map.md`, `repo_scope.md`, `testing-patterns.md`, or
    `design-and-coding-patterns.md`
    do **NOT** touch `AGENTS.md`.
@@ -245,7 +245,7 @@ re-infer it.
 1. Run the drift-check. If NO-OP, report "No material context drift" and skip to Handoff (no template,
    no commit).
 2. If at least one artifact is flagged, render
-   [`assets/drift-assessment-template.md`](assets/drift-assessment-template.md): the per-artifact
+   [`"$ARCUS_HOME"/agent-resources/context-drift-sync/assets/drift-assessment-template.md`]("$ARCUS_HOME"/agent-resources/context-drift-sync/assets/drift-assessment-template.md): the per-artifact
    assessment table plus the per-artifact one-line change summaries.
 3. Present the **single consolidated `yes/no` confirmation** from the template. This is **authoritative
    from planning** — it is **NOT** per-artifact prompts and **NOT** a deselect UI. One `yes` applies
@@ -318,7 +318,7 @@ Resume later with: "create pull request for <STORY_ID>"
 - **FACTS-ONLY**: no `plan.md` / `grounded-spec.md` / `context-pack.md` / `test-plan.md` read — drift is
   established only from the diff and the artifacts' own content.
 - **Strict gate with a clean NO-OP path**: artifacts are flagged only when a trigger in
-  `references/drift-triggers.md` is crossed; in a story run, "No material context drift" produces no
+  `"$ARCUS_HOME"/agent-resources/context-drift-sync/references/drift-triggers.md` is crossed; in a story run, "No material context drift" produces no
   edits and no commit (a standalone sweep still writes a hash-only re-leveling commit).
 - **Branch-scoped baseline in-pipeline**: a story run diffs from `merge-base(HEAD, base_branch)`, so the
   change set is bounded to the branch and never grows unbounded with stale hashes; pre-fork/main-level
@@ -340,5 +340,5 @@ Resume later with: "create pull request for <STORY_ID>"
 
 ## Resources
 
-- **Strict trigger catalog**: [`references/drift-triggers.md`](references/drift-triggers.md)
-- **Gated assessment template**: [`assets/drift-assessment-template.md`](assets/drift-assessment-template.md)
+- **Strict trigger catalog**: [`"$ARCUS_HOME"/agent-resources/context-drift-sync/references/drift-triggers.md`]("$ARCUS_HOME"/agent-resources/context-drift-sync/references/drift-triggers.md)
+- **Gated assessment template**: [`"$ARCUS_HOME"/agent-resources/context-drift-sync/assets/drift-assessment-template.md`]("$ARCUS_HOME"/agent-resources/context-drift-sync/assets/drift-assessment-template.md)

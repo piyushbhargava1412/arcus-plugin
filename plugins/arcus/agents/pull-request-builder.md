@@ -29,7 +29,7 @@ Read the named inputs:
 ### Step 2: Change Summarization
 - Analyze the `change_set` input to understand which files were modified.
 - Categorize changes into Features, Fixes, and Tests.
-- Draft the PR description using `./assets/pr-template.md`.
+- Draft the PR description using `"$ARCUS_HOME"/agent-resources/pull-request-builder/assets/pr-template.md`.
 
 ### Step 2b: Context Updates (from the Context Sync stage)
 The `context_sync` stage (skill `arcus:context-drift-sync`) runs immediately before Closure and may
@@ -54,7 +54,7 @@ have reconciled shared context artifacts. Detect and render those updates from t
 - **Artifact-Ready**: The PR description is written to the output path.
 
 ## Resources
-- **PR Template**: `./assets/pr-template.md`
+- **PR Template**: `"$ARCUS_HOME"/agent-resources/pull-request-builder/assets/pr-template.md`
 
 ## Handoff Protocol
 

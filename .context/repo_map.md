@@ -67,7 +67,7 @@ arcus-plugin/
 | Language(s) | Markdown | n/a | `README.md`, `plugins/arcus/skills/*/SKILL.md`, `site/**/*.md` |
 | Language(s) | Bash | n/a | `plugins/arcus/scripts/*.sh` |
 | Language(s) | TypeScript | n/a | `site/.vitepress/config.ts` |
-| Language(s) | Python | n/a | `plugins/arcus/agents/context-pack-builder/scripts/match_flows.py` |
+| Language(s) | Python | n/a | `plugins/arcus/agent-resources/context-pack-builder/scripts/match_flows.py` |
 | Language(s) | JSON | n/a | `.claude-plugin/marketplace.json`, `plugins/arcus/hooks/hooks.json`, `plugins/arcus/.claude-plugin/plugin.json` |
 | Language(s) | JavaScript (Node ESM) | n/a | `tests/**/*.mjs`, `tests/lib/*.mjs`, `tests/e2e/**/*.mjs` |
 | Framework(s) | VitePress | `^1.6.3` | `site/package.json` |

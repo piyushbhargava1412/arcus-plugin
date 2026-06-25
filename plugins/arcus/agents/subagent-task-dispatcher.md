@@ -36,7 +36,7 @@ For task N from `plan.md`, extract:
 
 ### Step 2: Build Subagent Prompt
 
-Use the template at `assets/task-prompt-template.md` to construct the subagent prompt. The prompt includes:
+Use the template at `"$ARCUS_HOME"/agent-resources/subagent-task-dispatcher/assets/task-prompt-template.md` to construct the subagent prompt. The prompt includes:
 
 - Repository context (from `context-pack.md` — architecture section only, not full flows)
 - The specific task to implement

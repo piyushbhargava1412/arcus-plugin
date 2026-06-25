@@ -35,14 +35,14 @@ Read the named inputs:
 - **Crucial**: Map every test case to a specific **Task ID** from the `implementation_plan` input. This allows the `subagent-task-dispatcher` to know exactly which tests to implement in each iteration.
 - **Complexity Classification**: For each test case, assess its difficulty and assign a `complexity` level (`heavy`, `medium`, or `light`). Use the guardrail heuristics in the `arcus:model-strategy` skill (Classification Guardrails → Test Complexity section). Do NOT use model names — only difficulty levels.
 - **Alignment**: Ensure all test designs align with the **Testing Patterns** identified in the `context_pack` input (if provided).
-- Follow the strategies in `./references/qa-best-practices.md`.
+- Follow the strategies in `"$ARCUS_HOME"/agent-resources/test-spec-compiler/references/qa-best-practices.md`.
 
 ### Step 4: Define Regression Targets
 - Identify which business flows might be indirectly impacted by reading the flow files linked under **Relevant Flows** in the `context_pack` input (if provided).
 - Explicitly list these as regression checks in the test plan.
 
 ### Step 5: Persist the Test Plan
-- Use `./assets/test-plan-template.md` to structure the final matrix.
+- Use `"$ARCUS_HOME"/agent-resources/test-spec-compiler/assets/test-plan-template.md` to structure the final matrix.
 - Write the output to the output path (default `.arcus/outputs/test-spec-compiler/<story-id-or-timestamp>.md` when no explicit path is passed; the dispatcher may override it).
 
 ## Success Criteria
@@ -51,8 +51,8 @@ Read the named inputs:
 - **Pattern-Aligned**: Uses the same assertion and mocking styles as the existing codebase.
 
 ## Resources
-- **Test Plan Template**: `./assets/test-plan-template.md`
-- **QA Best Practices**: `./references/qa-best-practices.md`
+- **Test Plan Template**: `"$ARCUS_HOME"/agent-resources/test-spec-compiler/assets/test-plan-template.md`
+- **QA Best Practices**: `"$ARCUS_HOME"/agent-resources/test-spec-compiler/references/qa-best-practices.md`
 
 ## Handoff Protocol
 

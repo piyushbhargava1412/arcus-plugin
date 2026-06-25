@@ -21,7 +21,7 @@ Generates a targeted, minimal context pack for a single user story by mapping it
 ## Workflow
 
 ### Step 0: Script Execution Note
-This skill runs a bundled helper script (`match_flows.py`) via shell. Because the shell runs from the workspace—not this skill's directory—invoke the script by absolute path: resolve `ARCUS_HOME` from `.arcus/env`, then run `"$ARCUS_HOME"/agents/context-pack-builder/scripts/match_flows.py`. Other resources (templates, references) load by relative path automatically.
+This skill runs a bundled helper script (`match_flows.py`) via shell. Because the shell runs from the workspace—not this skill's directory—invoke the script by absolute path: resolve `ARCUS_HOME` from `.arcus/env`, then run `"$ARCUS_HOME"/agent-resources/context-pack-builder/scripts/match_flows.py`. Bundled resources (templates, references) likewise live under `"$ARCUS_HOME"/agent-resources/context-pack-builder/`; load them by that absolute path.
 
 ### Step 1: Initialize & Extract ID
 - Extract the **Story ID** and **Summary** from the `story` input. 
@@ -29,7 +29,7 @@ This skill runs a bundled helper script (`match_flows.py`) via shell. Because th
 
 ### Step 2: Map Business Flows
 - Run the helper script to identify relevant flows without reading every file:
-  `python3 "$ARCUS_HOME/agents/context-pack-builder/scripts/match_flows.py" .`
+  `python3 "$ARCUS_HOME/agent-resources/context-pack-builder/scripts/match_flows.py" .`
 - Compare the story summary against the flow summaries returned by the script.
 - Select the **1–2 most relevant flows**. Include more only if the story spans multiple domain areas.
 
@@ -39,7 +39,7 @@ This skill runs a bundled helper script (`match_flows.py`) via shell. Because th
 - **Rules:** Do NOT perform a full repository scan. Rely only on these shared artifacts from `repo_context`.
 
 ### Step 4: Synthesize & Generate
-- Use the `./assets/context-pack-template.md` to structure the output.
+- Use the template at `"$ARCUS_HOME"/agent-resources/context-pack-builder/assets/context-pack-template.md` to structure the output.
 - In **Relevant Flows**, link each selected flow as a markdown link relative to the `repo_context` location so consumers can read flow detail at full fidelity from the source. Synthesize only; do not copy flow content into the pack.
 - Identify likely working areas (packages/classes) based on flow entry points.
 - Explicitly capture any gaps or ambiguities in the "Assumptions / Gaps" section.
@@ -58,9 +58,9 @@ This skill runs a bundled helper script (`match_flows.py`) via shell. Because th
 - **INSUFFICIENT_CONTEXT**: If `repo_context` files are missing, alert the user that the repository needs "context reconciliation" first.
 
 ## Resources
-- **Template**: `./assets/context-pack-template.md`
-- **Matching Script**: `./scripts/match_flows.py` (resolve via `$ARCUS_HOME` for execution)
-- **Design Patterns**: `./references/design-patterns.md`
+- **Template**: `"$ARCUS_HOME"/agent-resources/context-pack-builder/assets/context-pack-template.md`
+- **Matching Script**: `"$ARCUS_HOME"/agent-resources/context-pack-builder/scripts/match_flows.py`
+- **Design Patterns**: `"$ARCUS_HOME"/agent-resources/context-pack-builder/references/design-patterns.md`
 
 ## Contract
 

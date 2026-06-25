@@ -203,8 +203,12 @@ section('L1-8: Bundled-resource paths resolve');
 
   for (const item of items) {
     // Injected fileExists predicate. Skills root at the skill dir; agents are flat
-    // files whose bundled resources (if any) live in a sibling dir agents/<name>/.
-    const resourceRoot = item.surface === 'agent' ? join(item.dir, item.name) : item.dir;
+    // files (agents/<name>.md) whose bundled resources live OUTSIDE the agent glob,
+    // under plugins/arcus/agent-resources/<name>/ — kept out of agents/ so the live
+    // loader does not register companion .md files as phantom agents.
+    const resourceRoot = item.surface === 'agent'
+      ? join(repoRoot, 'plugins/arcus/agent-resources', item.name)
+      : item.dir;
     const fileExists = (resourcePath) => {
       const fullPath = join(resourceRoot, resourcePath);
       return existsSync(fullPath);
