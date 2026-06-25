@@ -1,8 +1,8 @@
 # Repository Scope: arcus-plugin
 
 <!-- context-meta
-verification-commit: 6072385578e5017440dbed197e9bd0fa133f9b51
-generated-at: 2026-06-24T06:51:22Z
+verification-commit: bcd35c43b6fe8286af5f8d45ab30c433ea67d727
+generated-at: 2026-06-25T07:35:00Z
 confidence: high
 -->
 
@@ -21,7 +21,7 @@ It provides orchestrator skills, supporting skills, and deterministic helper scr
 | Area | Scope | Evidence |
 |---|---|---|
 | Marketplace + plugin metadata | Marketplace catalog and plugin manifest metadata/versioning | `.claude-plugin/marketplace.json`, `plugins/arcus/.claude-plugin/plugin.json` |
-| Skill catalog | Three-tier library: Orchestrators (unified `arcus-controller`, shared `implementation-runner` loop, `subagent-task-dispatcher`), Coordinators (`kick-off`, `code-reviewer`, `code-simplifier`, `repo-agentifier`), and Capabilities in markdown specs (27 skills total, incl. `write-evals`) | `plugins/arcus/skills/*/SKILL.md` |
+| Skill catalog | Three-tier library: Orchestrators (unified `arcus-controller`, shared `implementation-runner` loop), Coordinators (`kick-off`, `code-reviewer`, `repo-agentifier`), and Capabilities across two surfaces — 13 flat agent files + 16 skill dirs (incl. `subagent-task-dispatcher` and `code-simplifier` in agents/) | `plugins/arcus/agents/*.md`, `plugins/arcus/skills/*/SKILL.md` |
 | Hook + script runtime | Session bootstrap hook and deterministic bash utilities (incl. `scaffold.sh`, `branch.sh`, and the shared `lib/branch_name.sh`) | `plugins/arcus/hooks/hooks.json`, `plugins/arcus/scripts/*.sh`, `plugins/arcus/scripts/lib/branch_name.sh` |
 | Test coverage | Shell-based checkpoint test harness; Node-ESM zero-dependency Layer-1 static suite (skill manifests, frontmatter, line budgets, cross-references, hooks integrity, artifact schemas) | `plugins/arcus/scripts/tests/checkpoint.test.sh`, `tests/` |
 | Documentation site | VitePress docs content and config | `site/.vitepress/config.ts`, `site/guide/*.md`, `site/concepts/*.md` |
@@ -40,7 +40,7 @@ It provides orchestrator skills, supporting skills, and deterministic helper scr
 ## Tech Stack Signals
 | Category | Signals | Evidence |
 |---|---|---|
-| Languages | Markdown, Bash, TypeScript, JSON, Python, JavaScript (Node ESM) | `README.md`, `plugins/arcus/scripts/*.sh`, `site/.vitepress/config.ts`, `plugins/arcus/.claude-plugin/plugin.json`, `plugins/arcus/skills/context-pack-builder/scripts/match_flows.py`, `tests/**/*.mjs` |
+| Languages | Markdown, Bash, TypeScript, JSON, Python, JavaScript (Node ESM) | `README.md`, `plugins/arcus/scripts/*.sh`, `site/.vitepress/config.ts`, `plugins/arcus/.claude-plugin/plugin.json`, `plugins/arcus/agents/context-pack-builder/scripts/match_flows.py`, `tests/**/*.mjs` |
 | Frameworks / tooling | VitePress, vitepress-plugin-mermaid, GitHub Actions | `site/package.json`, `site/.vitepress/config.ts`, `.github/workflows/docs.yml`, `.github/workflows/tests.yml` |
 | Dependency manager(s) | pnpm (`pnpm@10.32.1`) | `site/package.json`, `site/pnpm-lock.yaml`, `package.json` (repo root + docs site) |
 
@@ -52,7 +52,7 @@ It provides orchestrator skills, supporting skills, and deterministic helper scr
 ## Source/Test/Config/Scripts Roots
 | Category | Roots / Files |
 |---|---|
-| Source / specs | `plugins/arcus/skills/`, `plugins/arcus/hooks/`, `plugins/arcus/.claude-plugin/`, `.claude-plugin/` |
+| Source / specs | `plugins/arcus/agents/`, `plugins/arcus/skills/`, `plugins/arcus/hooks/`, `plugins/arcus/.claude-plugin/`, `.claude-plugin/` |
 | Scripts | `plugins/arcus/scripts/` |
 | Tests | `plugins/arcus/scripts/tests/`, `tests/` |
 | Docs | `site/`, `README.md`, `CHANGELOG.md` |

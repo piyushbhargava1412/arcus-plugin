@@ -1,8 +1,8 @@
 # Repository Map: arcus-plugin
 
 <!-- context-meta
-verification-commit: 6072385578e5017440dbed197e9bd0fa133f9b51
-generated-at: 2026-06-24T20:12:00Z
+verification-commit: bcd35c43b6fe8286af5f8d45ab30c433ea67d727
+generated-at: 2026-06-25T07:35:00Z
 confidence: high
 -->
 
@@ -30,6 +30,7 @@ arcus-plugin/
 │       │   ├── pr.sh
 │       │   ├── lib/branch_name.sh
 │       │   └── tests/checkpoint.test.sh
+│       ├── agents/                      # flat capability agents (13 .md files; Claude Code agent surface)
 │       └── skills/
 │           ├── arcus-controller/        # unified orchestrator (interactive + autonomous)
 │           ├── kick-off/                # brainstorm coordinator (context-pack → spec-finalizer)
@@ -37,7 +38,7 @@ arcus-plugin/
 │           ├── repo-agentifier/
 │           ├── repository-context-builder/
 │           ├── write-evals/             # Layer-2 eval-spec authoring capability
-│           └── ... (supporting skills)
+│           └── ... (16 skill dirs)
 ├── site/
 │   ├── .vitepress/config.ts
 │   ├── concepts/
@@ -66,7 +67,7 @@ arcus-plugin/
 | Language(s) | Markdown | n/a | `README.md`, `plugins/arcus/skills/*/SKILL.md`, `site/**/*.md` |
 | Language(s) | Bash | n/a | `plugins/arcus/scripts/*.sh` |
 | Language(s) | TypeScript | n/a | `site/.vitepress/config.ts` |
-| Language(s) | Python | n/a | `plugins/arcus/skills/context-pack-builder/scripts/match_flows.py` |
+| Language(s) | Python | n/a | `plugins/arcus/agents/context-pack-builder/scripts/match_flows.py` |
 | Language(s) | JSON | n/a | `.claude-plugin/marketplace.json`, `plugins/arcus/hooks/hooks.json`, `plugins/arcus/.claude-plugin/plugin.json` |
 | Language(s) | JavaScript (Node ESM) | n/a | `tests/**/*.mjs`, `tests/lib/*.mjs`, `tests/e2e/**/*.mjs` |
 | Framework(s) | VitePress | `^1.6.3` | `site/package.json` |
@@ -83,9 +84,9 @@ arcus-plugin/
 |---|---|---|
 | Marketplace metadata | Declares marketplace and plugin source | `.claude-plugin/marketplace.json` |
 | Plugin manifest + hook wiring | Declares plugin metadata and session hook behavior | `plugins/arcus/.claude-plugin/plugin.json`, `plugins/arcus/hooks/hooks.json` |
-| Orchestrator skills | Unified pipeline orchestrator (interactive + autonomous), Implementation loop driver, per-task dispatcher | `plugins/arcus/skills/arcus-controller/` (interactive + autonomous), `plugins/arcus/skills/implementation-runner/` (shared loop), `plugins/arcus/skills/subagent-task-dispatcher/` |
-| Coordinator skills | Stateless multi-capability sequencers (brainstorm, review fan-out, simplify gate, agentification) | `plugins/arcus/skills/kick-off/`, `plugins/arcus/skills/code-reviewer/`, `plugins/arcus/skills/code-simplifier/`, `plugins/arcus/skills/repo-agentifier/` |
-| Capability + supporting skill modules | Atomic, stateless skills: spec finalization, planning, review, context/test discovery, PR closure, review-consolidator, simplify-and-verify, eval-spec authoring (27 total skills) | `plugins/arcus/skills/*/` |
+| Orchestrator skills | Unified pipeline orchestrator (interactive + autonomous), Implementation loop driver, per-task dispatcher | `plugins/arcus/skills/arcus-controller/` (interactive + autonomous), `plugins/arcus/skills/implementation-runner/` (shared loop), `plugins/arcus/agents/subagent-task-dispatcher.md` |
+| Coordinator skills | Stateless multi-capability sequencers (brainstorm, review fan-out, simplify gate, agentification) | `plugins/arcus/skills/kick-off/`, `plugins/arcus/skills/code-reviewer/`, `plugins/arcus/agents/code-simplifier.md`, `plugins/arcus/skills/repo-agentifier/` |
+| Capability + supporting skill modules | Atomic, stateless capabilities: spec finalization, planning, review, context/test discovery, PR closure, review-consolidator, simplify-and-verify, eval-spec authoring (13 agent flat-files + 16 skill dirs = 29 total surfaces) | `plugins/arcus/agents/*.md`, `plugins/arcus/skills/*/` |
 | Helper script runtime | Deterministic git/state helper scripts | `plugins/arcus/scripts/` |
 | Layer-1 test suite | Zero-dependency Node-ESM static checks (skill manifests, frontmatter, line budgets, cross-references, hooks integrity, artifact schemas) | `tests/` |
 | Docs site | User documentation and concepts site | `site/` |
@@ -97,7 +98,7 @@ arcus-plugin/
 | `arcus-controller` | Skill activation entry (unified pipeline: interactive `implement`/`plan <STORY>`; autonomous `forge`/`afk <STORY>`) | `plugins/arcus/skills/arcus-controller/SKILL.md` |
 | `kick-off` | Skill activation entry (brainstorm coordinator: `brainstorm`/`kick off`/`architect <STORY>`) | `plugins/arcus/skills/kick-off/SKILL.md` |
 | `implementation-runner` | Skill activation entry (Implementation loop: `implement`/`code <STORY>`) | `plugins/arcus/skills/implementation-runner/SKILL.md` |
-| `context-drift-sync` | Skill activation entry (Context Sync stage; standalone: `sync context for <STORY>`/`sync context`) | `plugins/arcus/skills/context-drift-sync/SKILL.md` |
+| `context-drift-sync` | Skill activation entry (Context Sync stage; standalone: `sync context for <STORY>`/`sync context`) | `plugins/arcus/agents/context-drift-sync.md` |
 | `repo-agentifier` | Skill activation entry | `plugins/arcus/skills/repo-agentifier/SKILL.md` |
 | Docs local dev | Command entry (`pnpm docs:dev`) | `site/package.json` |
 | Docs CI build/deploy | Workflow entry | `.github/workflows/docs.yml` |

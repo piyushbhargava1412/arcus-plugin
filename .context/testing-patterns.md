@@ -1,8 +1,8 @@
 # Testing Patterns
 
 <!-- context-meta
-verification-commit: 6072385578e5017440dbed197e9bd0fa133f9b51
-generated-at: 2026-06-24T06:51:22Z
+verification-commit: bcd35c43b6fe8286af5f8d45ab30c433ea67d727
+generated-at: 2026-06-25T07:35:00Z
 confidence: high
 -->
 
@@ -41,13 +41,13 @@ Not used — Layer-1 checks are pure static validation (no LLM invocations, no e
 - Example: `assertEqual(actual, expected, message)`, `assertTrue(condition, message)`
 
 ### Test Data / Fixture Patterns
-- **Planted-bad fixtures**: `tests/fixtures/` — intentionally-broken skill manifests, frontmatter, checkpoint JSON, plan markdown, hooks JSON (used by unit tests to verify checks correctly reject violations)
+- **Planted-bad fixtures**: `tests/fixtures/` — intentionally-broken skill manifests, frontmatter, checkpoint JSON, plan markdown, hooks JSON, and agent frontmatter files (used by unit tests to verify checks correctly reject violations)
 - **Live-tree integration**: integration tests read the actual `plugins/arcus/skills/`, `plugins/arcus/hooks/hooks.json`, `.arcus/` (if present) and assert they pass all L1 checks
 
 ### Framework-Specific Integration Patterns
-- **Layer-1 static checks**: 11 checks (L1-1 through L1-11) covering skill manifests, frontmatter, line budgets, category invariants, cross-references, hooks integrity, artifact schemas
+- **Layer-1 static checks**: 13 checks (L1-1 through L1-13, with L1-11 split into sub-checks a/b) covering skill manifests, frontmatter, line budgets, category invariants, cross-references, hooks integrity, artifact schemas, eval-spec ownership, and agent-surface frontmatter (L1-13)
 - **Zero-dependency design**: mirrors `plugins/arcus/scripts/tests/checkpoint.test.sh` discipline — pure Node ESM, no npm packages, no supply-chain risk
-- **Harness**: `tests/lib/checks.mjs` (check implementations), `tests/lib/skills.mjs` (skill/manifest parsing utilities), `tests/lib/assert.mjs` (assertion primitives)
+- **Harness**: `tests/lib/checks.mjs` (check implementations), `tests/lib/skills.mjs` (skill/manifest/agent parsing utilities — `walkSkills`, `walkAgents`, `walkAll` for the union of both surfaces), `tests/lib/assert.mjs` (assertion primitives)
 
 ---
 
@@ -127,6 +127,6 @@ Describe how to run each test type. Verified against `package.json` (repo root),
 |----------------------|---------------------------------------------------|----------------------------------------------------------------------|
 | Unit (Layer-1)       | `tests/unit/unit.mjs`                             | Demonstrates Layer-1 unit test pattern: planted-bad fixtures + custom assertions; zero-dependency Node ESM. |
 | Integration (Layer-1)| `tests/integration/integration.mjs`              | Demonstrates Layer-1 integration pattern: live-tree checks against actual skills/hooks/artifacts. |
-| Test Library         | `tests/lib/checks.mjs`                            | All L1-1 through L1-11 check implementations; reused by unit + integration. |
+| Test Library         | `tests/lib/checks.mjs`                            | All L1-1 through L1-13 check implementations (incl. L1-13 `checkAgentFrontmatter`); reused by unit + integration. |
 | Test Utilities       | `tests/lib/assert.mjs`, `tests/lib/skills.mjs`   | Custom assertion primitives (red/green diff, PASS/FAIL counters) + skill/manifest parsing helpers. |
 | Shell Script         | `plugins/arcus/scripts/tests/checkpoint.test.sh` | Custom bash test harness for checkpoint script lifecycle validation; demonstrates setup, assertions, and teardown conventions. |
