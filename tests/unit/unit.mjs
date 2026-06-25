@@ -691,6 +691,43 @@ section('L1-12');
   }
 }
 
+// --- L1-13 check (agent frontmatter validity) ---
+section('L1-13');
+{
+  try {
+    const { checkAgentFrontmatter } = await import('../lib/checks.mjs');
+    const { parseFrontmatter, repoRoot } = await import('../lib/skills.mjs');
+    const fs = await import('node:fs/promises');
+    const { join } = await import('node:path');
+
+    // GOOD: the well-formed agent fixture passes.
+    const goodText = await fs.readFile(join(repoRoot, 'tests/fixtures/good-agent.md'), 'utf-8');
+    const goodFM = parseFrontmatter(goodText);
+    const goodResult = checkAgentFrontmatter({ name: 'good-agent', frontmatter: goodFM });
+    assert(goodResult.ok === true,
+           `checkAgentFrontmatter passes on good-agent (got ${goodResult.errors?.join('; ') || 'ok'})`);
+
+    // PLANTED-BAD: the fixture missing layer + model fails.
+    const badText = await fs.readFile(join(repoRoot, 'tests/fixtures/bad-agent.md'), 'utf-8');
+    const badFM = parseFrontmatter(badText);
+    const badResult = checkAgentFrontmatter({ name: 'bad-agent', frontmatter: badFM });
+    assert(badResult.ok === false, `checkAgentFrontmatter fails on bad-agent (got ok=${badResult.ok})`);
+    assert(badResult.errors.some(e => e.includes('layer')) && badResult.errors.some(e => e.includes('model')),
+           'checkAgentFrontmatter reports the missing layer and model');
+
+    // PLANTED-BAD: a versioned model string is rejected (tier words only).
+    const versioned = checkAgentFrontmatter({
+      name: 'good-agent',
+      frontmatter: { ...goodFM, model: 'claude-sonnet-4-6' }
+    });
+    assert(versioned.ok === false, 'checkAgentFrontmatter rejects a versioned model string');
+
+    pass('L1-13 check passed');
+  } catch (err) {
+    fail(`L1-13 check failed: ${err.message}`);
+  }
+}
+
 // --- eval-harness lintSpec (PR-2 / PR-4 planted-violation discipline) ---
 section('lintSpec (eval harness)');
 {
@@ -892,7 +929,7 @@ section('planted-violation coverage map');
   // and a planted-bad assertion (returns ok:false), EXCEPT L1-6 which is advisory
   // (asserts warnings on bad input, never sets ok:false).
   //
-  // This section programmatically asserts all 11 checks are covered above.
+  // This section programmatically asserts all 13 checks are covered above.
   const coveredChecks = [
     'L1-1',  // checkManifests: good=real manifests, bad=bad-manifest.json
     'L1-2',  // checkFrontmatter: good=spec-finalizer, bad=bad-frontmatter (reserved word)
@@ -905,20 +942,21 @@ section('planted-violation coverage map');
     'L1-9',  // checkHooks: good=real hooks.json, bad=bad-hooks.json
     'L1-10', // checkNoInlineModel: good=model-strategy & implementation-runner, bad=inline-model
     'L1-11', // validateJsonSchema + checkArtifactSections: good=inline+markdown, bad=bad-checkpoint+bad-plan
-    'L1-12'  // checkCapabilityHasEvalSpec: good=spec present, bad=capability with no spec (injected predicate)
+    'L1-12', // checkCapabilityHasEvalSpec: good=spec present, bad=capability with no spec (injected predicate)
+    'L1-13'  // checkAgentFrontmatter: good=good-agent.md, bad=bad-agent.md (missing layer+model)
   ];
 
-  assert(coveredChecks.length === 12,
-         `coverage map lists all 12 L1 checks (got ${coveredChecks.length})`);
+  assert(coveredChecks.length === 13,
+         `coverage map lists all 13 L1 checks (got ${coveredChecks.length})`);
 
-  // Verify the list is exactly L1-1 through L1-12
-  for (let i = 1; i <= 12; i++) {
+  // Verify the list is exactly L1-1 through L1-13
+  for (let i = 1; i <= 13; i++) {
     const checkId = `L1-${i}`;
     assert(coveredChecks.includes(checkId),
            `coverage map includes ${checkId}`);
   }
 
-  pass('planted-violation coverage: all 11 L1 checks have good+planted assertions');
+  pass('planted-violation coverage: all 13 L1 checks have good+planted assertions');
 }
 
 exitWithReport();

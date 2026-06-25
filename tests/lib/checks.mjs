@@ -702,6 +702,79 @@ function checkCapabilityHasEvalSpec({ name, tier, specExists }) {
   return { ok: errors.length === 0, errors };
 }
 
+/**
+ * L1-13: Agent frontmatter validity (agent surface).
+ *
+ * Agents are flat `plugins/arcus/agents/<name>.md` files. This is the agent-surface
+ * analogue of checkFrontmatter (which governs skills). It enforces the canonical
+ * Claude Code agent frontmatter documented in plugins/arcus/agents/README.md:
+ *   - name present, == file basename, lowercase kebab-case, no reserved words
+ *   - description present, <= 1024 chars
+ *   - layer present and in VALID_TIERS (the role axis survives on agents)
+ *   - model present and a TIER word (opus|sonnet|haiku) or `inherit` — never a
+ *     versioned model string (tier->model resolution is owned by arcus:model-strategy)
+ *
+ * Pure: receives the already-parsed frontmatter; performs no I/O.
+ *
+ * @param {Object} input
+ * @param {string} input.name - Agent name (file basename, no .md)
+ * @param {Object} input.frontmatter - Parsed frontmatter object
+ * @returns {{ ok: boolean, errors: string[] }}
+ */
+const VALID_AGENT_MODELS = new Set(['opus', 'sonnet', 'haiku', 'inherit']);
+
+function checkAgentFrontmatter({ name, frontmatter }) {
+  const errors = [];
+
+  if (!frontmatter || Object.keys(frontmatter).length === 0 || frontmatter._hasFrontmatter === false) {
+    errors.push(`${name}: agent frontmatter is missing or empty`);
+    return { ok: false, errors };
+  }
+
+  // name matches file basename
+  if (frontmatter.name !== name) {
+    errors.push(`${name}: agent frontmatter name "${frontmatter.name}" does not match file basename "${name}"`);
+  }
+
+  // name is lowercase kebab-case
+  const kebabRegex = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+  if (!kebabRegex.test(name)) {
+    errors.push(`${name}: agent name is not lowercase kebab-case (must match ^[a-z0-9]+(-[a-z0-9]+)*$)`);
+  }
+
+  // reserved words
+  const reservedWords = ['claude', 'anthropic'];
+  const nameLower = name.toLowerCase();
+  for (const reserved of reservedWords) {
+    if (nameLower.includes(reserved)) {
+      errors.push(`${name}: agent name contains reserved word "${reserved}"`);
+    }
+  }
+
+  // description present and within limit
+  if (!frontmatter.description) {
+    errors.push(`${name}: agent frontmatter missing required field: description`);
+  } else if (frontmatter.description.length > 1024) {
+    errors.push(`${name}: agent description exceeds 1024 characters (${frontmatter.description.length} chars)`);
+  }
+
+  // layer present and valid (role axis survives on agents)
+  if (!frontmatter.layer) {
+    errors.push(`${name}: agent frontmatter missing required field: layer`);
+  } else if (!VALID_TIERS.includes(frontmatter.layer)) {
+    errors.push(`${name}: invalid layer "${frontmatter.layer}" (must be one of: ${VALID_TIERS.join(', ')})`);
+  }
+
+  // model present and a tier word (or inherit) — never a versioned model string
+  if (!frontmatter.model) {
+    errors.push(`${name}: agent frontmatter missing required field: model`);
+  } else if (!VALID_AGENT_MODELS.has(String(frontmatter.model))) {
+    errors.push(`${name}: invalid model "${frontmatter.model}" (must be a tier word: ${[...VALID_AGENT_MODELS].join(', ')} — resolve via arcus:model-strategy)`);
+  }
+
+  return { ok: errors.length === 0, errors };
+}
+
 export {
   validateJsonSchema,
   checkArtifactSections,
@@ -715,5 +788,6 @@ export {
   checkResourcePaths,
   checkHooks,
   checkNoInlineModel,
-  checkCapabilityHasEvalSpec
+  checkCapabilityHasEvalSpec,
+  checkAgentFrontmatter
 };
