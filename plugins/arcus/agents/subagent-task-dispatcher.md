@@ -85,8 +85,8 @@ After verification passes:
 
 **Skip condition**: if the task `complexity` == `light`, skip this step entirely and proceed directly to Step 7 (Spec Check).
 
-Otherwise, dispatch the `arcus:code-simplifier` coordinator subagent:
-- **Prompt**: Include the list of files modified by this task, the task's DoD from `plan.md`, and the instruction: "Read and follow the `arcus:code-simplifier` skill."
+Otherwise, dispatch the `arcus:code-simplifier` agent subagent:
+- **Prompt**: Include the list of files modified by this task, the task's DoD from `plan.md`, and the instruction: "Read and follow the `arcus:code-simplifier` agent."
 - **Description**: `"Refactor: Task N"`
 - **Model**: Resolve complexity `medium` via the `arcus:model-strategy` skill
 - **Note**: The `code-simplifier` coordinator now delegates internally to the `simplify-and-verify` capability for the actual refactor+verify work.
@@ -118,7 +118,7 @@ its binary FAIL conflicts with the holistic stage's "one or two warnings is stil
 1. Dispatch a reviewer subagent:
    - **Prompt**: Include the full task requirements (from the plan), the implementer's status report
      (FILES_MODIFIED, TESTS_PASSING, NOTES), and the instruction: "Read and follow the
-     `arcus:spec-compliance-reviewer` skill. Review Task N (per-task mode)."
+     `arcus:spec-compliance-reviewer` agent. Review Task N (per-task mode)."
    - **Description**: `"Review: spec-compliance Task N"`
    - **Model**: Resolve complexity `medium` via the `arcus:model-strategy` skill
 2. Read the VERDICT:

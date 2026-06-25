@@ -275,7 +275,7 @@ Runs **only after** a final `approved` verdict — the diff is now stable and ap
 shared `.context/` artifact that the approved change set materially drifted.
 
 1. **Run the drift sync** — dispatch a one-shot subagent:
-   - **Prompt**: "Read and follow the `arcus:context-drift-sync` skill in one-shot (afk) mode. Story ID: `<STORY_ID>`. Run the strict FACTS-ONLY drift check over `.context/**`, surgically sync only the materially-drifted artifacts (refresh their context-meta and update `AGENTS.md` only if a flow file was added/removed), and commit via `commit.sh` with the structured `Updated:`/`Skipped:` body. On no material drift, make no commit."
+   - **Prompt**: "Read and follow the `arcus:context-drift-sync` agent in one-shot (afk) mode. Story ID: `<STORY_ID>`. Run the strict FACTS-ONLY drift check over `.context/**`, surgically sync only the materially-drifted artifacts (refresh their context-meta and update `AGENTS.md` only if a flow file was added/removed), and commit via `commit.sh` with the structured `Updated:`/`Skipped:` body. On no material drift, make no commit."
    - **Description**: "Context Sync: context-drift-sync"
    - **Model**: resolve complexity `medium` via the `arcus:model-strategy` skill.
    - Then `.arcus/bin/checkpoint.sh complete <STORY_ID> context_sync`.

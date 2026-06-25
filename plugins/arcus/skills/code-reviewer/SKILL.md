@@ -70,7 +70,7 @@ But keep the two axes separate:
 ## Severity Taxonomy
 
 The canonical severity taxonomy (critical / warning / suggestion) and the rules for mapping legacy
-per-task verdicts onto it now live in the `arcus:review-consolidator` capability, which owns severity
+per-task verdicts onto it now live in the `arcus:review-consolidator` agent, which owns severity
 calibration and the verdict. The coordinator only needs it to tag the deterministic-gate failures it
 hands off (a failing gate check is a `critical`); all semantic-finding calibration is delegated.
 

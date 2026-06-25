@@ -114,7 +114,7 @@ dispatcher's escalation and reviewer model picks.)
 For each task **in order**, skipping any whose checkpoint status is already `complete`:
 
 1. `<BIN>/checkpoint.sh set-status <STORY_ID> task_<N> in_progress`.
-2. **Read and follow the `arcus:subagent-task-dispatcher` skill** for that task — do **not**
+2. **Read and follow the `arcus:subagent-task-dispatcher` agent** for that task — do **not**
    reimplement per-task dispatch. Pass it:
    - `STORY_ID`
    - `TASK_N`

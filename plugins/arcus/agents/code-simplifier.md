@@ -18,7 +18,7 @@ color: teal
 
 This skill is the **REFACTOR-phase adapter** of red-green-refactor inside the ARCUS dispatcher loop.
 It is a thin coordinator: it guards the gate, then **delegates the actual simplify-and-verify
-mechanics** to the `arcus:simplify-and-verify` capability and relays that capability's
+mechanics** to the `arcus:simplify-and-verify` agent and relays that capability's
 `SIMPLIFIED`/`REVERTED` result back to the dispatcher under the dispatcher contract.
 
 It owns the adapter responsibilities only: the **DoD guard**, the **skip-on-`light`-complexity** rule,
@@ -58,7 +58,7 @@ not violate (in particular, no test asserting a named DoD requirement may be pru
 to the capability so its DoD-safe test-pruning rule is enforced.
 
 **Step 3 — Delegate**
-Call the `arcus:simplify-and-verify` capability, passing it:
+Call the `arcus:simplify-and-verify` agent, passing it:
 - the changed `file_set`,
 - the `test_command` (the test command from the TDD verify step), and
 - the repository conventions (+ the task DoD as `acceptance_criteria`).
@@ -91,8 +91,8 @@ dispatcher.
 > Layer: **coordinator** — a thin, **stateless** sequencer of capabilities. Owns **no** pipeline state: no checkpoint reads/writes, no branch ops, no stage gates. Its only job is to call capabilities in a fan-out/consolidate or chained pattern and pass each one explicit inputs.
 
 - **Owned state**: none.
-- **Sequences**: Skip-on-`light` guard → load task DoD (from `plan.md`) as the DoD guard → call the `arcus:simplify-and-verify` capability with the changed `file_set` + the `test_command` + repository conventions (+ the task DoD as `acceptance_criteria`) → relay its `SIMPLIFIED`/`REVERTED` result back to the dispatcher.
-- **Delegation**: Linear chain — guards the refactor gate, then delegates the mutate/verify/revert mechanics to the `arcus:simplify-and-verify` capability and surfaces its result under the dispatcher contract.
+- **Sequences**: Skip-on-`light` guard → load task DoD (from `plan.md`) as the DoD guard → call the `arcus:simplify-and-verify` agent with the changed `file_set` + the `test_command` + repository conventions (+ the task DoD as `acceptance_criteria`) → relay its `SIMPLIFIED`/`REVERTED` result back to the dispatcher.
+- **Delegation**: Linear chain — guards the refactor gate, then delegates the mutate/verify/revert mechanics to the `arcus:simplify-and-verify` agent and surfaces its result under the dispatcher contract.
 
 ## Constraints
 
