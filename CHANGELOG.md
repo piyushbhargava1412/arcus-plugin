@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-06-25
+
+### Added
+
+- **Skills vs Agents — two surfaces (ARC-0008).** ARCUS capabilities are now split across two
+  *surfaces*, an axis **orthogonal** to the `layer:` tier: **Skills** (`plugins/arcus/skills/<name>/SKILL.md`)
+  are user **and** model invocable and exposed as `/arcus:<name>`; **Agents**
+  (`plugins/arcus/agents/<name>.md`, flat files) are model-only, dispatched **by name** from a
+  skill/orchestrator, and never user-facing. Resulting layout: **16 skill dirs + 13 agent files**.
+  Canonical agent frontmatter (`name`, `description`, `layer`, `tools`, `disallowed-tools`, `model`,
+  `color`) is documented in `plugins/arcus/agents/README.md`.
+- **L1-13 `checkAgentFrontmatter`.** A new Layer-1 static check governing the agent surface (name ==
+  basename, description, valid `layer`, tier-word `model`), with good/planted-bad fixtures; the
+  planted-violation coverage map is bumped to **13** checks.
+
+### Changed
+
+- **11 pure agents moved out of `skills/` into `agents/`:** `subagent-task-dispatcher`,
+  `spec-compliance-reviewer`, `code-quality-reviewer`, `security-reviewer`, `performance-reviewer`,
+  `history-context-reviewer`, `review-consolidator`, `code-simplifier`, `simplify-and-verify`,
+  `context-pack-builder`, `context-drift-sync`. Bundled resources are co-located in sibling
+  `agents/<name>/` dirs; advisory reviewers keep their read-only guards.
+- **`test-spec-compiler` and `pull-request-builder` krill-split** into a thin `layer: coordinator`
+  **skill wrapper** (owns the user trigger + dispatch) and a same-named `layer: capability`
+  **execution agent** (owns the workflow + assets). Their Layer-2 eval specs are unchanged.
+- **Test harness is agent-aware.** `tests/lib/skills.mjs` gains `walkAgents()` + `walkAll()`; every L1
+  check and roster (`DISPATCHED_ONLY`, `ADVISORY_REVIEWERS`, `tierCounts`, cross-references L1-7,
+  eval-spec L1-12) resolves over the **union** of `skills/ ∪ agents/`, so the surface move is
+  order-independent. The `layer:` role axis survives on agents (still gating capability-no-state).
+- **Trigger corpus** (`tests/e2e/triggers/corpus.json`) no longer routes any user phrase to a pure
+  agent; the two thin wrappers keep their triggers.
+- **Docs + manifests** updated for the skills-vs-agents split (`AGENTS.md`, `README.md`,
+  `site/concepts/capability-library.md`, plugin/marketplace descriptions) and the shared `.context/`
+  snapshot synced (`repo_map.md`, `repo_scope.md`, `testing-patterns.md`).
+
 ## [1.4.0] - 2026-06-23
 
 ### Added
