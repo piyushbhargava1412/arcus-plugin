@@ -4,7 +4,7 @@ description: >
   Act as a QA Lead to design a comprehensive test matrix and verification plan for a story
   from its implementation plan. Use when an orchestrator needs verification metrics defined
   before code is written. Dispatched by arcus:arcus-controller (Test Plan stage) and by the
-  test-spec-compiler skill wrapper — not invoked directly by users.
+  test-spec-compiler skill wrapper.
 layer: capability
 user-invocable: false
 disable-model-invocation: true

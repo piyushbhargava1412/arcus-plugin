@@ -5,7 +5,7 @@ description: >
   against git blame/log to detect load-bearing complexity removals: silently-reverted
   prior fixes, removed deliberate workarounds, and re-added previously-reverted code. Use
   when the code-reviewer fan-out needs a git-history pass over a branch diff. Dispatched by
-  arcus:code-reviewer — not invoked directly by users.
+  arcus:code-reviewer.
 layer: capability
 user-invocable: false
 disable-model-invocation: true

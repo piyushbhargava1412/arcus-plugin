@@ -4,7 +4,7 @@ description: >
   Assess whether a code-review-approved branch diff materially changed any shared
   `.context/` artifact, and surgically sync only the affected ones. Runs after code-review
   approval and before Closure. Strict, diff-driven, FACTS-ONLY — no story artifacts read.
-  Dispatched by arcus:arcus-controller in the Context Sync stage — not invoked directly by users.
+  Dispatched by arcus:arcus-controller in the Context Sync stage.
 layer: capability
 user-invocable: false
 disable-model-invocation: true

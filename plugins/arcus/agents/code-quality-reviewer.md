@@ -3,8 +3,7 @@ name: code-quality-reviewer
 description: >
   Review implementation code for quality: pattern fidelity, clean structure, test coverage,
   and maintainability. Returns severity-tagged findings. Use when the code-reviewer coordinator
-  needs a holistic code-quality pass over the whole branch diff. Dispatched by arcus:code-reviewer
-  — not invoked directly by users.
+  needs a holistic code-quality pass over the whole branch diff. Dispatched by arcus:code-reviewer.
 layer: capability
 user-invocable: false
 disable-model-invocation: true

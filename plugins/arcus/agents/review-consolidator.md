@@ -4,7 +4,7 @@ description: >
   Given a set of structured specialist review findings, produce a calibrated,
   deduplicated verdict and write the consolidated review artifact. Use when the
   code-reviewer coordinator needs the specialists' outputs judged into one report.
-  Dispatched by arcus:code-reviewer — not invoked directly by users.
+  Dispatched by arcus:code-reviewer.
 layer: capability
 user-invocable: false
 disable-model-invocation: true

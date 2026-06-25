@@ -5,7 +5,7 @@ description: >
   concrete performance and resource regressions in the changed code only. Returns
   severity-tagged findings for the code-reviewer coordinator to consolidate. Use when the
   code-reviewer fan-out needs a performance pass over a branch diff. Dispatched by
-  arcus:code-reviewer — not invoked directly by users.
+  arcus:code-reviewer.
 layer: capability
 user-invocable: false
 disable-model-invocation: true

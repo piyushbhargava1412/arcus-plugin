@@ -5,7 +5,7 @@ description: >
   task's Definition of Done from the implementation plan. Returns PASS or a structured issue
   list. Use when the orchestrator needs a per-task spec-compliance check or the code-reviewer
   needs a holistic spec pass. Dispatched by arcus:subagent-task-dispatcher and
-  arcus:code-reviewer — not invoked directly by users.
+  arcus:code-reviewer.
 layer: capability
 user-invocable: false
 disable-model-invocation: true

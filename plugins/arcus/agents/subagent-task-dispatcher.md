@@ -4,7 +4,7 @@ description: >
   Protocol for dispatching implementation tasks to isolated subagents. Each subagent
   receives scoped context (single task + relevant tests + constraints) to prevent
   token bleed between tasks. Used by the arcus:implementation-runner orchestrator during
-  the Code stage — not invoked directly by users.
+  the Code stage.
 layer: orchestrator
 user-invocable: false
 disable-model-invocation: true

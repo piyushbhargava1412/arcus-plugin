@@ -4,7 +4,7 @@ description: >
   Given a set of changed files and a test command, mutate the code toward simplicity using
   repository conventions, re-run the tests, and return SIMPLIFIED if green or REVERTED
   (mutations rolled back) if red. Use when arcus:code-simplifier needs the actual
-  refactor+verify mutation engine. Dispatched — not invoked directly by users.
+  refactor+verify mutation engine. Dispatched by arcus:code-simplifier.
 layer: capability
 user-invocable: false
 disable-model-invocation: true

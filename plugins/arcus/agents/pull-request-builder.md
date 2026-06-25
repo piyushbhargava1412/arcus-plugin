@@ -4,7 +4,7 @@ description: >
   Finalize the development workflow by summarizing the change set and creating a pull
   request. Use when all tasks in the plan are completed and verified and an orchestrator
   needs the PR description built. Dispatched by arcus:arcus-controller (Closure stage) and
-  by the pull-request-builder skill wrapper — not invoked directly by users.
+  by the pull-request-builder skill wrapper.
 layer: capability
 user-invocable: false
 disable-model-invocation: true

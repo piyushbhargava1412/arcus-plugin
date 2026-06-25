@@ -37,9 +37,9 @@ as canonical.)
 name: <kebab-case>            # REQUIRED — must equal the file basename (no .md)
 description: >               # REQUIRED — what it does + "use when …" dispatch guidance.
   <one or two sentences>.    #            Pure agents carry NO user trigger phrases.
-  Dispatched by <caller> — not invoked directly by users.
+  Dispatched by <caller>.
 layer: capability            # REQUIRED — role axis: capability | coordinator | orchestrator | substrate
-user-invocable: false        # agents are never user-facing
+user-invocable: false        # agents are never user-facing (this flag is the machine-readable source of truth)
 disable-model-invocation: true
 tools: Read, Grep, Glob, Bash    # OPTIONAL allowlist of tools the agent may use
 disallowed-tools: Edit, Write, MultiEdit   # advisory/read-only agents MUST disallow these
@@ -55,7 +55,9 @@ color: cyan                  # OPTIONAL UI hint
   `anthropic`). Enforced by `checkAgentFrontmatter` (test harness).
 - **`description`** — ≤ 1024 chars. For **pure agents**, do **not** include `Trigger on "…"` user
   phrases (those would route a user phrase to a non-user-facing agent). Describe *when a
-  skill/orchestrator should dispatch it*.
+  skill/orchestrator should dispatch it* (e.g. `Dispatched by arcus:<caller>`). Do **not** restate
+  "not invoked directly by users" — the `user-invocable: false` flag is the machine-readable source of
+  truth for that; keep the prose focused on the *use-when / dispatch* signal.
 - **`layer`** — one of `capability | coordinator | orchestrator | substrate`. Capability agents must
   remain state-free (no checkpoint/branch ops) and own a Layer-2 eval spec
   (`tests/e2e/evals/specs/<name>/evals.json`).
