@@ -317,7 +317,8 @@ plugins/arcus/
   .claude-plugin/plugin.json             # Plugin manifest (version authority)
   hooks/hooks.json                       # SessionStart bootstrap hook
   scripts/                               # Helper scripts + bootstrap.sh
-  skills/                                # All orchestrator + sub-skills
+  skills/                                # User+model invocable skills (16, /arcus:<name>)
+  agents/                                # Model-only dispatched agents (13, flat <name>.md)
 CHANGELOG.md
 LICENSE
 ```

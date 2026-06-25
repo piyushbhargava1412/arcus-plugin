@@ -12,15 +12,32 @@ that sequence them, and one **orchestrator** that owns the stateful pipeline. Se
 full Spec → Code → Pull Request flow.
 :::
 
+## Two Surfaces: Skills vs Agents
+
+Orthogonal to the tier (role) axis below, every ARCUS capability lives on one of **two surfaces**:
+
+| Surface | Lives in | Invocation | Slash command |
+|---------|----------|-----------|---------------|
+| **Skill** | `plugins/arcus/skills/<name>/SKILL.md` | user **and** model invocable; injected into the main context | `/arcus:<name>` |
+| **Agent** | `plugins/arcus/agents/<name>.md` (flat file) | model-only; dispatched **by name** from a skill/orchestrator, never user-facing | none |
+
+An item is an **agent** when no human would type a trigger for it, it already runs as an isolated
+subagent, and it needs no main-thread dialogue. The reviewers, the per-task dispatcher, the refactor
+engine, and the pipeline-internal context builders/sync are agents (13); the user-facing entry points
+and dialogue-driven steps are skills (16). Two capabilities — `test-spec-compiler` and
+`pull-request-builder` — are **split**: a thin user-facing *skill wrapper* dispatches an *execution
+agent* of the same name. The surface axis is independent of the tier axis: an orchestrator can be a
+skill (`arcus-controller`) or an agent (`subagent-task-dispatcher`).
+
 ## The Three Tiers
 
-ARCUS skills fall into exactly three tiers, distinguished by **how much state they own**:
+ARCUS skills **and agents** fall into exactly three tiers, distinguished by **how much state they own**:
 
 | Tier | What it is | State ownership | Examples |
 |------|------------|-----------------|----------|
-| **Capability** | An atomic, stateless, **plug-n-play** unit: given its declared inputs, it produces **one** output. No checkpoint, no branch ops, no ARCUS-specific paths. | None — pure input → output | `spec-finalizer`, `implementation-planner`, `context-pack-builder`, `test-spec-compiler`, the specialist reviewers (`security-reviewer`, `performance-reviewer`, `code-quality-reviewer`, `spec-compliance-reviewer`, `history-context-reviewer`), `review-consolidator`, `simplify-and-verify` |
-| **Coordinator** | A thin, stateless **sequencer** of capabilities — fan-out/consolidate or chain. Owns no pipeline state. | None — orchestrates capabilities but holds nothing | `kick-off` (context-pack-builder → spec-finalizer), `code-reviewer`, `code-simplifier`, `repo-agentifier` |
-| **Orchestrator** | The stateful **pipeline driver**. Owns the session checkpoint, branch creation, and stage gates; resolves every path and passes capabilities explicit inputs. | All of it — checkpoint, branch, stage gates | `arcus-controller`, `implementation-runner`, `subagent-task-dispatcher` |
+| **Capability** | An atomic, stateless, **plug-n-play** unit: given its declared inputs, it produces **one** output. No checkpoint, no branch ops, no ARCUS-specific paths. | None — pure input → output | `spec-finalizer`, `implementation-planner` *(skills)*; `context-pack-builder`, the specialist reviewers (`security-reviewer`, `performance-reviewer`, `code-quality-reviewer`, `spec-compliance-reviewer`, `history-context-reviewer`), `review-consolidator`, `simplify-and-verify`, `context-drift-sync`, the `test-spec-compiler`/`pull-request-builder` execution agents *(agents)* |
+| **Coordinator** | A thin, stateless **sequencer** of capabilities — fan-out/consolidate or chain. Owns no pipeline state. | None — orchestrates capabilities but holds nothing | `kick-off` (context-pack-builder → spec-finalizer), `code-reviewer`, `repo-agentifier`, the `test-spec-compiler`/`pull-request-builder` skill wrappers *(skills)*; `code-simplifier` *(agent)* |
+| **Orchestrator** | The stateful **pipeline driver**. Owns the session checkpoint, branch creation, and stage gates; resolves every path and passes capabilities explicit inputs. | All of it — checkpoint, branch, stage gates | `arcus-controller`, `implementation-runner` *(skills)*; `subagent-task-dispatcher` *(agent)* |
 
 The rule of thumb: **only the orchestrator knows it is ARCUS.** Capabilities and coordinators are
 written so they could be lifted out and used in a completely different workflow.

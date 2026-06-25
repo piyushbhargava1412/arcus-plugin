@@ -9,7 +9,7 @@
     {
       "name": "arcus-plugin",
       "source": "./plugins/arcus",
-      "description": "Spec → Code + Pull Request pipeline plus a one-shot repository agentifier. Bundles two orchestrator meta-skills (arcus-controller, repo-agentifier) and their supporting sub-skills, helper scripts, and a session bootstrap hook.",
+      "description": "Spec → Code + Pull Request pipeline plus a one-shot repository agentifier. Bundles orchestrator skills (arcus-controller, repo-agentifier), their supporting skills and dispatched agents (skills/ vs agents/ surfaces), helper scripts, and a session bootstrap hook.",
       "author": {
         "name": "Krill"
       },

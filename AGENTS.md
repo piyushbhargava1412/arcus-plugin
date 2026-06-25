@@ -28,15 +28,47 @@ style and gating differ:
 
 The `implementation-runner` skill drives the Implementation loop in both modes.
 
+### Two Surfaces: Skills vs Agents (ARC-0008)
+
+ARCUS capabilities are split across **two surfaces** — an axis *orthogonal* to the `layer:` tier:
+
+| Surface | Lives in | Invocation | Slash command | Roster |
+|---------|----------|-----------|---------------|--------|
+| **Skill** | `plugins/arcus/skills/<name>/SKILL.md` | user **and** model invocable; injected into the main context | `/arcus:<name>` | 16 dirs |
+| **Agent** | `plugins/arcus/agents/<name>.md` (flat file) | model-only; dispatched **by name** from a skill/orchestrator, never user-facing | none | 13 files |
+
+An item is an **agent** if no human would type a trigger for it, it already runs as an isolated
+subagent, and it needs no main-thread dialogue. It is a **skill** if it is a user-facing entry point,
+needs main-thread dialogue/gates, or is a stateful driver owning the user conversation. The canonical
+agent frontmatter (`name`, `description`, `layer`, `tools`, `disallowed-tools`, `model`, `color`) is
+documented in [`plugins/arcus/agents/README.md`](plugins/arcus/agents/README.md). The test harness
+resolves every `arcus:<name>` cross-reference against the **union** of skill dirs + agent files
+(`walkAll()` in `tests/lib/skills.mjs`).
+
+- **Pure SKILLS (16)**: arcus-controller, implementation-runner, code-reviewer, kick-off,
+  repo-agentifier, arcus-guide, spec-finalizer, implementation-planner, design-pattern-discovery,
+  test-pattern-discovery, flow-and-scope-discovery, repository-context-builder, write-evals,
+  model-strategy, plus the two **thin wrappers** test-spec-compiler + pull-request-builder.
+- **Pure AGENTS (13)**: subagent-task-dispatcher, spec-compliance-reviewer, code-quality-reviewer,
+  security-reviewer, performance-reviewer, history-context-reviewer, review-consolidator,
+  code-simplifier, simplify-and-verify, context-pack-builder, context-drift-sync, plus the two
+  **execution agents** test-spec-compiler + pull-request-builder (behind their wrapper skills).
+
+> Per-surface packaging (Copilot CLI, VS Code) follows the Claude Code native `agents/` dialect as
+> the canonical source of truth; live per-surface install validation is a documented follow-up.
+
 ### Three-Tier Capability Library (ARC-0006)
 
-ARCUS skills are organized into three tiers, declared via `layer:` frontmatter on every `SKILL.md`:
+ARCUS skills **and agents** are organized into three tiers, declared via `layer:` frontmatter on every
+`SKILL.md`/agent file. The tier (role) axis is **independent** of the surface (skill/agent) axis — an
+orchestrator can be a skill (arcus-controller, implementation-runner) *or* an agent
+(subagent-task-dispatcher):
 
 | Tier | What it is | State | Examples |
 |------|-----------|-------|----------|
-| **Capability** | Atomic, stateless, **plug-n-play**: given declared inputs -> one output. No checkpoint/branch ops, no ARCUS path construction. Standalone-invocable by a developer who has never used ARCUS. | none | spec-finalizer, implementation-planner, context-pack-builder, test-spec-compiler, the 4 specialist reviewers, spec-compliance-reviewer, pull-request-builder, review-consolidator, simplify-and-verify, the 4 discovery skills, context-drift-sync |
-| **Coordinator** | Thin, **stateless** sequencer of capabilities (fan-out/consolidate or chain). Owns no pipeline state. | none | kick-off, code-reviewer, code-simplifier, repo-agentifier |
-| **Orchestrator** | **Stateful** pipeline driver. Owns the checkpoint, the git branch, and the stage gates; resolves all ARCUS paths and passes capabilities explicit inputs. | checkpoint + branch | arcus-controller, implementation-runner, subagent-task-dispatcher |
+| **Capability** | Atomic, stateless, **plug-n-play**: given declared inputs -> one output. No checkpoint/branch ops, no ARCUS path construction. | none | spec-finalizer, implementation-planner *(skills)*; context-pack-builder, the 5 specialist/spec reviewers, review-consolidator, simplify-and-verify, context-drift-sync, test-spec-compiler + pull-request-builder execution *(agents)*; the discovery skills |
+| **Coordinator** | Thin, **stateless** sequencer of capabilities (fan-out/consolidate or chain). Owns no pipeline state. | none | kick-off, code-reviewer, repo-agentifier, test-spec-compiler + pull-request-builder *(thin skill wrappers)* *(skills)*; code-simplifier *(agent)* |
+| **Orchestrator** | **Stateful** pipeline driver. Owns the checkpoint, the git branch, and the stage gates; resolves all ARCUS paths and passes capabilities explicit inputs. | checkpoint + branch | arcus-controller, implementation-runner *(skills)*; subagent-task-dispatcher *(agent)* |
 | *Substrate* | Shared reference skills (not part of the pipeline flow). | — | model-strategy, arcus-guide |
 
 Capability contracts use **domain concept names** (`implementation_plan`, `spec_grounding`,
