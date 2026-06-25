@@ -3,17 +3,19 @@ name: simplify-and-verify
 description: >
   Given a set of changed files and a test command, mutate the code toward simplicity using
   repository conventions, re-run the tests, and return SIMPLIFIED if green or REVERTED
-  (mutations rolled back) if red. Standalone-invocable; trigger like
-  "simplify and verify these files".
+  (mutations rolled back) if red. Use when arcus:code-simplifier needs the actual
+  refactor+verify mutation engine. Dispatched — not invoked directly by users.
 layer: capability
-standalone: true
+user-invocable: false
+disable-model-invocation: true
+model: sonnet
+color: teal
 metadata:
   version: "1.0.0"
   team: krill
   type:
     - agents
     - refactor
-disable-model-invocation: true
 ---
 
 # Simplify and Verify

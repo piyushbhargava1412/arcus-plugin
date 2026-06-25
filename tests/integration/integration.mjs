@@ -203,9 +203,11 @@ section('L1-8: Bundled-resource paths resolve');
   let resourceFailures = 0;
 
   for (const item of items) {
-    // Injected fileExists predicate rooted at the item dir (skill dir, or AGENTS_DIR for agents)
+    // Injected fileExists predicate. Skills root at the skill dir; agents are flat
+    // files whose bundled resources (if any) live in a sibling dir agents/<name>/.
+    const resourceRoot = item.surface === 'agent' ? join(item.dir, item.name) : item.dir;
     const fileExists = (resourcePath) => {
-      const fullPath = join(item.dir, resourcePath);
+      const fullPath = join(resourceRoot, resourcePath);
       return existsSync(fullPath);
     };
 

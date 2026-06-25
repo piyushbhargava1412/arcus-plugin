@@ -1,8 +1,15 @@
 ---
 name: context-pack-builder
-description: Build a minimal, story-specific context pack from shared artifacts. Use when starting a new story, building context for a specific story ID, or performing pre-specification planning. Trigger on "start a new story", "build context for story", or "prepare context pack".
+description: >
+  Build a minimal, story-specific context pack from shared artifacts. Use when an
+  orchestrator is starting a new story, building context for a specific story ID, or
+  performing pre-specification planning. Dispatched by arcus:kick-off — not invoked
+  directly by users.
 layer: capability
-standalone: true
+user-invocable: false
+disable-model-invocation: true
+model: sonnet
+color: blue
 ---
 
 # Feature Context Pack Builder
@@ -14,7 +21,7 @@ Generates a targeted, minimal context pack for a single user story by mapping it
 ## Workflow
 
 ### Step 0: Script Execution Note
-This skill runs a bundled helper script (`match_flows.py`) via shell. Because the shell runs from the workspace—not this skill's directory—invoke the script by absolute path: resolve `ARCUS_HOME` from `.arcus/env`, then run `"$ARCUS_HOME"/skills/context-pack-builder/scripts/match_flows.py`. Other resources (templates, references) load by relative path automatically.
+This skill runs a bundled helper script (`match_flows.py`) via shell. Because the shell runs from the workspace—not this skill's directory—invoke the script by absolute path: resolve `ARCUS_HOME` from `.arcus/env`, then run `"$ARCUS_HOME"/agents/context-pack-builder/scripts/match_flows.py`. Other resources (templates, references) load by relative path automatically.
 
 ### Step 1: Initialize & Extract ID
 - Extract the **Story ID** and **Summary** from the `story` input. 
@@ -22,7 +29,7 @@ This skill runs a bundled helper script (`match_flows.py`) via shell. Because th
 
 ### Step 2: Map Business Flows
 - Run the helper script to identify relevant flows without reading every file:
-  `python3 "$ARCUS_HOME/skills/context-pack-builder/scripts/match_flows.py" .`
+  `python3 "$ARCUS_HOME/agents/context-pack-builder/scripts/match_flows.py" .`
 - Compare the story summary against the flow summaries returned by the script.
 - Select the **1–2 most relevant flows**. Include more only if the story spans multiple domain areas.
 

@@ -399,7 +399,7 @@ section('L1-8..L1-10');
 {
   try {
     const { checkResourcePaths, checkHooks, checkNoInlineModel } = await import('../lib/checks.mjs');
-    const { walkSkills, readJSON, parseFrontmatter, repoRoot } = await import('../lib/skills.mjs');
+    const { walkSkills, walkAll, readJSON, parseFrontmatter, repoRoot } = await import('../lib/skills.mjs');
     const fs = await import('node:fs/promises');
     const path = await import('node:path');
     const { existsSync } = await import('node:fs');
@@ -538,8 +538,9 @@ section('L1-8..L1-10');
 
     // Test L1-10: subagent-task-dispatcher is allowlisted — it documents the pass-through
     // string FORMAT (e.g. "Claude Sonnet 4.6 (copilot)") rather than hardcoding a routing decision.
-    const dispatcher = allSkills.find(s => s.name === 'subagent-task-dispatcher');
-    assert(dispatcher !== undefined, 'subagent-task-dispatcher skill exists');
+    // It is now an AGENT, so resolve over the union.
+    const dispatcher = walkAll().find(s => s.name === 'subagent-task-dispatcher');
+    assert(dispatcher !== undefined, 'subagent-task-dispatcher agent exists');
     const dispatcherResult = checkNoInlineModel({ name: dispatcher.name, body: dispatcher.body });
     assert(dispatcherResult.ok === true,
            `checkNoInlineModel passes on allowlisted subagent-task-dispatcher (got ${dispatcherResult.errors?.join('; ') || 'ok'})`);

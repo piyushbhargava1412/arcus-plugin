@@ -2,18 +2,20 @@
 name: review-consolidator
 description: >
   Given a set of structured specialist review findings, produce a calibrated,
-  deduplicated verdict and write the consolidated review artifact. Dispatched by
-  the code-reviewer coordinator to judge the specialists' outputs, and also
-  standalone-invocable. Trigger on "consolidate review findings".
+  deduplicated verdict and write the consolidated review artifact. Use when the
+  code-reviewer coordinator needs the specialists' outputs judged into one report.
+  Dispatched by arcus:code-reviewer — not invoked directly by users.
 layer: capability
-standalone: true
+user-invocable: false
+disable-model-invocation: true
+model: sonnet
+color: cyan
 metadata:
   version: "1.0.0"
   team: krill
   type:
     - agents
     - qa
-disable-model-invocation: true
 ---
 
 # Review Consolidator
