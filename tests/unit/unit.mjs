@@ -44,7 +44,7 @@ section('skills.mjs');
     assert(secFM['disallowed-tools'].includes('Edit'), 'disallowed-tools contains Edit');
     assert(secFM['disallowed-tools'].includes('Write'), 'disallowed-tools contains Write');
     assert(secFM['disallowed-tools'].includes('MultiEdit'), 'disallowed-tools contains MultiEdit');
-    assert(secFM['disable-model-invocation'] === true || secFM['disable-model-invocation'] === 'true',
+    assert(secFM['disable-model-invocation'] === true,
            'disable-model-invocation is truthy for security-reviewer');
 
     // Test 3: the union of skills+agents has at least 26 entries (roster lower bound,
@@ -132,15 +132,19 @@ section('skills.mjs: agents surface');
       assert(a.path.endsWith(`${a.name}.md`), `agent ${a.name} path matches its basename`);
     }
 
-    // walkAll is the union of both surfaces with no duplicates.
+    // walkAll is the union of both surfaces. Derive the skill slice from `all`
+    // itself (no redundant second walkSkills() disk walk).
     const all = walkAll();
-    const skills = walkSkills();
+    const skills = all.filter(i => i.surface === 'skill');
     assert(all.length === skills.length + agents.length,
            `walkAll() is the union of skills (${skills.length}) + agents (${agents.length}), got ${all.length}`);
-    const skillNames = new Set(skills.map(s => s.name));
     assert(all.every(i => i.surface === 'skill' || i.surface === 'agent'),
            'every walkAll item is tagged with a surface');
-    assert(skills.every(s => skillNames.has(s.name)), 'walkAll preserves skill entries');
+    // Verify the union actually CONTAINS every skill walkSkills() reports (not a
+    // by-construction tautology): cross-check against an independent walkSkills().
+    const independentSkills = walkSkills();
+    assert(independentSkills.every(s => all.some(i => i.name === s.name && i.surface === 'skill')),
+           'walkAll() includes every skill from walkSkills()');
 
     pass('walkAgents/walkAll tests passed');
   } catch (err) {
@@ -371,6 +375,21 @@ section('L1-4..L1-7');
     });
     assert(crossRefResult.ok === true, `checkCrossRefs passes on code-reviewer (got ${crossRefResult.errors?.join('; ') || 'ok'})`);
 
+    // Test L1-7 (TC-12 union distinction): code-reviewer references moved AGENTS
+    // (e.g. arcus:security-reviewer). Those refs must DANGLE against a skills-only
+    // roster and RESOLVE against the skills∪agents union — proving walkAll() is the
+    // load-bearing fix, not incidental.
+    const skillsOnlyNames = new Set(allSkills.filter(i => i.surface === 'skill').map(i => i.name));
+    const skillsOnlyResult = checkCrossRefs({
+      name: codeReviewer.name,
+      body: codeReviewer.body,
+      knownSkillNames: skillsOnlyNames
+    });
+    assert(skillsOnlyResult.ok === false,
+           'checkCrossRefs FAILS for code-reviewer against a skills-only roster (agent refs dangle)');
+    assert(skillsOnlyResult.errors.join(' ').includes('security-reviewer'),
+           'the dangling ref is a moved agent (security-reviewer)');
+
     // Test L1-7: checkCrossRefs FAILS on dangling-ref fixture
     const danglingRefPath = path.join(repoRoot, 'tests/fixtures/dangling-ref/SKILL.md');
     const danglingRefText = await fs.readFile(danglingRefPath, 'utf-8');
@@ -399,10 +418,15 @@ section('L1-8..L1-10');
 {
   try {
     const { checkResourcePaths, checkHooks, checkNoInlineModel } = await import('../lib/checks.mjs');
-    const { walkSkills, walkAll, readJSON, parseFrontmatter, repoRoot } = await import('../lib/skills.mjs');
+    const { walkAll, readJSON, parseFrontmatter, repoRoot } = await import('../lib/skills.mjs');
     const fs = await import('node:fs/promises');
     const path = await import('node:path');
     const { existsSync } = await import('node:fs');
+
+    // Use the union once for this whole section: skill lookups (spec-finalizer,
+    // model-strategy, implementation-runner) and the agent lookup (dispatcher) all
+    // resolve against it — no redundant second corpus walk.
+    const allSkills = walkAll();
 
     // Test L1-8: checkResourcePaths FAILS on dead-resource fixture
     const deadResourcePath = path.join(repoRoot, 'tests/fixtures/dead-resource/SKILL.md');
@@ -429,7 +453,6 @@ section('L1-8..L1-10');
            'checkResourcePaths identifies specific missing resource files');
 
     // Test L1-8: checkResourcePaths passes on real skill with valid resources (spec-finalizer)
-    const allSkills = walkSkills();
     const specFinalizer = allSkills.find(s => s.name === 'spec-finalizer');
     assert(specFinalizer !== undefined, 'spec-finalizer skill exists');
 
@@ -538,8 +561,8 @@ section('L1-8..L1-10');
 
     // Test L1-10: subagent-task-dispatcher is allowlisted — it documents the pass-through
     // string FORMAT (e.g. "Claude Sonnet 4.6 (copilot)") rather than hardcoding a routing decision.
-    // It is now an AGENT, so resolve over the union.
-    const dispatcher = walkAll().find(s => s.name === 'subagent-task-dispatcher');
+    // It is now an AGENT, resolved via the union `allSkills` (walkAll) above.
+    const dispatcher = allSkills.find(s => s.name === 'subagent-task-dispatcher');
     assert(dispatcher !== undefined, 'subagent-task-dispatcher agent exists');
     const dispatcherResult = checkNoInlineModel({ name: dispatcher.name, body: dispatcher.body });
     assert(dispatcherResult.ok === true,

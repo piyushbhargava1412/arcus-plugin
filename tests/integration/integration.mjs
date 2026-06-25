@@ -36,27 +36,26 @@ section('L1-1: Manifest validity');
 
 section('L1-2: Frontmatter validity');
 {
-  const items = walkAll();
+  // L1-2 owns the SKILL surface (checkFrontmatter); the AGENT surface is owned
+  // exclusively by L1-13 (checkAgentFrontmatter) — no double-validation.
+  const skills = walkSkills();
   let frontmatterFailures = 0;
 
-  for (const item of items) {
-    // Skills use checkFrontmatter; agents use the agent-surface analogue.
-    const result = item.surface === 'agent'
-      ? checkAgentFrontmatter({ name: item.name, frontmatter: item.frontmatter })
-      : checkFrontmatter({
-          name: item.name,
-          dir: item.dir,
-          frontmatter: item.frontmatter,
-          body: item.body
-        });
+  for (const skill of skills) {
+    const result = checkFrontmatter({
+      name: skill.name,
+      dir: skill.dir,
+      frontmatter: skill.frontmatter,
+      body: skill.body
+    });
 
     if (!result.ok) {
       frontmatterFailures++;
-      console.error(`  ${item.surface} ${item.name}: ${result.errors.join('; ')}`);
+      console.error(`  ${skill.name}: ${result.errors.join('; ')}`);
     }
   }
 
-  assert(frontmatterFailures === 0, `L1-2: all ${items.length} skills+agents have valid frontmatter (${frontmatterFailures} failures)`);
+  assert(frontmatterFailures === 0, `L1-2: all ${skills.length} skills have valid frontmatter (${frontmatterFailures} failures)`);
 }
 
 section('L1-3: Line budget');
@@ -356,6 +355,16 @@ section('L1-13: Agent frontmatter validity (agent surface)');
   }
 
   assert(agentFmFailures === 0, `L1-13: all ${agents.length} agents have valid frontmatter (${agentFmFailures} failures)`);
+}
+
+section('Layout sanity: skills/agents surface counts (ARC-0008)');
+{
+  // Guards the ARC-0008 target layout against future regression: 16 user-invocable
+  // skills + 13 dispatched agents.
+  const skillCount = walkSkills().length;
+  const agentCount = walkAgents().length;
+  assert(skillCount === 16, `skill dirs == 16 (got ${skillCount})`);
+  assert(agentCount === 13, `agent files == 13 (got ${agentCount})`);
 }
 
 exitWithReport();

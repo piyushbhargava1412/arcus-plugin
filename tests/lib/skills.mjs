@@ -145,6 +145,24 @@ function parseFrontmatter(text) {
  * Walk all SKILL.md files in plugins/arcus/skills and return metadata for each.
  * Returns array of { name, dir, path, frontmatter, body }.
  */
+/**
+ * Extract the body of a SKILL.md / agent .md file: everything after the closing
+ * `---` of the leading frontmatter block. If there is no frontmatter, the whole
+ * content is the body. Shared by walkSkills() and walkAgents() so the parse rule
+ * lives in exactly one place.
+ */
+function extractBody(content) {
+  const lines = content.split('\n');
+  if (lines[0] && lines[0].trim() === '---') {
+    for (let i = 1; i < lines.length; i++) {
+      if (lines[i].trim() === '---') {
+        return lines.slice(i + 1).join('\n');
+      }
+    }
+  }
+  return content;
+}
+
 function walkSkills() {
   const skills = [];
 
@@ -161,22 +179,7 @@ function walkSkills() {
       try {
         const content = readFileSync(skillPath, 'utf-8');
         const frontmatter = parseFrontmatter(content);
-
-        // Extract body (content after frontmatter)
-        let body = content;
-        const lines = content.split('\n');
-        if (lines[0] && lines[0].trim() === '---') {
-          let endIndex = -1;
-          for (let i = 1; i < lines.length; i++) {
-            if (lines[i].trim() === '---') {
-              endIndex = i;
-              break;
-            }
-          }
-          if (endIndex !== -1) {
-            body = lines.slice(endIndex + 1).join('\n');
-          }
-        }
+        const body = extractBody(content);
 
         skills.push({
           name: entry,
@@ -232,22 +235,7 @@ function walkAgents() {
     try {
       const content = readFileSync(agentPath, 'utf-8');
       const frontmatter = parseFrontmatter(content);
-
-      // Extract body (content after frontmatter)
-      let body = content;
-      const lines = content.split('\n');
-      if (lines[0] && lines[0].trim() === '---') {
-        let endIndex = -1;
-        for (let i = 1; i < lines.length; i++) {
-          if (lines[i].trim() === '---') {
-            endIndex = i;
-            break;
-          }
-        }
-        if (endIndex !== -1) {
-          body = lines.slice(endIndex + 1).join('\n');
-        }
-      }
+      const body = extractBody(content);
 
       agents.push({
         name: entry.replace(/\.md$/, ''),
@@ -275,7 +263,7 @@ function walkAgents() {
  * Returns array of { name, dir, path, frontmatter, body, surface }.
  */
 function walkAll() {
-  const skills = walkSkills().map(s => ({ ...s, surface: s.surface || 'skill' }));
+  const skills = walkSkills().map(s => ({ ...s, surface: 'skill' }));
   const agents = walkAgents();
   return [...skills, ...agents];
 }

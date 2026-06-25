@@ -60,6 +60,14 @@ session) or use the stage's explicit resume phrase (cold resume). Within Brainst
 `kick-off` coordinator runs context-pack-builder → spec-finalizer — before the first gate (GATE A).
 The Code Review stage can loop back to Implementation up to 3 times if changes are requested.
 
+> **Skills vs agents.** The participants below live on one of two surfaces (see
+> [The Capability Library](/concepts/capability-library)): user-invocable **skills**
+> (`plugins/arcus/skills/`) and model-only **agents** (`plugins/arcus/agents/`), dispatched by name
+> and never user-facing. Dispatched participants — `context-pack-builder`, `subagent-task-dispatcher`,
+> `code-simplifier`, the five specialist/spec reviewers, and `context-drift-sync` — are **agents**;
+> the stage entry points (`arcus-controller`, `code-reviewer`, `implementation-runner`, `kick-off`,
+> the `test-spec-compiler`/`pull-request-builder` wrappers) are **skills**.
+
 ## What The Gates Mean
 
 Gates are explicit pause points where you review outputs before the pipeline moves to the next stage
@@ -153,8 +161,8 @@ end-to-end.
     </td>
     <td>
       <ul>
-        <li><code>kick-off</code> coordinator (sequences context-pack-builder → spec-finalizer)</li>
-        <li><code>context-pack-builder</code></li>
+        <li><code>kick-off</code> coordinator <em>(skill)</em> — sequences context-pack-builder → spec-finalizer</li>
+        <li><code>context-pack-builder</code> <em>(agent)</em></li>
         <li><code>spec-finalizer</code> (dialogue in interactive, one-shot in autonomous)</li>
         <li><code>implementation-planner</code> (dialogue in interactive, one-shot in autonomous)</li>
         <li>Driven by <code>arcus-controller</code> (orchestrator; interactive or autonomous)</li>
@@ -258,7 +266,7 @@ end-to-end.
           <ul>
             <li>Implementation</li>
             <li>Test writing (following <code>test-plan.md</code>)</li>
-            <li>Refactor gate (<code>code-simplifier</code>): mutate toward simplicity, re-run suite — skipped on <code>light</code> tasks</li>
+            <li>Refactor gate (<code>code-simplifier</code> <em>agent</em>): mutate toward simplicity, re-run suite — skipped on <code>light</code> tasks</li>
             <li>One lightweight, <strong>advisory</strong> per-task spec-compliance check (does not hard-block; unresolved issues carry forward to Code Review)</li>
           </ul>
         </li>
@@ -270,9 +278,9 @@ end-to-end.
       <ul>
         <li><code>implementation-runner</code> (the single canonical loop driver — owns the branch step + task loop; reused by gated and afk)</li>
         <li><code>branch.sh</code> (deferred branch realization)</li>
-        <li><code>subagent-task-dispatcher</code> (per-task execution)</li>
-        <li><code>code-simplifier</code> (per-task refactor gate, skipped on <code>light</code>)</li>
-        <li><code>spec-compliance-reviewer</code> (per-task mode, advisory)</li>
+        <li><code>subagent-task-dispatcher</code> <em>(agent)</em> — per-task execution</li>
+        <li><code>code-simplifier</code> <em>(agent)</em> — per-task refactor gate, skipped on <code>light</code></li>
+        <li><code>spec-compliance-reviewer</code> <em>(agent)</em> — per-task mode, advisory</li>
       </ul>
     </td>
     <td>
@@ -348,12 +356,12 @@ end-to-end.
     </td>
     <td>
       <ul>
-        <li><code>code-reviewer</code> (coordinator + deterministic gate; stage key <code>code_review</code>)</li>
-        <li><code>spec-compliance-reviewer</code> (holistic mode)</li>
-        <li><code>code-quality-reviewer</code> (holistic mode)</li>
-        <li><code>security-reviewer</code></li>
-        <li><code>performance-reviewer</code></li>
-        <li><code>history-context-reviewer</code></li>
+        <li><code>code-reviewer</code> <em>(skill — coordinator)</em> + deterministic gate; stage key <code>code_review</code></li>
+        <li><code>spec-compliance-reviewer</code> <em>(agent)</em> — holistic mode</li>
+        <li><code>code-quality-reviewer</code> <em>(agent)</em> — holistic mode</li>
+        <li><code>security-reviewer</code> <em>(agent)</em></li>
+        <li><code>performance-reviewer</code> <em>(agent)</em></li>
+        <li><code>history-context-reviewer</code> <em>(agent)</em></li>
       </ul>
     </td>
     <td>
@@ -402,7 +410,7 @@ end-to-end.
     </td>
     <td>
       <ul>
-        <li><code>context-drift-sync</code> (stage key <code>context_sync</code>)</li>
+        <li><code>context-drift-sync</code> <em>(agent)</em> — stage key <code>context_sync</code></li>
       </ul>
     </td>
     <td>

@@ -24,7 +24,7 @@ edits the target skill, and never touches pipeline state.
 The harness this authors for grades each case in one of three ways:
 
 - **deterministic** — graded purely by required/forbidden substrings. Used by
-  *contractual-token* skills that emit fixed tokens (`arcus:simplify-and-verify`
+  *contractual-token* agents that emit fixed tokens (`arcus:simplify-and-verify`
   emits `SIMPLIFIED`/`REVERTED`; `arcus:spec-compliance-reviewer` emits
   `VERDICT: PASS`/`VERDICT: FAIL`).
 - **routing** — code-graded expect/forbid over which route/decision was taken.
@@ -45,7 +45,7 @@ The harness this authors for grades each case in one of three ways:
 ### Outputs
 - **`eval_spec`** (JSON) — a valid `specs/<target_skill>/evals.json` containing one
   case per observable behaviour, each with a fixture, a prompt, tiered expectations,
-  and (for contractual-token skills only) substring assertions.
+  and (for contractual-token capabilities only) substring assertions.
   Output convention: the harness expects the spec at
   `tests/e2e/evals/specs/<target_skill>/evals.json`; a standalone caller may point
   elsewhere. The capability never asks the user where to write.
@@ -97,9 +97,9 @@ spec passes immediately.
   Choose `critical` for the skill's core contract (correct token, preserved
   behaviour, correct route) and `quality` for nice-to-have refinements.
 - **W-2b (PR-2: no naked substrings off the allowlist).** Populate
-  `assertions.required_substrings` **only** when the target skill is a
-  contractual-token skill (`simplify-and-verify`, `spec-compliance-reviewer`). For
-  every other skill, leave it empty and express the behaviour as tiered expectations
+  `assertions.required_substrings` **only** when the target is a
+  contractual-token agent (`simplify-and-verify`, `spec-compliance-reviewer`). For
+  every other capability, leave it empty and express the behaviour as tiered expectations
   instead. `forbidden_substrings` may be used to forbid leaked tokens regardless.
 - **W-2c (file-system assertions, any skill).** When a skill's contract is a *file effect*
   (creates/edits/leaves-untouched files), assert it directly against the throwaway project
@@ -122,7 +122,7 @@ spec passes immediately.
 **Step 1 — Resolve the target skill contract.**
 Read the target skill's `SKILL.md` (from `skill_contract` if supplied, else from the
 skill directory). Identify: its inputs, its outputs, its modes, and whether it is a
-contractual-token skill (emits fixed tokens). Enumerate its observable behaviours
+contractual-token capability (emits fixed tokens). Enumerate its observable behaviours
 (from `observed_behaviours` if supplied, else derive from the contract).
 
 **Step 2 — Locate or scaffold the spec folder.**
@@ -133,7 +133,7 @@ the current spec to append to; if not, scaffold a fresh spec object with
 **Step 3 — Draft one case per behaviour.**
 For EACH behaviour, write a case: a unique `id`, a `prompt` that asks the skill to
 exhibit the behaviour, a tiny `fixture.files` map, tiered `expectations` (W-2a), and —
-only for contractual-token skills — `assertions.required_substrings` (W-2b). Add the
+only for contractual-token capabilities — `assertions.required_substrings` (W-2b). Add the
 case(s) to `evals`.
 
 **Step 4 — Self-lint against the authoring rules.**
