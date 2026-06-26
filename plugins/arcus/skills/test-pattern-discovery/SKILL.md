@@ -22,7 +22,7 @@ Identify how tests are authored in the repository and persist shared conventions
 
 ### Outputs
 - **`testing_conventions`** (markdown) — Test frameworks, mocking patterns, assertion styles, test data patterns, and execution commands per test layer (unit, integration, functional, acceptance, performance, shell script).
-  Output convention: pipeline caller sets the path; standalone default `.arcus/outputs/test-pattern-discovery/<story-id-or-timestamp>.md`. The capability never asks the user where to write.
+  Output convention: pipeline caller sets the path; standalone default `.arcus/outputs/test-pattern-discovery/<timestamp>.md`. The capability never asks the user where to write.
 
 ## Instructions
 

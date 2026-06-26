@@ -30,7 +30,7 @@ when a genuinely new team-level pattern is adopted, not regenerated on routine d
 
 ### Outputs
 - **`design_and_coding_conventions`** (markdown) — Recurring design patterns, layering/structure conventions, naming idioms, error-handling/logging conventions, configuration/dependency conventions, and curated anti-patterns to avoid.
-  Output convention: pipeline caller sets the path; standalone default `.arcus/outputs/design-pattern-discovery/<story-id-or-timestamp>.md`. The capability never asks the user where to write.
+  Output convention: pipeline caller sets the path; standalone default `.arcus/outputs/design-pattern-discovery/<timestamp>.md`. The capability never asks the user where to write.
 
 ## Instructions
 

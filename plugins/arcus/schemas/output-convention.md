@@ -24,10 +24,9 @@ the ARCUS story workspace:
 
 When a capability is invoked directly without orchestration context:
 
-- **Default output path**: `.arcus/outputs/<capability-name>/<story-id-or-timestamp>.md`
-- The capability resolves `<capability-name>` from its own metadata (skill name).
-- If a STORY_ID is provided as input, use it; otherwise, generate a timestamp (e.g., ISO 8601
-  format: `YYYY-MM-DDTHH-MM-SS`).
+- **Default output path**: `.arcus/outputs/<capability-name>/<timestamp>.md`
+- The capability resolves `<capability-name>` from its own metadata (skill name) and generates a
+  timestamp (ISO 8601, e.g. `YYYY-MM-DDTHH-MM-SS`)
 - Example: `.arcus/outputs/spec-finalizer/2026-06-23T14-30-00.md`
 
 ### 3. Explicit Caller Override
@@ -49,8 +48,7 @@ When a capability is invoked directly without orchestration context:
 | Context                          | Output Path                                      |
 |----------------------------------|--------------------------------------------------|
 | Pipeline (spec-finalizer)        | `.arcus/specs/ARCUS-0006/grounded-spec.md`      |
-| Standalone (spec-finalizer)      | `.arcus/outputs/spec-finalizer/ARCUS-0006.md`   |
-| Standalone (no STORY_ID)         | `.arcus/outputs/spec-finalizer/2026-06-23T14-30-00.md` |
+| Standalone (spec-finalizer)      | `.arcus/outputs/spec-finalizer/2026-06-23T14-30-00.md` |
 | Explicit override                | `/tmp/custom-output.md` (caller-specified)       |
 
 ## Implementation Notes

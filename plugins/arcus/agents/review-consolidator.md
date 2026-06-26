@@ -51,7 +51,7 @@ problems block; a clean change with one or two minor nits is still an approval.
   (`APPROVE` / `CHANGES_REQUESTED`), counts per severity, the deduplicated findings grouped by
   section, and a one-paragraph notes summary.
   Output convention: pipeline caller sets the path; standalone default
-  `.arcus/outputs/review-consolidator/<story-id-or-timestamp>.md`. The capability never asks the user
+  `.arcus/outputs/review-consolidator/<timestamp>.md`. The capability never asks the user
   where to write.
 
 ## Severity Taxonomy (canonical for all ARCUS reviewers)
@@ -125,7 +125,7 @@ findings; treat them like any other critical (they force `CHANGES_REQUESTED`).
 Write the `review_report` to the resolved output path. Structure:
 
 ```
-# Code Review — <story-id-or-timestamp>  (round <review_round>)
+# Code Review — <timestamp>  (round <review_round>)
 
 **Verdict:** APPROVE | CHANGES_REQUESTED
 **Counts:** critical <C>, warning <W>, suggestion <S>

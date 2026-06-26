@@ -65,7 +65,7 @@ found, original code preserved."
   (uppercase, verbatim). Prose-only conclusions such as "Done" or "Simplified the function" do **not**
   satisfy the contract. Emit the token in every case.
   Output convention: when a written artifact is produced standalone, default to
-  `.arcus/outputs/simplify-and-verify/<story-id-or-timestamp>.md`. The capability never asks the user
+  `.arcus/outputs/simplify-and-verify/<timestamp>.md`. The capability never asks the user
   where to write; pipeline callers set the path. When dispatched by the coordinator, the result is
   returned inline (no artifact required).
 

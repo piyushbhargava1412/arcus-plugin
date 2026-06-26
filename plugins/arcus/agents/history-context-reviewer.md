@@ -147,5 +147,5 @@ FINDINGS:
 
 ### Outputs
 - **`history_review_findings`** (structured text) — List of findings with severity tags (warning/suggestion), each with concrete git signal evidence (prior fix/revert overlap, deliberate-marker removal, or re-added reverted code).
-  Output convention: pipeline caller sets the path; standalone default `.arcus/outputs/history-context-reviewer/<story-id-or-timestamp>.md`. The capability never asks the user where to write.
+  Output convention: pipeline caller sets the path; standalone default `.arcus/outputs/history-context-reviewer/<timestamp>.md`. The capability never asks the user where to write.
 

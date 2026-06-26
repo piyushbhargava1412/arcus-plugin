@@ -43,7 +43,7 @@ Read the named inputs:
 
 ### Step 5: Persist the Test Plan
 - Use `"$ARCUS_HOME"/agent-resources/test-spec-compiler/assets/test-plan-template.md` to structure the final matrix.
-- Write the output to the output path (default `.arcus/outputs/test-spec-compiler/<story-id-or-timestamp>.md` when no explicit path is passed; the dispatcher may override it).
+- Write the output to the output path (default `.arcus/outputs/test-spec-compiler/<timestamp>.md` when no explicit path is passed; the dispatcher may override it).
 
 ## Resources
 - **Test Plan Template**: `"$ARCUS_HOME"/agent-resources/test-spec-compiler/assets/test-plan-template.md`
@@ -60,5 +60,5 @@ Read the named inputs:
 
 ### Outputs
 - **`test_matrix`** (markdown) — Multi-layered test plan categorized by functional, edge case, and error handling; each test case mapped to a specific task ID with complexity classification and pattern alignment.
-  Output convention: pipeline caller sets the path; standalone default `.arcus/outputs/test-spec-compiler/<story-id-or-timestamp>.md`. The capability never asks the user where to write.
+  Output convention: pipeline caller sets the path; standalone default `.arcus/outputs/test-spec-compiler/<timestamp>.md`. The capability never asks the user where to write.
 

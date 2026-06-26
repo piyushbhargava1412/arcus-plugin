@@ -22,7 +22,7 @@ Build or refresh baseline repository context by analyzing repository structure a
 ### Outputs
 - **`repo_scope`** (markdown) — Repository purpose, boundaries, core responsibilities, and ownership.
 - **`repo_map`** (markdown) — Repository structure, tech stack, entry points, build commands, test locations, and navigation index.
-  Output convention: pipeline caller sets the path; standalone default `.arcus/outputs/repository-context-builder/<story-id-or-timestamp>/` for both files. The capability never asks the user where to write.
+  Output convention: pipeline caller sets the path; standalone default `.arcus/outputs/repository-context-builder/<timestamp>/` for both files. The capability never asks the user where to write.
 
 ## Instructions
 

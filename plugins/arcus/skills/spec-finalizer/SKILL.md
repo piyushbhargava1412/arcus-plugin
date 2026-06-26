@@ -171,4 +171,4 @@ orchestrator — not this skill — decides whether to pause and ask the user.
 ### Output
 - **`spec_grounding`** (markdown) — a self-contained grounded-spec record (sections per
   `./assets/grounded-spec-template.md`), written to the caller-provided path or, standalone, defaulting
-  to `.arcus/outputs/spec-finalizer/<story-id-or-timestamp>.md`.
+  to `.arcus/outputs/spec-finalizer/<timestamp>.md`.

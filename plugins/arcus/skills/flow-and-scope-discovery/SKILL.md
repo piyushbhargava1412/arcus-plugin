@@ -21,7 +21,7 @@ Identify key business flows and map each flow to its associated implementation s
 
 ### Outputs
 - **`business_flows`** (set of markdown files) — One file per discrete business flow, each containing entry points, core path, scope, and confidence.
-  Output convention: pipeline caller sets the path; standalone default `.arcus/outputs/flow-and-scope-discovery/<story-id-or-timestamp>/flows/`. The capability never asks the user where to write.
+  Output convention: pipeline caller sets the path; standalone default `.arcus/outputs/flow-and-scope-discovery/<timestamp>/flows/`. The capability never asks the user where to write.
 
 ## Instructions
 

@@ -21,9 +21,6 @@ and then stops. Its only products are a `context_pack` and a `spec_grounding`.
 When in `dialogue` mode, kick-off runs **in the MAIN THREAD** so `arcus:spec-finalizer` can
 interview the user directly (a forked/isolated subagent cannot hold a conversation with the user).
 
-> **Constraint — this skill MUST NOT declare `context: fork`.** It must be able to run in the main
-> thread to conduct the spec-finalizer dialogue. Forking it would break the interview.
-
 ## Protocol
 
 1. **Context pack** — dispatch the `arcus:context-pack-builder` **agent**, passing it the `story` and

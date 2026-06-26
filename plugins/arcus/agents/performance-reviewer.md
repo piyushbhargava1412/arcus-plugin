@@ -32,7 +32,7 @@ resource risks — not micro-optimizations or speculative tuning.
 
 ### Outputs
 - **`performance_findings`** (structured report) — Concrete performance regressions and resource risks with severity, confidence, and file:line references.
-  Output convention: pipeline caller sets the path; standalone default `.arcus/outputs/performance-reviewer/<story-id-or-timestamp>.md`. The capability never asks the user where to write.
+  Output convention: pipeline caller sets the path; standalone default `.arcus/outputs/performance-reviewer/<timestamp>.md`. The capability never asks the user where to write.
 
 ## What to Flag
 

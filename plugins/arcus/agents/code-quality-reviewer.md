@@ -25,7 +25,7 @@ color: blue
 
 ### Outputs
 - **`quality_findings`** (structured report) — Pattern fidelity violations, structural issues, maintainability concerns, error-handling gaps, test quality issues, and dead code, with severity, confidence, and file:line references.
-  Output convention: pipeline caller sets the path; standalone default `.arcus/outputs/code-quality-reviewer/<story-id-or-timestamp>.md`. The capability never asks the user where to write.
+  Output convention: pipeline caller sets the path; standalone default `.arcus/outputs/code-quality-reviewer/<timestamp>.md`. The capability never asks the user where to write.
 
 ## Output Format
 

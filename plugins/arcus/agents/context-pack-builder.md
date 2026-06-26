@@ -3,8 +3,7 @@ name: context-pack-builder
 description: >
   Build a minimal, story-specific context pack from shared artifacts. Use when an
   orchestrator is starting a new story, building context for a specific story ID, or
-  performing pre-specification planning. Dispatched by arcus:kick-off — not invoked
-  directly by users.
+  performing pre-specification planning. Dispatched by arcus:kick-off
 layer: capability
 user-invocable: false
 disable-model-invocation: true
@@ -23,9 +22,8 @@ Generates a targeted, minimal context pack for a single user story by mapping it
 ### Step 0: Script Execution Note
 This skill runs a bundled helper script (`match_flows.py`) via shell. Because the shell runs from the workspace—not this skill's directory—invoke the script by absolute path: resolve `ARCUS_HOME` from `.arcus/env`, then run `"$ARCUS_HOME"/agent-resources/context-pack-builder/scripts/match_flows.py`. Bundled resources (templates, references) likewise live under `"$ARCUS_HOME"/agent-resources/context-pack-builder/`; load them by that absolute path.
 
-### Step 1: Initialize & Extract ID
-- Extract the **Story ID** and **Summary** from the `story` input. 
-- If the ID is missing, determine it based on user provided information.
+### Step 1: Read the story Summary
+- Read the **Summary** from the `story` input — it drives flow matching in Step 2.
 
 ### Step 2: Map Business Flows
 - Run the helper script to identify relevant flows without reading every file:
@@ -44,7 +42,7 @@ This skill runs a bundled helper script (`match_flows.py`) via shell. Because th
 - Explicitly capture any gaps or ambiguities in the "Assumptions / Gaps" section.
 
 ### Step 5: Persist
-- Write the final document to the output path (default `.arcus/outputs/context-pack-builder/<story-id-or-timestamp>.md` when no explicit path is passed; the dispatcher may override it).
+- Write the final document to the output path (default `.arcus/outputs/context-pack-builder/<timestamp>.md` when no explicit path is passed; the dispatcher may override it).
 - Overwrite if it already exists.
 
 ## Failure Modes
@@ -66,5 +64,5 @@ This skill runs a bundled helper script (`match_flows.py`) via shell. Because th
 
 ### Outputs
 - **`context_pack`** (markdown) — Story-to-code correlations: relevant business flows (linked), likely working areas, repository patterns, testing conventions, and identified gaps or assumptions.
-  Output convention: pipeline caller sets the path; standalone default `.arcus/outputs/context-pack-builder/<story-id-or-timestamp>.md`. The capability never asks the user where to write.
+  Output convention: pipeline caller sets the path; standalone default `.arcus/outputs/context-pack-builder/<timestamp>.md`. The capability never asks the user where to write.
 

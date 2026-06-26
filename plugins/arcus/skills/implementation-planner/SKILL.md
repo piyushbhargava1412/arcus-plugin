@@ -75,7 +75,7 @@ Record the impacted-file map and design notes into the `## Design / Impacted Fil
 - Ensure the DoD includes specific functional checks and verification metrics (unit/integration tests).
 
 ### Step 7: Write the Plan
-Write a single self-contained plan using `./assets/plan-template.md`, containing both the design sections — `## Approach Evaluation`, `## Chosen Approach & Reasoning`, `## Design / Impacted Files`, and (dialogue mode only) `## Design Dialogue Answers` — and the machine-parsed atomic task list (`### Task N:` headings). This constitutes the `implementation_plan` output, written to the caller-provided output path (standalone default `.arcus/outputs/implementation-planner/<story-id-or-timestamp>.md`); this skill constructs no ARCUS path itself. The task list is consumed by `test-spec-compiler` and the Code stage.
+Write a single self-contained plan using `./assets/plan-template.md`, containing both the design sections — `## Approach Evaluation`, `## Chosen Approach & Reasoning`, `## Design / Impacted Files`, and (dialogue mode only) `## Design Dialogue Answers` — and the machine-parsed atomic task list (`### Task N:` headings). This constitutes the `implementation_plan` output, written to the caller-provided output path (standalone default `.arcus/outputs/implementation-planner/<timestamp>.md`); this skill constructs no ARCUS path itself. The task list is consumed by `test-spec-compiler` and the Code stage.
 
 ## Resources
 - **Plan Template**: `./assets/plan-template.md`
@@ -92,5 +92,5 @@ Write a single self-contained plan using `./assets/plan-template.md`, containing
 | `context_pack` | no | markdown | Story-to-code correlations (flows, patterns, constraints); proceed without it, noting the omission |
 
 ### Outputs
-- **`implementation_plan`** (markdown) — a single self-contained plan (sections per `./assets/plan-template.md`): scored candidate approaches, chosen approach + rationale, impacted-files map, design dialogue answers (dialogue mode), and the atomic `### Task N:` list (consumed downstream by `test-spec-compiler` and the Code stage). Written to the caller-provided path or, standalone, defaulting to `.arcus/outputs/implementation-planner/<story-id-or-timestamp>.md`.
+- **`implementation_plan`** (markdown) — a single self-contained plan (sections per `./assets/plan-template.md`): scored candidate approaches, chosen approach + rationale, impacted-files map, design dialogue answers (dialogue mode), and the atomic `### Task N:` list (consumed downstream by `test-spec-compiler` and the Code stage). Written to the caller-provided path or, standalone, defaulting to `.arcus/outputs/implementation-planner/<timestamp>.md`.
 

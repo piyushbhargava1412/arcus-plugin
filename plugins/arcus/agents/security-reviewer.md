@@ -32,7 +32,7 @@ concretely dangerous** — not theoretical, defense-in-depth wishlist items.
 
 ### Outputs
 - **`security_findings`** (structured report) — Exploitable vulnerabilities and concrete security risks with severity, confidence, and file:line references.
-  Output convention: pipeline caller sets the path; standalone default `.arcus/outputs/security-reviewer/<story-id-or-timestamp>.md`. The capability never asks the user where to write.
+  Output convention: pipeline caller sets the path; standalone default `.arcus/outputs/security-reviewer/<timestamp>.md`. The capability never asks the user where to write.
 
 ## What to Flag
 

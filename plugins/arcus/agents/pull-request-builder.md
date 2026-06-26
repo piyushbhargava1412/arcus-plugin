@@ -44,7 +44,7 @@ have reconciled shared context artifacts. Detect and render those updates from t
 
 ### Step 3: Final Artifact Generation
 - Run the full test suite one last time on the feature branch.
-- Save the final, synthesized PR description to the output path (default `.arcus/outputs/pull-request-builder/<story-id-or-timestamp>.md` when no explicit path is passed; the dispatcher may override it).
+- Save the final, synthesized PR description to the output path (default `.arcus/outputs/pull-request-builder/<timestamp>.md` when no explicit path is passed; the dispatcher may override it).
 - Ensure the description includes a high-level summary, the list of changed files, and evidence of successful verification.
 
 ## Resources
@@ -71,4 +71,4 @@ On finish, return the terminal completion line (the caller owns any checkpoint u
 
 ### Outputs
 - **`pull_request_description`** (markdown) — Professional PR summary with high-level overview, categorized changes (features/fixes/tests), context updates (if any), and verification evidence.
-  Output convention: pipeline caller sets the path; standalone default `.arcus/outputs/pull-request-builder/<story-id-or-timestamp>.md`. The capability never asks the user where to write.
+  Output convention: pipeline caller sets the path; standalone default `.arcus/outputs/pull-request-builder/<timestamp>.md`. The capability never asks the user where to write.

@@ -115,5 +115,5 @@ ISSUES:
 
 ### Outputs
 - **`compliance_verdict`** (structured text) — Binary verdict (PASS or FAIL) with issue list categorized as MISSING, EXTRA, or WRONG requirements; each issue includes file:line references.
-  Output convention: pipeline caller sets the path; standalone default `.arcus/outputs/spec-compliance-reviewer/<story-id-or-timestamp>.md`. The capability never asks the user where to write.
+  Output convention: pipeline caller sets the path; standalone default `.arcus/outputs/spec-compliance-reviewer/<timestamp>.md`. The capability never asks the user where to write.
 
