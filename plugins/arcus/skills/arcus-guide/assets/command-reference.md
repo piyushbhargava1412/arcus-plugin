@@ -54,7 +54,8 @@ stage in a fresh session, use that stage's explicit phrase.
 | `generate test plan for <STORY>` | The `test_plan` stage | Resume or restart test planning |
 | `review <STORY>` | The `code_review` stage | Resume or restart code review |
 | `code review <STORY>` | Alias for review | Same as above |
-| `sync context for <STORY>` | The `context_sync` stage | Resume or run the post-review `.context/` drift sync (also: `sync context`) |
+| `resume <STORY>` | Continue the pipeline | Resume from the first incomplete stage in the persisted mode |
+| `sync context` | Ad-hoc `.context/` full sweep | Run a standalone drift sweep (to resume the in-pipeline `context_sync` stage, use `resume <STORY>`) |
 | `create pull request for <STORY>` | The `closure` stage | Resume or restart PR creation |
 
 **⚠️ Warning:** Cold-resuming a later stage assumes the earlier artifacts already exist.

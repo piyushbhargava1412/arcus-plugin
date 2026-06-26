@@ -45,66 +45,20 @@ Read the named inputs:
 - Use `"$ARCUS_HOME"/agent-resources/test-spec-compiler/assets/test-plan-template.md` to structure the final matrix.
 - Write the output to the output path (default `.arcus/outputs/test-spec-compiler/<story-id-or-timestamp>.md` when no explicit path is passed; the dispatcher may override it).
 
-## Success Criteria
-- **Comprehensive**: Covers Happy Path, Edge Cases, and expected Failures.
-- **Actionable**: Provides specific file paths or method names for test implementation.
-- **Pattern-Aligned**: Uses the same assertion and mocking styles as the existing codebase.
-
 ## Resources
 - **Test Plan Template**: `"$ARCUS_HOME"/agent-resources/test-spec-compiler/assets/test-plan-template.md`
 - **QA Best Practices**: `"$ARCUS_HOME"/agent-resources/test-spec-compiler/references/qa-best-practices.md`
 
-## Handoff Protocol
-
-On finish, this skill marks its own checkpoint key complete:
-`<BIN>/checkpoint.sh complete <STORY_ID> test_plan` (resolve `<BIN>` as `.arcus/bin/` →
-`$ARCUS_HOME/scripts/`). It then names **only its immediate successor** — Implementation. It does
-**NOT** enumerate the full pipeline; that lives only in the afk `arcus:arcus-controller`.
-
-- **Successor**: Implementation — skill `arcus:implementation-runner`, resume phrase
-  `"implement <STORY_ID>"`.
-- **Same-session continuation**: on a `"yes"` / `"proceed"`, load and follow
-  `arcus:implementation-runner` directly.
-- **Cold resume** (new session): the user types `"implement <STORY_ID>"`, which re-activates
-  Implementation by description-matching + the checkpoint.
-
-Emit exactly this shape:
-
-```
-[Handoff] Test Plan complete → next: Implementation
-Summary: <N test cases>
-Artifacts: <output-path>
-Proceed? Reply "yes" to run Implementation, or "no" to pause.
-Resume later with: "implement <STORY_ID>"
-```
-
 ## Contract
 
-> Layer: **capability** — atomic, stateless, given declared inputs → produce one output. No checkpoint reads/writes, no branch ops, no ARCUS path construction.
-
 ### Inputs
-| Input | Type | Description | Typical source |
-|-------|------|-------------|----------------|
-| `implementation_plan` | markdown | Task breakdown with Definition of Done per task | orchestrator passes it |
-| `spec_grounding` | markdown | Technical decisions including error-handling choices (optional) | orchestrator passes it |
-| `context_pack` | markdown | Testing patterns and relevant flows (optional) | orchestrator passes it |
+| Input | Required | Type | Description |
+|-------|----------|------|-------------|
+| `implementation_plan` | yes | markdown | Task breakdown with Definition of Done per task |
+| `spec_grounding` | no | markdown | Technical decisions including error-handling choices |
+| `context_pack` | no | markdown | Testing patterns and relevant flows |
 
 ### Outputs
 - **`test_matrix`** (markdown) — Multi-layered test plan categorized by functional, edge case, and error handling; each test case mapped to a specific task ID with complexity classification and pattern alignment.
   Output convention: pipeline caller sets the path; standalone default `.arcus/outputs/test-spec-compiler/<story-id-or-timestamp>.md`. The capability never asks the user where to write.
 
-### Clarification Policy
-1. **Output path** — never ask. Default to `.arcus/outputs/test-spec-compiler/<story-id-or-timestamp>.md`; orchestrators override with an explicit path.
-2. **Optional inputs** — never ask. Proceed without them; note the omission in the output.
-3. **Required inputs with no sensible default** — ask once, clearly. Cannot proceed without these.
-
-## Caller Guidance
-
-This capability receives **named inputs**, not file paths. They are passed by the dispatching skill or orchestrator:
-
-- **Pipeline (via an orchestrator/coordinator)**: the caller resolves the ARCUS workspace paths and
-  passes the **content** of each input plus an explicit `output_path`. The capability constructs no
-  ARCUS paths itself.
-
-The skill body below is written in terms of the named inputs; it never reads a hard-coded ARCUS
-workspace path.

@@ -13,23 +13,16 @@ Identify how tests are authored in the repository and persist shared conventions
 
 ## Contract
 
-> Layer: **capability** — atomic, stateless, given declared inputs → produce one output. No checkpoint reads/writes, no branch ops, no ARCUS path construction.
-
 ### Inputs
-| Input | Type | Description | Typical source |
-|-------|------|-------------|----------------|
-| `repo_structure` | markdown | Repository structure map identifying test locations for each layer | orchestrator passes repo_map / standalone user supplies it |
-| `repo_boundaries` | markdown | Repository scope and testing guardrails | orchestrator passes repo_scope / standalone user supplies it |
-| `test_roots` | paths | Test directories for unit, integration, functional, acceptance, performance, and shell tests | orchestrator passes it / inferred from repo_structure |
+| Input | Required | Type | Description |
+|-------|----------|------|-------------|
+| `repo_structure` | yes | markdown | Repository structure map identifying test locations for each layer |
+| `repo_boundaries` | yes | markdown | Repository scope and testing guardrails |
+| `test_roots` | no | paths | Test directories per layer; inferred from `repo_structure` if absent |
 
 ### Outputs
 - **`testing_conventions`** (markdown) — Test frameworks, mocking patterns, assertion styles, test data patterns, and execution commands per test layer (unit, integration, functional, acceptance, performance, shell script).
   Output convention: pipeline caller sets the path; standalone default `.arcus/outputs/test-pattern-discovery/<story-id-or-timestamp>.md`. The capability never asks the user where to write.
-
-### Clarification Policy
-1. **Output path** — never ask. Default to `.arcus/outputs/test-pattern-discovery/<story-id-or-timestamp>.md`; orchestrators override with an explicit path (typically `.context/testing-patterns.md`).
-2. **Optional inputs** — never ask. Proceed without them; note the omission in the output.
-3. **Required inputs with no sensible default** — ask once, clearly. Cannot proceed without these.
 
 ## Instructions
 
@@ -69,7 +62,8 @@ Identify how tests are authored in the repository and persist shared conventions
 
 ### Step 3: Persistence
 1. Use the `./assets/testing-patterns.template.md` to generate the baseline.
-2. Persist the output exactly to `.context/testing-patterns.md`.
+2. Write to the caller-provided output path (standalone default per the Contract's Output;
+   orchestrators typically pass `.context/testing-patterns.md`).
 3. Canonical Files: Select a few specific files that future agents should use as gold-standard examples.
 
 **Core Rules**:

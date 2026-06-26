@@ -1,5 +1,6 @@
 [
   { "query": "implement ARC-0042", "owner": "arcus-controller" },
+  { "query": "resume ARC-0042", "owner": "arcus-controller" },
   { "query": "forge ARC-0042", "owner": "arcus-controller" },
   { "query": "afk ARC-0042", "owner": "arcus-controller" },
   { "query": "run afk on ARC-0042", "owner": "arcus-controller" },
@@ -8,6 +9,7 @@
   { "query": "break down the story", "owner": "implementation-planner" },
   { "query": "review ARC-0042", "owner": "code-reviewer" },
   { "query": "code review ARC-0042", "owner": "code-reviewer" },
+  { "query": "sync context", "owner": "context-drift-sync" },
   { "query": "discover and persist design patterns", "owner": "design-pattern-discovery" },
   { "query": "baseline the coding style", "owner": "design-pattern-discovery" },
   { "query": "discover and persist flows", "owner": "flow-and-scope-discovery" },

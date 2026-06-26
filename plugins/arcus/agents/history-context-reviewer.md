@@ -35,13 +35,7 @@ Specifically it catches:
 It runs as part of the `arcus:code-reviewer` Step 3 fan-out, dispatched at `medium` complexity.
 
 Its job is narrow: flag only findings with **concrete git signal** — not style concerns, not
-speculative risks. The coordinator deduplicates and consolidates across all specialists.
-
-## Inputs (provided by the coordinator in the subagent prompt)
-
-- The changed file set (output of `git diff --name-only <base>...HEAD`)
-- The branch diff (or access to run `git` commands on the repo)
-- `context-pack.md` architecture section (for context on what's load-bearing)
+speculative risks.
 
 ## Skip Criteria
 
@@ -140,25 +134,18 @@ FINDINGS:
 - **Run git commands for actual data** — never eyeball the diff and guess at history.
 - **Concrete signal only** — do not flag based on "this looks important" without git evidence.
 - **Changed code only** — never flag pre-existing issues in untouched files.
-- **No binary verdict** — let the `code-reviewer` coordinator judge.
 - **Model tier**: `medium`
 
 ## Contract
 
-> Layer: **capability** — atomic, stateless, given declared inputs → produce one output. No checkpoint reads/writes, no branch ops, no ARCUS path construction.
-
 ### Inputs
-| Input | Type | Description | Typical source |
-|-------|------|-------------|----------------|
-| `change_set` | git diff output | The branch diff showing files and hunks changed | orchestrator passes it |
-| `base_ref` | git ref | The base branch or commit to compare against | orchestrator passes it |
-| `context_pack` | markdown | Story-to-code correlations including architecture context (optional) | orchestrator passes it |
+| Input | Required | Type | Description |
+|-------|----------|------|-------------|
+| `change_set` | yes | git diff output | The branch diff showing files and hunks changed |
+| `base_ref` | yes | git ref | The base branch or commit to compare against |
+| `context_pack` | no | markdown | Story-to-code correlations including architecture context |
 
 ### Outputs
 - **`history_review_findings`** (structured text) — List of findings with severity tags (warning/suggestion), each with concrete git signal evidence (prior fix/revert overlap, deliberate-marker removal, or re-added reverted code).
   Output convention: pipeline caller sets the path; standalone default `.arcus/outputs/history-context-reviewer/<story-id-or-timestamp>.md`. The capability never asks the user where to write.
 
-### Clarification Policy
-1. **Output path** — never ask. Default to `.arcus/outputs/history-context-reviewer/<story-id-or-timestamp>.md`; orchestrators override with an explicit path.
-2. **Optional inputs** — never ask. Proceed without them; note the omission in the output.
-3. **Required inputs with no sensible default** — ask once, clearly. Cannot proceed without these.

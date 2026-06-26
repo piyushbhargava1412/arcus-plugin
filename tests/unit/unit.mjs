@@ -247,7 +247,7 @@ section('L1-1..L1-3');
 section('L1-4..L1-7');
 {
   try {
-    const { checkAdvisoryReadOnly, checkCapabilityNoState, checkNoInlinedDomain, checkCrossRefs }
+    const { checkAdvisoryReadOnly, checkCapabilityNoState, checkNoInlinedDomain, checkCrossRefs, checkAgentRefQualified }
       = await import('../lib/checks.mjs');
     const { walkSkills, walkAll, parseFrontmatter, ADVISORY_REVIEWERS }
       = await import('../lib/skills.mjs');
@@ -333,6 +333,19 @@ section('L1-4..L1-7');
     });
     assert(benignCheckpoint.ok === true, 'checkCapabilityNoState does not flag the benign word "checkpoint"');
 
+    // Test L1-5: state subcommands beyond set-status (read / complete) are caught too —
+    // a capability that reads or advances the checkpoint is stateful (guards the gap that
+    // let pull-request-builder / test-spec-compiler / context-drift-sync slip through).
+    for (const sub of ['read', 'complete', 'set-branch', 'set-mode']) {
+      const r = checkCapabilityNoState({
+        name: 'synthetic-capability',
+        tier: 'capability',
+        body: `On finish, run \`.arcus/bin/checkpoint.sh ${sub} <STORY_ID> stage\`.`
+      });
+      assert(r.ok === false && r.errors.join(' ').includes(sub),
+             `checkCapabilityNoState catches checkpoint.sh ${sub}`);
+    }
+
     // Test L1-5: checkCapabilityNoState passes (not applicable) on orchestrator
     const implementationRunner = allSkills.find(s => s.name === 'implementation-runner');
     const orchestratorResult = checkCapabilityNoState({
@@ -406,6 +419,34 @@ section('L1-4..L1-7');
     const errorMsg = danglingRefResult.errors.join(' ');
     assert(errorMsg.includes('does-not-exist-skill') || errorMsg.includes('another-missing-skill'),
            'checkCrossRefs identifies specific dangling references');
+
+    // Test L1-14: checkAgentRefQualified passes on real skill that labels its pure-agent
+    // dispatch with the "agent" qualifier (kick-off → arcus:context-pack-builder).
+    const pureAgentNames = new Set(
+      allSkills.filter(i => i.surface === 'agent' && !skillsOnlyNames.has(i.name)).map(i => i.name)
+    );
+    const kickOff = allSkills.find(s => s.name === 'kick-off');
+    const kickOffQualified = checkAgentRefQualified({
+      name: kickOff.name,
+      body: kickOff.body,
+      pureAgentNames
+    });
+    assert(kickOffQualified.ok === true,
+           `checkAgentRefQualified passes on kick-off (got ${kickOffQualified.errors?.join('; ') || 'ok'})`);
+
+    // Test L1-14: checkAgentRefQualified FAILS on unqualified-agent-ref fixture
+    const unqualifiedPath = path.join(repoRoot, 'tests/fixtures/unqualified-agent-ref/SKILL.md');
+    const unqualifiedText = await fs.readFile(unqualifiedPath, 'utf-8');
+    const unqualifiedMatch = unqualifiedText.match(/---\n([\s\S]*?)---\n([\s\S]*)/);
+    const unqualifiedBody = unqualifiedMatch ? unqualifiedMatch[2] : unqualifiedText;
+    const unqualifiedResult = checkAgentRefQualified({
+      name: 'unqualified-agent-ref',
+      body: unqualifiedBody,
+      pureAgentNames: new Set(['context-pack-builder'])
+    });
+    assert(unqualifiedResult.ok === false, `checkAgentRefQualified fails on unqualified-agent-ref (got ok=${unqualifiedResult.ok})`);
+    assert(unqualifiedResult.errors.join(' ').includes('context-pack-builder'),
+           'checkAgentRefQualified identifies the unqualified pure-agent ref');
 
     pass('L1-4..L1-7 checks passed');
   } catch (err) {
@@ -958,7 +999,7 @@ section('planted-violation coverage map');
   // and a planted-bad assertion (returns ok:false), EXCEPT L1-6 which is advisory
   // (asserts warnings on bad input, never sets ok:false).
   //
-  // This section programmatically asserts all 13 checks are covered above.
+  // This section programmatically asserts all 14 checks are covered above.
   const coveredChecks = [
     'L1-1',  // checkManifests: good=real manifests, bad=bad-manifest.json
     'L1-2',  // checkFrontmatter: good=spec-finalizer, bad=bad-frontmatter (reserved word)
@@ -972,20 +1013,21 @@ section('planted-violation coverage map');
     'L1-10', // checkNoInlineModel: good=model-strategy & implementation-runner, bad=inline-model
     'L1-11', // validateJsonSchema + checkArtifactSections: good=inline+markdown, bad=bad-checkpoint+bad-plan
     'L1-12', // checkCapabilityHasEvalSpec: good=spec present, bad=capability with no spec (injected predicate)
-    'L1-13'  // checkAgentFrontmatter: good=good-agent.md, bad=bad-agent.md (missing layer+model)
+    'L1-13', // checkAgentFrontmatter: good=good-agent.md, bad=bad-agent.md (missing layer+model)
+    'L1-14'  // checkAgentRefQualified: good=kick-off, bad=unqualified-agent-ref fixture
   ];
 
-  assert(coveredChecks.length === 13,
-         `coverage map lists all 13 L1 checks (got ${coveredChecks.length})`);
+  assert(coveredChecks.length === 14,
+         `coverage map lists all 14 L1 checks (got ${coveredChecks.length})`);
 
-  // Verify the list is exactly L1-1 through L1-13
-  for (let i = 1; i <= 13; i++) {
+  // Verify the list is exactly L1-1 through L1-14
+  for (let i = 1; i <= 14; i++) {
     const checkId = `L1-${i}`;
     assert(coveredChecks.includes(checkId),
            `coverage map includes ${checkId}`);
   }
 
-  pass('planted-violation coverage: all 13 L1 checks have good+planted assertions');
+  pass('planted-violation coverage: all 14 L1 checks have good+planted assertions');
 }
 
 exitWithReport();

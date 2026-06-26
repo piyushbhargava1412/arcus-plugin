@@ -24,27 +24,15 @@ resource risks — not micro-optimizations or speculative tuning.
 
 ## Contract
 
-> Layer: **capability** — atomic, stateless, given declared inputs → produce one output. No checkpoint reads/writes, no branch ops, no ARCUS path construction.
-
 ### Inputs
-| Input | Type | Description | Typical source |
-|-------|------|-------------|----------------|
-| `change_set` | git diff | The branch diff with changed files and hunks | orchestrator passes it |
-| `repo_conventions` | markdown | Architecture patterns, performance guardrails, and coding conventions | orchestrator passes relevant section from context pack |
+| Input | Required | Type | Description |
+|-------|----------|------|-------------|
+| `change_set` | yes | git diff | The branch diff with changed files and hunks |
+| `repo_conventions` | no | markdown | Architecture patterns, performance guardrails, coding conventions (relevant context-pack section) |
 
 ### Outputs
 - **`performance_findings`** (structured report) — Concrete performance regressions and resource risks with severity, confidence, and file:line references.
   Output convention: pipeline caller sets the path; standalone default `.arcus/outputs/performance-reviewer/<story-id-or-timestamp>.md`. The capability never asks the user where to write.
-
-### Clarification Policy
-1. **Output path** — never ask. Default to `.arcus/outputs/performance-reviewer/<story-id-or-timestamp>.md`; orchestrators override with an explicit path (code-reviewer reads this inline, no file written).
-2. **Optional inputs** — never ask. Proceed without them; note the omission in the output.
-3. **Required inputs with no sensible default** — ask once, clearly. Cannot proceed without these.
-
-## Inputs (provided by the coordinator)
-
-- The list of changed files and the branch diff
-- Architecture/conventions from `context-pack.md` (relevant section)
 
 ## What to Flag
 

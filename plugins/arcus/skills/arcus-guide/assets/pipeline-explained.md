@@ -320,7 +320,8 @@ approved branch diff materially drifted — *before* the PR is opened.
 - **Facts-only and diff-driven** — no full repository rescan
 - **Interactive mode:** shows a drift assessment + a single consolidated yes/no
 - **Autonomous mode:** auto-decides
-- Also **standalone-invocable** via `sync context for <STORY_ID>` / `sync context`
+- Resume the in-pipeline stage with `resume <STORY_ID>` (the controller picks up here); run an
+  ad-hoc full sweep with `sync context`
 
 **Skills invoked:**
 - `context-drift-sync` (capability)
@@ -397,7 +398,7 @@ stage in a fresh session. Examples:
 | Full pipeline | `implement <STORY>` (or `plan <STORY>`) |
 | Test plan | `generate test plan for <STORY>` |
 | Code review | `review <STORY>` |
-| Context sync | `sync context for <STORY>` |
+| Context sync | `resume <STORY>` (controller resumes here); `sync context` for an ad-hoc full sweep |
 | Closure (PR) | `create pull request for <STORY>` |
 
 Within the same session, a simple `yes` / `proceed` loads the next stage directly.

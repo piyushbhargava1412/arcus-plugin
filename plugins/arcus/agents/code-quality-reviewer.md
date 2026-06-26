@@ -21,23 +21,16 @@ Reviews implementation code for quality concerns — pattern fidelity, clean str
 
 ## Contract
 
-> Layer: **capability** — atomic, stateless, given declared inputs → produce one output. No checkpoint reads/writes, no branch ops, no ARCUS path construction.
-
 ### Inputs
-| Input | Type | Description | Typical source |
-|-------|------|-------------|----------------|
-| `change_set` | git diff | The branch diff with all files changed by this story | orchestrator passes it |
-| `repo_conventions` | markdown | Architecture patterns, design/coding conventions, testing patterns, and repository guidelines | orchestrator passes relevant sections from context pack + `.context/` artifacts |
-| `acceptance_criteria` | markdown | Definition of Done for the tasks in this story | orchestrator passes it |
+| Input | Required | Type | Description |
+|-------|----------|------|-------------|
+| `change_set` | yes | git diff | The branch diff with all files changed by this story |
+| `acceptance_criteria` | yes | markdown | Definition of Done for the tasks in this story |
+| `repo_conventions` | no | markdown | Architecture, design/coding conventions, testing patterns, repo guidelines (context-pack + `.context/`) |
 
 ### Outputs
 - **`quality_findings`** (structured report) — Pattern fidelity violations, structural issues, maintainability concerns, error-handling gaps, test quality issues, and dead code, with severity, confidence, and file:line references.
   Output convention: pipeline caller sets the path; standalone default `.arcus/outputs/code-quality-reviewer/<story-id-or-timestamp>.md`. The capability never asks the user where to write.
-
-### Clarification Policy
-1. **Output path** — never ask. Default to `.arcus/outputs/code-quality-reviewer/<story-id-or-timestamp>.md`; orchestrators override with an explicit path (code-reviewer reads this inline, no file written).
-2. **Optional inputs** — never ask. Proceed without them; note the omission in the output.
-3. **Required inputs with no sensible default** — ask once, clearly. Cannot proceed without these.
 
 ## Output
 
@@ -57,13 +50,6 @@ FINDINGS:
 ```
 
 Only report findings with confidence ≥ 80; drop anything below that threshold rather than surfacing uncertain signals.
-
-## Inputs (provided by the coordinator in prompt)
-
-- The branch diff / set of files changed by this story
-- Architecture patterns from `context-pack.md` (relevant section only)
-- Design & coding conventions from `.context/design-and-coding-patterns.md` (patterns in use, layering/structure, naming/idioms, error-handling, and **Avoid** rules)
-- Repo conventions / guidelines (if present in `AGENTS.md` or `CLAUDE.md`)
 
 ## Review Checklist
 

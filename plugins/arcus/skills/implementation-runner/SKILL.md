@@ -168,21 +168,3 @@ Proceed? Reply "yes" to run Code Review, or "no" to pause.
 Resume later with: "review <STORY_ID>"
 ```
 
-## Layer Rules
-
-> Layer: **orchestrator** — the **stateful** pipeline driver. Owns the checkpoint, the git branch, and the stage gates. It resolves all ARCUS paths and artifact filenames and passes capabilities/coordinators explicit, pre-resolved inputs — so the capabilities themselves stay path-free and reusable.
-
-- **Owned state**: Git branch (created at entry via `branch.sh` — the deferred-branch realization; collision bumps reflected via `checkpoint.sh set-branch`), per-task loop state (which tasks pending/in_progress/complete, via `checkpoint.sh`), loopback mechanics (on `changes_requested` verdict: reopens `code_review`, bumps `review_round`, converts findings from `review.md` into fix-tasks appended to `plan.md`).
-- **Calls**: `branch.sh` (realize planned branch at entry), `subagent-task-dispatcher` (per task, passing Story ID, Task N, complexity, commit message — dispatcher owns the per-task TDD + refactor gate + spec-check + commit protocol), `commit.sh` (indirectly, via dispatcher). Reads grounded decisions from `.arcus/specs/<STORY_ID>/grounded-spec.md`, task list from `plan.md`, checkpoint via `checkpoint.sh read`.
-- **Framework-conventions boundary**: All checkpoint state keys (`branch`, `task_<N>` stage keys), artifact paths (`.arcus/specs/<STORY_ID>/grounded-spec.md`, `plan.md`, `review.md`), helper script resolution (`.arcus/bin/` → `$ARCUS_HOME/scripts/`), and loopback-round cap (3) live HERE. The dispatcher receives only domain inputs (Story ID, Task N, complexity).
-
-## Success Criteria
-
-- The git branch is **created at entry** via `branch.sh` (it did not exist before this skill ran), and
-  the `branch` stage is marked complete; any collision bump is reflected via `set-branch` (inside
-  `branch.sh`).
-- Every `### Task N:` heading in `plan.md` is dispatched via `arcus:subagent-task-dispatcher`;
-  each task is committed via `commit.sh` (by the dispatcher).
-- Loopback appends fix-tasks and stops auto-looping at `review_round` == 3.
-- Grounded decisions are read from `grounded-spec.md`.
-- The Handoff block hands off to Code Review with cold-resume phrase `"review <STORY_ID>"`.

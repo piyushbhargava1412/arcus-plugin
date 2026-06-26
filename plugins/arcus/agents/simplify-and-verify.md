@@ -43,15 +43,13 @@ found, original code preserved."
 
 ## Contract
 
-> Layer: **capability** — atomic, stateless, given declared inputs → produce one output. No checkpoint reads/writes, no branch ops, no ARCUS path construction.
-
 ### Inputs
-| Input | Type | Description | Typical source |
-|-------|------|-------------|----------------|
-| `file_set` / `change_set` | list of file paths or diff | The changed files to simplify | the code-simplifier coordinator (dispatched per task) passes the changed files |
-| `test_command` | command string | How to verify — the command that must stay green before and after mutation | the coordinator passes it |
-| `repo_conventions` | text / artifact refs | *(optional)* The simplicity/style conventions to apply | read at runtime from repository convention artifacts (e.g. `AGENTS.md`, `CLAUDE.md`, `context-pack.md`, `.context/testing-patterns.md`, `.context/design-and-coding-patterns.md`) if not supplied |
-| `acceptance_criteria` | markdown or text | *(optional)* The DoD the simplification must not violate (guards test pruning) | the coordinator passes the task DoD |
+| Input | Required | Type | Description |
+|-------|----------|------|-------------|
+| `file_set` / `change_set` | yes | list of file paths or diff | The changed files to simplify |
+| `test_command` | yes | command string | How to verify — the command that must stay green before and after mutation |
+| `repo_conventions` | no | text / artifact refs | Simplicity/style conventions; read from repository convention artifacts at runtime if not supplied |
+| `acceptance_criteria` | no | markdown or text | The DoD the simplification must not violate (guards test pruning) |
 
 ### Outputs
 - **`result_status`** — a result status of `SIMPLIFIED` or `REVERTED`, plus a short summary:
@@ -70,11 +68,6 @@ found, original code preserved."
   `.arcus/outputs/simplify-and-verify/<story-id-or-timestamp>.md`. The capability never asks the user
   where to write; pipeline callers set the path. When dispatched by the coordinator, the result is
   returned inline (no artifact required).
-
-### Clarification Policy
-1. **Output path** — never ask. Default to `.arcus/outputs/simplify-and-verify/<story-id-or-timestamp>.md`; orchestrators override with an explicit path.
-2. **Optional inputs** (`repo_conventions`, `acceptance_criteria`) — never ask. Proceed without them; source conventions from repository artifacts at runtime and note any omission.
-3. **Required inputs with no sensible default** (the `file_set` + the `test_command`) — ask once, clearly. Cannot proceed without these.
 
 ## Simplification Rules
 

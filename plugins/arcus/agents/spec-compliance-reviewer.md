@@ -32,9 +32,8 @@ Verifies that an implementation matches its specification — nothing more, noth
 
 The **per-task** pass is an early, advisory correctness check (one retry, then commit-and-carry-forward
 — see the dispatcher's Step 6), focused on catching gamed/missing tests and `[EXTRA]` scope creep while
-the task context is fresh. It is the *only* per-task review: code quality, security, and performance are
-reviewed once, holistically, by the `code-reviewer` stage over the full diff. Stay strictly on
-correctness-vs-spec here; never flag style or quality.
+the task context is fresh. Stay strictly on correctness-vs-spec here; never flag style or quality —
+those are reviewed separately.
 
 In **holistic** mode, do not emit a binary verdict. Instead return findings using the canonical
 severity taxonomy and let the coordinator judge:
@@ -107,31 +106,14 @@ ISSUES:
 
 ## Contract
 
-> Layer: **capability** — atomic, stateless, given declared inputs → produce one output. No checkpoint reads/writes, no branch ops, no ARCUS path construction.
-
 ### Inputs
-| Input | Type | Description | Typical source |
-|-------|------|-------------|----------------|
-| `acceptance_criteria` | markdown or text | Definition of Done for the task being verified | orchestrator passes it |
-| `claimed_files` | list of file paths | Files the implementer reports as modified | orchestrator passes it |
-| `change_set` | git diff or file contents | The actual code changes to review | orchestrator passes it |
+| Input | Required | Type | Description |
+|-------|----------|------|-------------|
+| `acceptance_criteria` | yes | markdown or text | Definition of Done for the task being verified |
+| `claimed_files` | yes | list of file paths | Files the implementer reports as modified |
+| `change_set` | yes | git diff or file contents | The actual code changes to review |
 
 ### Outputs
 - **`compliance_verdict`** (structured text) — Binary verdict (PASS or FAIL) with issue list categorized as MISSING, EXTRA, or WRONG requirements; each issue includes file:line references.
   Output convention: pipeline caller sets the path; standalone default `.arcus/outputs/spec-compliance-reviewer/<story-id-or-timestamp>.md`. The capability never asks the user where to write.
 
-### Clarification Policy
-1. **Output path** — never ask. Default to `.arcus/outputs/spec-compliance-reviewer/<story-id-or-timestamp>.md`; orchestrators override with an explicit path.
-2. **Optional inputs** — never ask. Proceed without them; note the omission in the output.
-3. **Required inputs with no sensible default** — ask once, clearly. Cannot proceed without these.
-
-## Caller Guidance
-
-This capability receives **named inputs**, not file paths. They are passed by the dispatching skill or orchestrator:
-
-- **Pipeline (via an orchestrator/coordinator)**: the caller resolves the ARCUS workspace paths and
-  passes the **content** of each input plus an explicit `output_path`. The capability constructs no
-  ARCUS paths itself.
-
-The skill body below is written in terms of the named inputs; it never reads a hard-coded ARCUS
-workspace path.

@@ -178,12 +178,13 @@ function checkAdvisoryReadOnly({ name, frontmatter, advisorySet }) {
 
 /**
  * L1-5: Capabilities hold no orchestration state (category invariant).
- * Capabilities must not reference checkpoint.sh, branch.sh, git checkout -b,
- * set-status, or "next stage" routing patterns.
+ * Capabilities must not reference checkpoint.sh state subcommands, branch.sh,
+ * git checkout -b, or "next stage" routing patterns.
  *
  * Patterns are calibrated to avoid false positives on clean capabilities:
  * - session-checkpoint (the orchestration-state artifact, hyphenated token or .json filename)
- * - checkpoint.sh set-status (requires the set-status subcommand, not just "checkpoint")
+ * - checkpoint.sh <state subcommand> — read | set-status | set-branch | set-mode | complete | init
+ *   (requires a known subcommand, not just the bare word "checkpoint")
  * - branch.sh (as a command or script reference)
  * - git checkout -b (the exact branch creation command)
  * - "next stage" or "proceed to the next stage" (routing language)
@@ -209,9 +210,14 @@ function checkCapabilityNoState({ name, tier, body }) {
     errors.push(`${name}: capability references session-checkpoint (orchestration state)`);
   }
 
-  // Pattern 1: checkpoint.sh set-status (specific subcommand)
-  if (/checkpoint\.sh\s+set-status/i.test(body)) {
-    errors.push(`${name}: capability references checkpoint.sh set-status (orchestration state)`);
+  // Pattern 1: checkpoint.sh with any state subcommand. Reading OR advancing the
+  // checkpoint is orchestration state — a capability must do neither. Matches the
+  // script + a known subcommand (read | set-status | set-branch | set-mode | complete |
+  // init), so a benign prose mention of "checkpoint" still does not trip it.
+  const checkpointSub = /checkpoint\.sh\s+(read|set-status|set-branch|set-mode|complete|init)\b/i;
+  const m = body.match(checkpointSub);
+  if (m) {
+    errors.push(`${name}: capability references checkpoint.sh ${m[1]} (orchestration state)`);
   }
 
   // Pattern 2: branch.sh as a script/command (not just the word "branch")
@@ -337,6 +343,74 @@ function checkCrossRefs({ name, body, knownSkillNames }) {
   if (danglingRefs.size > 0) {
     const refList = Array.from(danglingRefs).sort().join(', ');
     errors.push(`${name}: references non-existent skills: ${refList}`);
+  }
+
+  return { ok: errors.length === 0, errors };
+}
+
+/**
+ * L1-14: Pure-agent dispatch references carry the "agent" qualifier.
+ *
+ * The `arcus:<name>` token is surface-agnostic — it resolves to a skill dir OR an
+ * agent file. A SKILL is the default assumption (it lives in skills/<name>/), so a
+ * bare imperative like "read and follow `arcus:foo`" sends the model looking for a
+ * skill folder. For a PURE agent (an agent file whose basename is NOT also a skill
+ * dir) that folder does not exist, so the dispatch instruction MUST label it as an
+ * `agent` to point the model at agents/<name>.md.
+ *
+ * Scope is deliberately tight to keep false positives near zero:
+ *   - Only PURE agents are checked (dual-surface items like test-spec-compiler /
+ *     pull-request-builder / context-drift-sync, which have BOTH a skill wrapper and an
+ *     agent file, may be referenced as either "skill" or "agent").
+ *   - Only IMPERATIVE dispatch lead-ins that sit IMMEDIATELY before the token are
+ *     flagged (`read and follow` / `dispatch` / `invoke`, optionally + "the"). Passive
+ *     descriptions ("dispatched by `arcus:x`", "delegates … to the `arcus:x`") are not
+ *     dispatch instructions and are left alone.
+ *
+ * When such a lead-in is found, the token's line plus the following line (to allow a
+ * wrapped sentence) — with `arcus:` tokens stripped so a name like
+ * `subagent-task-dispatcher` cannot self-satisfy — must contain the word "agent".
+ *
+ * @param {Object} input
+ * @param {string} input.name - Item name (skill or agent being checked)
+ * @param {string} input.body - Item body text
+ * @param {Set<string>} input.pureAgentNames - Agent basenames with NO sibling skill dir
+ * @returns {{ ok: boolean, errors: string[] }}
+ */
+function checkAgentRefQualified({ name, body, pureAgentNames }) {
+  const errors = [];
+
+  // Imperative dispatch verb sitting immediately before the `arcus:` token,
+  // optionally followed by "the" and an opening backtick.
+  const leadIn = /(?:read\s+and\s+follow|dispatch|invoke)\s+(?:the\s+)?`?$/i;
+  const refPattern = /arcus:([a-z0-9]+(?:-[a-z0-9]+)*)/g;
+  const stripTokens = (text) => text.replace(/arcus:[a-z0-9-]+/gi, '');
+
+  const flagged = new Set();
+
+  for (const match of body.matchAll(refPattern)) {
+    const refName = match[1];
+    if (!pureAgentNames.has(refName)) continue;
+
+    // Only require the qualifier when this is an imperative dispatch instruction.
+    const before = body.slice(0, match.index);
+    if (!leadIn.test(before)) continue;
+
+    // Window = the token's line + the next line (handles a wrapped sentence).
+    const lineStart = before.lastIndexOf('\n') + 1;
+    const lineEnd = body.indexOf('\n', match.index);
+    const nextLineEnd = lineEnd === -1 ? -1 : body.indexOf('\n', lineEnd + 1);
+    const windowEnd = nextLineEnd === -1 ? body.length : nextLineEnd;
+    const window = stripTokens(body.slice(lineStart, windowEnd));
+
+    if (!/\bagents?\b/i.test(window)) {
+      flagged.add(refName);
+    }
+  }
+
+  if (flagged.size > 0) {
+    const list = Array.from(flagged).sort().join(', ');
+    errors.push(`${name}: dispatch reference to pure agent(s) missing the "agent" qualifier: ${list}`);
   }
 
   return { ok: errors.length === 0, errors };
@@ -785,6 +859,7 @@ export {
   checkCapabilityNoState,
   checkNoInlinedDomain,
   checkCrossRefs,
+  checkAgentRefQualified,
   checkResourcePaths,
   checkHooks,
   checkNoInlineModel,

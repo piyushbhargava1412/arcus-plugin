@@ -34,7 +34,7 @@ ARCUS capabilities are split across **two surfaces** — an axis *orthogonal* to
 
 | Surface | Lives in | Invocation | Slash command | Roster |
 |---------|----------|-----------|---------------|--------|
-| **Skill** | `plugins/arcus/skills/<name>/SKILL.md` | user **and** model invocable; injected into the main context | `/arcus:<name>` | 16 dirs |
+| **Skill** | `plugins/arcus/skills/<name>/SKILL.md` | user **and** model invocable; injected into the main context | `/arcus:<name>` | 17 dirs |
 | **Agent** | `plugins/arcus/agents/<name>.md` (flat file) | model-only; dispatched **by name** from a skill/orchestrator, never user-facing | none | 13 files |
 
 An item is an **agent** if no human would type a trigger for it, it already runs as an isolated
@@ -45,10 +45,11 @@ documented in [`plugins/arcus/agents.md`](plugins/arcus/agents.md). The test har
 resolves every `arcus:<name>` cross-reference against the **union** of skill dirs + agent files
 (`walkAll()` in `tests/lib/skills.mjs`).
 
-- **Pure SKILLS (16)**: arcus-controller, implementation-runner, code-reviewer, kick-off,
+- **Pure SKILLS (17)**: arcus-controller, implementation-runner, code-reviewer, kick-off,
   repo-agentifier, arcus-guide, spec-finalizer, implementation-planner, design-pattern-discovery,
   test-pattern-discovery, flow-and-scope-discovery, repository-context-builder, write-evals,
-  model-strategy, plus the two **thin wrappers** test-spec-compiler + pull-request-builder.
+  model-strategy, plus the three **thin wrappers** test-spec-compiler + pull-request-builder +
+  context-drift-sync.
 - **Pure AGENTS (13)**: subagent-task-dispatcher, spec-compliance-reviewer, code-quality-reviewer,
   security-reviewer, performance-reviewer, history-context-reviewer, review-consolidator,
   code-simplifier, simplify-and-verify, context-pack-builder, context-drift-sync, plus the two

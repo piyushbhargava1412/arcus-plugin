@@ -30,11 +30,10 @@ When activated, follow the **Execution Pipeline** below.
 
 ## Key Principles
 
-- **Subagent Isolation**: Each stage dispatches a fresh subagent with scoped context. The orchestrator stays lean — dispatch, verify output, proceed.
+- **Subagent Isolation**: Each stage dispatches a fresh subagent with scoped context.
 - **Parallelization**: Stages that share no dependency run in parallel (Stage 2a, 2b, and 2c).
 - **Model Strategy**: Resolve model tier via the `arcus:model-strategy` skill for each subagent.
-- **Evidence-Based**: All outputs are grounded in actual repository evidence. No speculation.
-- **Template Adherence**: Subagents MUST follow the templates defined in their respective skill's `assets/` folder.
+- **Template Adherence**: Subagents MUST follow the templates in this skill's `assets/` folder.
 
 ## Prerequisites
 
@@ -106,42 +105,17 @@ Your chat response MUST contain ONLY these milestone lines:
 
 ### Stage 2: Parallel Discovery (depends on Stage 1 outputs)
 
-After Stage 1 completes successfully, read the contents of `.context/repo_scope.md` and `.context/repo_map.md`. These will be injected into Stage 2 subagent prompts.
+After Stage 1 completes successfully, read `.context/repo_scope.md` and `.context/repo_map.md`.
 
-Dispatch **all three** subagents in parallel:
+Dispatch **all three** subagents below in parallel. For each: read its prompt template, inject the
+`repo_scope.md` and `repo_map.md` contents into the template's placeholders, dispatch with the given
+description and model tier (resolved via `arcus:model-strategy`), then run its verify check.
 
-#### Stage 2a: Flow Discovery
-
-1. Read the subagent prompt template at `./assets/flow-discovery-prompt.md`.
-2. Inject the contents of `repo_scope.md` and `repo_map.md` into the template's designated placeholders.
-3. Dispatch a subagent:
-   - **Prompt**: The populated template
-   - **Description**: `"Context: flow-and-scope-discovery"`
-   - **Model**: Resolve complexity `heavy` via the `arcus:model-strategy` skill
-4. **Verify**: Confirm `.context/flows/` directory exists and contains at least one `.md` file.
-   - If empty: Report `[WARN] No flows discovered — repository may lack clear entry surfaces.`
-
-#### Stage 2b: Test Pattern Discovery
-
-1. Read the subagent prompt template at `./assets/test-pattern-prompt.md`.
-2. Inject the contents of `repo_scope.md` and `repo_map.md` into the template's designated placeholders.
-3. Dispatch a subagent:
-   - **Prompt**: The populated template
-   - **Description**: `"Context: test-pattern-discovery"`
-   - **Model**: Resolve complexity `medium` via the `arcus:model-strategy` skill
-4. **Verify**: Confirm `.context/testing-patterns.md` exists and is non-empty.
-   - If missing: Report `[WARN] Test patterns not generated — no test files detected.`
-
-#### Stage 2c: Design Pattern Discovery
-
-1. Read the subagent prompt template at `./assets/design-pattern-prompt.md`.
-2. Inject the contents of `repo_scope.md` and `repo_map.md` into the template's designated placeholders.
-3. Dispatch a subagent:
-   - **Prompt**: The populated template
-   - **Description**: `"Context: design-pattern-discovery"`
-   - **Model**: Resolve complexity `heavy` via the `arcus:model-strategy` skill
-4. **Verify**: Confirm `.context/design-and-coding-patterns.md` exists and is non-empty.
-   - If missing: Report `[WARN] Design patterns not generated — no first-party source detected.`
+| # | Template (`./assets/`) | Description | Model | Verify output | On miss |
+|---|------------------------|-------------|-------|---------------|---------|
+| 2a Flow | `flow-discovery-prompt.md` | `"Context: flow-and-scope-discovery"` | `heavy` | `.context/flows/` has ≥1 `.md` | `[WARN] No flows discovered — repository may lack clear entry surfaces.` |
+| 2b Test | `test-pattern-prompt.md` | `"Context: test-pattern-discovery"` | `medium` | `.context/testing-patterns.md` non-empty | `[WARN] Test patterns not generated — no test files detected.` |
+| 2c Design | `design-pattern-prompt.md` | `"Context: design-pattern-discovery"` | `heavy` | `.context/design-and-coding-patterns.md` non-empty | `[WARN] Design patterns not generated — no first-party source detected.` |
 
 ### Stage 2 Completion
 
@@ -203,14 +177,6 @@ After successful execution, the repository must contain:
 - `.context/design-and-coding-patterns.md`
 - `AGENTS.md` (repository root — agent navigation index)
 - `CLAUDE.md` (repository root — imports `AGENTS.md`)
-
-## Layer Rules
-
-> Layer: **coordinator** — a thin, **stateless** sequencer of capabilities. Owns **no** pipeline state: no checkpoint reads/writes, no branch ops, no stage gates. Its only job is to call capabilities in a fan-out/consolidate or chained pattern and pass each one explicit inputs.
-
-- **Owned state**: none.
-- **Sequences**: Stage 1 (repository-context-builder → produces `repo_scope.md` + `repo_map.md`) → Stage 2 parallel fan-out (flow-and-scope-discovery → produces `.context/flows/*.md`, test-pattern-discovery → produces `testing-patterns.md`, design-pattern-discovery → produces `design-and-coding-patterns.md`, each injected with Stage 1 outputs) → Stage 3 inline (read all `.context/` artifacts, populate the `agents-template.md`, write `AGENTS.md` + `CLAUDE.md` at repo root).
-- **Delegation**: Sequential Stage 1, then parallel fan-out Stage 2 (all 3 discovery subagents dispatched concurrently), then inline agentify logic (no subagent — reads, indexes, writes navigation files). Each discovery subagent receives scoped prompt with injected repo context.
 
 ## Completion
 

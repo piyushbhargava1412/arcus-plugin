@@ -32,15 +32,12 @@ The harness this authors for grades each case in one of three ways:
 
 ## Contract
 
-> Layer: **capability** — atomic, stateless, given declared inputs → produce one
-> output. No checkpoint reads/writes, no branch ops, no ARCUS path construction.
-
 ### Inputs
-| Input | Type | Description | Typical source |
-|-------|------|-------------|----------------|
-| `target_skill` | string | The skill to author evals for (e.g. `simplify-and-verify`) | the caller names it; standalone user supplies it |
-| `skill_contract` | markdown | *(optional)* The target skill's `SKILL.md` — its inputs, outputs, modes, and any contractual tokens | read at runtime from the target skill's `SKILL.md` if not supplied |
-| `observed_behaviours` | text | *(optional)* A list of behaviours to cover; if absent, derive them from the skill contract | the caller passes known behaviours; otherwise derived |
+| Input | Required | Type | Description |
+|-------|----------|------|-------------|
+| `target_skill` | yes | string | The skill to author evals for (e.g. `simplify-and-verify`) |
+| `skill_contract` | no | markdown | The target skill's `SKILL.md`; read at runtime from the skill directory if not supplied |
+| `observed_behaviours` | no | text | Behaviours to cover; derived from the skill contract if absent |
 
 ### Outputs
 - **`eval_spec`** (JSON) — a valid `specs/<target_skill>/evals.json` containing one
@@ -49,14 +46,6 @@ The harness this authors for grades each case in one of three ways:
   Output convention: the harness expects the spec at
   `tests/e2e/evals/specs/<target_skill>/evals.json`; a standalone caller may point
   elsewhere. The capability never asks the user where to write.
-
-### Clarification Policy
-1. **Output path** — never ask. Default to
-   `tests/e2e/evals/specs/<target_skill>/evals.json`; callers may override.
-2. **Optional inputs** (`skill_contract`, `observed_behaviours`) — never ask. Source
-   the contract from the target skill's `SKILL.md` and derive behaviours; note any
-   gap in the spec comments.
-3. **Required input with no sensible default** (`target_skill`) — ask once, clearly.
 
 ## Spec shape
 
@@ -170,17 +159,3 @@ action — authoring one spec is the whole job.
   meta-eval (does it author good red-first specs?) at
   `tests/e2e/evals/specs/write-evals/evals.json`, graded like any other capability.
 
-## Constraints
-
-- **Authors specs only** — never edits the target skill, never runs the full eval
-  suite, never performs any pipeline or routing action beyond authoring one spec.
-- **Red-first or it is wrong** — a new case must be confirmed red before returning.
-- **Lint-clean at author time** — honour PR-2 and PR-4 while drafting.
-- **Tiny fixtures** — keep fixtures minimal so real runs respect the `cost_budget`.
-
-## Success Criteria
-
-- The authored `specs/<target_skill>/evals.json` lints clean in the harness.
-- Every case has one observable behaviour, a tiny fixture, and tiered expectations.
-- Contractual-token assertions appear only for allowlisted skills.
-- The new case(s) are confirmed `red (not yet run)` before the capability stops.

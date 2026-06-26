@@ -28,26 +28,6 @@ sections — see Output). In dialogue mode, the user's answers are authoritative
 tentative picks. If the `spec_grounding` output already has a populated `## Dialogue Answers` section,
 reuse it and do NOT re-ask questions already answered.
 
-## Inputs
-
-- The `story` input — The user story
-- The `context_pack` input — Repository context (flows, patterns, constraints) (optional)
-- Project-wide guardrails (if present in `AGENTS.md` or `CLAUDE.md`)
-
-## Output
-
-This skill produces **exactly** the following — nothing else:
-
-- The `spec_grounding` output (written to the caller-provided output path) — a self-contained
-  grounded-spec record owned solely by spec-finalizer, with these sections:
-  `# Grounded Spec: [STORY-ID]` title, `## Context Grounding`, `## Resolved Ambiguities`,
-  `## Dialogue Answers` (**dialogue mode only**), `## Implementation Boundary`, and `## Guardrail Check`.
-
-The grounded spec is consumed downstream as an **input** to `implementation-planner` (which produces
-its own separate plan); spec-finalizer neither reads nor writes the implementation plan. The concrete
-write target is the output path the caller provides (standalone default
-`.arcus/outputs/spec-finalizer/<story-id-or-timestamp>.md`); this skill constructs no path itself.
-
 ## Workflow
 
 **Read the `mode` input.** If `mode == dialogue`, follow the dialogue branch (interview the user on low-confidence items). If `mode == autonomous`, follow the autonomous branch (never block for input; auto-resolve everything).
@@ -167,22 +147,11 @@ orchestrator — not this skill — decides whether to pause and ask the user.
 
 ## Constraints
 
-- **User interaction is mode-dependent**: In **autonomous** mode you cannot talk to the user — never
-  block for input; resolve every ambiguity autonomously and surface weak items via the Step 7
-  `NEEDS_INPUT` block. In **dialogue** mode you may ask the user directly (one question at a time)
-  about `zero-option` / `⚠️ LOW CONFIDENCE` items only. Either way, the `spec_grounding` output must end up fully
-  resolved: where no answer is available, select the safest option and flag it `⚠️ LOW CONFIDENCE`,
-  or mark it `zero-option` if no option can be formed.
+- **Always fully resolved**: regardless of mode (see Execution Modes), the `spec_grounding` output must
+  end up fully resolved — where no answer is available, select the safest option and flag it
+  `⚠️ LOW CONFIDENCE`, or mark it `zero-option` if no option can be formed.
 - **Maximum 15 ambiguities**: If more than 15 gaps are found, the story is likely too large. Note this in the output and proceed with the top 15 by severity.
 - **Time-bound**: Do not spend excessive reasoning on trivial ambiguities. Use the fast-track rule from the decision heuristics.
-
-## Success Criteria
-
-- **Zero weasel words remain**: No "suitable", "as needed", "appropriate" in scope
-- **Every gap has a decision**: Each ambiguity maps to exactly one selected option
-- **Grounded in evidence**: Every decision references repository patterns
-- **Internally consistent**: No contradictions between decisions
-- **Clear boundary**: Included/Excluded lists are concrete and specific
 
 ## Resources
 
@@ -191,47 +160,15 @@ orchestrator — not this skill — decides whether to pause and ask the user.
 
 ## Contract
 
-> Layer: **capability** — atomic, stateless, given declared inputs → produce one output. No checkpoint reads/writes, no branch ops, no ARCUS path construction.
-
-> **Output**: a single self-contained `grounded-spec` record. spec-finalizer writes the
-> `# Grounded Spec: <STORY-ID>` title, `## Context Grounding`, `## Resolved Ambiguities`,
-> `## Dialogue Answers` (dialogue mode), `## Implementation Boundary`, and `## Guardrail Check`.
-
 ### Inputs
-| Input | Type | Description | Typical source |
-|-------|------|-------------|----------------|
-| `story` | markdown or text | The user story requirement to be analyzed for completeness | orchestrator passes it / standalone user supplies it |
-| `context_pack` | markdown | Story-to-code correlations including flows, patterns, constraints (optional) | orchestrator passes it / standalone user supplies it |
-| `mode` | string | Execution mode: `dialogue` (interview user on low-confidence items) or `autonomous` (auto-resolve everything) | orchestrator passes it / standalone user supplies it |
+| Input | Required | Type | Description |
+|-------|----------|------|-------------|
+| `story` | yes | markdown or text | The user story to analyze for completeness |
+| `mode` | yes | string | `dialogue` or `autonomous` — see **Execution Modes** |
+| `context_pack` | no | markdown | Story-to-code correlations (flows, patterns, constraints); proceed without it, noting the omission |
+| guardrails | no | markdown | Project guardrails from `AGENTS.md` / `CLAUDE.md` if present |
 
-### Outputs
-- **`spec_grounding`** (markdown) — Resolved ambiguities with selected options and rationale, implementation boundary (included/excluded), guardrail check, and dialogue answers (if mode=dialogue). Written as a self-contained grounded-spec document.
-  Output convention: pipeline caller sets the path; standalone default `.arcus/outputs/spec-finalizer/<story-id-or-timestamp>.md`. The capability never asks the user where to write.
-
-### Mode
-| Mode | Behaviour |
-|------|-----------|
-| `dialogue` | Interview the user one question at a time on low-confidence / open items; each question presents one **Recommended** option + rationale + a custom-answer option; fold answers in before proceeding. |
-| `autonomous` | Never block. Auto-resolve with the safest option, flag weak picks, proceed. |
-
-The caller passes `mode` explicitly (full explicit-parameter wiring is finalized in a later task).
-
-### Clarification Policy
-1. **Output path** — never ask. Default to `.arcus/outputs/spec-finalizer/<story-id-or-timestamp>.md`; orchestrators override with an explicit path.
-2. **Optional inputs** — never ask. Proceed without them; note the omission in the output.
-3. **Required inputs with no sensible default** — ask once, clearly. Cannot proceed without these.
-
-## Caller Guidance
-
-This capability receives **named inputs**, not file paths. How they arrive depends on the caller:
-
-- **Pipeline (via an orchestrator/coordinator)**: the caller resolves the ARCUS workspace spec
-  paths (the per-story spec directory under the ARCUS workspace) and passes the **content** of each
-  input plus an explicit `output_path`. The capability constructs no ARCUS paths itself.
-- **Standalone (a developer who has never used ARCUS)**: the user supplies the `story` text (and
-  optionally `context_pack`) directly — pasted inline or as a file they point to. Optional inputs
-  absent → proceed without them and note the omission. Output defaults to
-  `.arcus/outputs/spec-finalizer/<story-id-or-timestamp>.md`.
-
-The skill body below is written in terms of the named inputs; it never reads a hard-coded
-ARCUS workspace spec path.
+### Output
+- **`spec_grounding`** (markdown) — a self-contained grounded-spec record (sections per
+  `./assets/grounded-spec-template.md`), written to the caller-provided path or, standalone, defaulting
+  to `.arcus/outputs/spec-finalizer/<story-id-or-timestamp>.md`.

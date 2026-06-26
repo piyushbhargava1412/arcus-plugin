@@ -5,7 +5,7 @@
 
 import { assert, section, exitWithReport } from '../lib/assert.mjs';
 import { walkSkills, walkAgents, walkAll, readJSON, repoRoot, VALID_TIERS, ADVISORY_REVIEWERS } from '../lib/skills.mjs';
-import { checkManifests, checkFrontmatter, checkLineBudget, checkAdvisoryReadOnly, checkCapabilityNoState, checkNoInlinedDomain, checkCrossRefs, checkCapabilityHasEvalSpec, checkAgentFrontmatter } from '../lib/checks.mjs';
+import { checkManifests, checkFrontmatter, checkLineBudget, checkAdvisoryReadOnly, checkCapabilityNoState, checkNoInlinedDomain, checkCrossRefs, checkAgentRefQualified, checkCapabilityHasEvalSpec, checkAgentFrontmatter } from '../lib/checks.mjs';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -363,12 +363,39 @@ section('L1-13: Agent frontmatter validity (agent surface)');
 
 section('Layout sanity: skills/agents surface counts (ARC-0008)');
 {
-  // Guards the ARC-0008 target layout against future regression: 16 user-invocable
-  // skills + 13 dispatched agents.
+  // Guards the ARC-0008 target layout against future regression: 17 user-invocable
+  // skills + 13 dispatched agents. Three of the skills are thin wrappers over a
+  // sibling agent (test-spec-compiler, pull-request-builder, context-drift-sync).
   const skillCount = walkSkills().length;
   const agentCount = walkAgents().length;
-  assert(skillCount === 16, `skill dirs == 16 (got ${skillCount})`);
+  assert(skillCount === 17, `skill dirs == 17 (got ${skillCount})`);
   assert(agentCount === 13, `agent files == 13 (got ${agentCount})`);
+}
+
+section('L1-14: Pure-agent dispatch references carry the "agent" qualifier');
+{
+  const items = walkAll();
+  // PURE agents = agent basenames with NO sibling skill dir. Dual-surface items
+  // (test-spec-compiler, pull-request-builder, context-drift-sync) have a skill
+  // wrapper too, so a reference to them as either "skill" or "agent" is valid —
+  // exclude them. (pureAgentNames derives this dynamically via the sibling-dir filter.)
+  const skillNames = new Set(walkSkills().map(s => s.name));
+  const pureAgentNames = new Set(walkAgents().map(a => a.name).filter(n => !skillNames.has(n)));
+
+  let qualifierFailures = 0;
+  for (const item of items) {
+    const result = checkAgentRefQualified({
+      name: item.name,
+      body: item.body,
+      pureAgentNames
+    });
+    if (!result.ok) {
+      qualifierFailures++;
+      console.error(`  ${item.surface} ${item.name}: ${result.errors.join('; ')}`);
+    }
+  }
+
+  assert(qualifierFailures === 0, `L1-14: all ${items.length} skills+agents qualify pure-agent dispatch refs (${qualifierFailures} failures)`);
 }
 
 exitWithReport();

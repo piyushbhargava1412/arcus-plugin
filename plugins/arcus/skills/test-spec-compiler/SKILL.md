@@ -22,7 +22,3 @@ request, or an orchestrator dispatch):
    and the output path for the resulting test plan.
 2. **Relay** the agent's produced test plan (the multi-layered Unit / Integration / Edge-Case
    test matrix mapped to the plan's tasks) back to the caller.
-
-This wrapper holds **no** execution logic of its own — it is a thin trigger + dispatch shell so
-that "compile a test plan" remains a first-class, user-invocable capability while the heavy QA
-reasoning runs in the isolated agent.

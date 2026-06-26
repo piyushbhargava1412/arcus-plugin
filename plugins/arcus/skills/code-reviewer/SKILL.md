@@ -69,10 +69,8 @@ But keep the two axes separate:
 
 ## Severity Taxonomy
 
-The canonical severity taxonomy (critical / warning / suggestion) and the rules for mapping legacy
-per-task verdicts onto it now live in the `arcus:review-consolidator` agent, which owns severity
-calibration and the verdict. The coordinator only needs it to tag the deterministic-gate failures it
-hands off (a failing gate check is a `critical`); all semantic-finding calibration is delegated.
+The coordinator tags each deterministic-gate failure as `critical` when handing it off. All other
+severity calibration and the verdict are owned by `arcus:review-consolidator`.
 
 ## Workflow
 
@@ -122,10 +120,10 @@ Dispatch specialists as subagents, in parallel where the platform allows. Each r
 changed files plus the relevant spec section — not the full conversation. Resolve each model via the
 `arcus:model-strategy` skill.
 
-| Reviewer | Skill | Complexity | Scope |
+| Reviewer | Agent | Complexity | Scope |
 |----------|-------|------------|-------|
 | Spec compliance | `arcus:spec-compliance-reviewer` (holistic mode) | medium | Whole diff vs. plan DoD + grounded spec |
-| Code quality | `arcus:code-quality-reviewer` (holistic mode) | medium | Whole diff vs. repo patterns, incl. **test proportionality** (excessive/over-engineered tests, slow integration tests that bloat the build) |
+| Code quality | `arcus:code-quality-reviewer` | medium | Whole diff vs. repo patterns, incl. **test proportionality** (excessive/over-engineered tests, slow integration tests that bloat the build) |
 | Security | `arcus:security-reviewer` | medium | Whole diff |
 | Performance | `arcus:performance-reviewer` | medium | Whole diff |
 | History/Context | `arcus:history-context-reviewer` | medium | Whole diff vs. git blame/log — flags load-bearing complexity removals, silently-reverted fixes, and re-added reverted code |
@@ -135,10 +133,10 @@ summary. Tell each reviewer to read source files as needed to verify before flag
 on **judgment-grade** concerns only — lint/format/test-pass/build are already settled by the Step 2
 gate, so reviewers must not re-litigate them.
 
-### Step 4: Consolidate via the review-consolidator capability
+### Step 4: Consolidate via the review-consolidator agent
 
 Do **not** judge findings inline. Delegate consolidation to the `arcus:review-consolidator`
-capability, passing it:
+agent, passing it:
 
 - `specialist_findings` — the collected outputs of the five specialists from Step 3 (each carries
   severity, file:line, description, confidence), plus any deterministic-gate failures from Step 2
@@ -147,13 +145,9 @@ capability, passing it:
 - `acceptance_criteria` — the relevant plan Definition of Done, to weight spec-compliance findings.
 - An explicit `output_path` of `<STORY_DIR>/review.md`, plus the `review_round`.
 
-The capability deduplicates overlapping findings, calibrates severity against the canonical taxonomy,
-applies the confidence / false-positive / scope filters, biases the verdict for **signal over noise**
-(one or two warnings in otherwise-clean code still approves), decides the verdict, and writes the
-single consolidated `review.md`. It returns the calibrated `review_report` and a `VERDICT:` line.
-
-The detailed dedupe / severity-calibration / signal-over-noise / verdict rules live in
-`arcus:review-consolidator` — the coordinator only forwards inputs and relays the result.
+The agent returns the calibrated `review_report` (written to `output_path`) and a `VERDICT:` line; it
+owns all dedupe, severity-calibration, signal-over-noise, and verdict judgment — see
+`arcus:review-consolidator`. The coordinator only forwards inputs and relays the result.
 
 ### Step 5: Emit the verdict
 
@@ -190,14 +184,6 @@ the consolidated semantic findings.
   consolidator so previously-reported items and gate failures are reconciled; only re-emit ones that
   still apply, plus any new ones.
 
-## Layer Rules
-
-> Layer: **coordinator** — a thin, **stateless** sequencer of capabilities. Owns **no** pipeline state: no checkpoint reads/writes, no branch ops, no stage gates. Its only job is to call capabilities in a fan-out/consolidate or chained pattern and pass each one explicit inputs.
-
-- **Owned state**: none.
-- **Sequences**: Deterministic gate (typecheck, full test suite, build/startup smoke, secret scan, lint/format, static analysis — via shell commands resolved from CI workflows and `.context/` tables) → fan-out to 5 specialist reviewers (security, performance, code-quality, spec-compliance, history-context), passing each the branch diff, relevant spec sections, and repo conventions → call `arcus:review-consolidator` to consolidate the specialists' findings into one severity-tagged report with a verdict.
-- **Delegation**: Deterministic gate runs first (fail-fast on critical failures); on pass, fan out semantic reviewers in parallel → hand the collected `specialist_findings` + `change_set` to `arcus:review-consolidator`, which deduplicates, re-categorizes, filters noise, calibrates severity, and judges the verdict → produces the single `review.md` + verdict, which this coordinator relays.
-
 ## Handoff Protocol
 
 On finish, this skill marks its own checkpoint key complete:
@@ -206,18 +192,18 @@ On finish, this skill marks its own checkpoint key complete:
 names **only its immediate successor on each branch**. It does **NOT** enumerate the full pipeline;
 that lives only in the afk `arcus:arcus-controller`.
 
-- **On `approved`** — successor is Context Sync: skill `arcus:context-drift-sync`, resume phrase
-  `"sync context for <STORY_ID>"`. (Context Sync reconciles any `.context/` drift introduced by the
-  approved diff, then hands to Closure.)
+- **On `approved`** — successor is Context Sync, which the `arcus:arcus-controller` drives (it
+  dispatches the `arcus:context-drift-sync` agent, then hands to Closure). Resume phrase
+  `"resume <STORY_ID>"` — the controller picks up at the first incomplete stage (`context_sync`).
 - **On `changes_requested`** — loop back to Implementation: skill `arcus:implementation-runner`, resume
   phrase `"fix <STORY_ID>"`. (The implementation-runner's Loopback Protocol converts the open findings
   into fix-tasks, then re-reviews.)
-- **Same-session continuation**: on a `"yes"` / `"proceed"`, load and follow the successor for the
-  emitted verdict directly (Context Sync on `approved`; on `changes_requested`, treat `"fix"` as the
+- **Same-session continuation**: on a `"yes"` / `"proceed"`, continue the successor for the emitted
+  verdict (Context Sync via the controller on `approved`; on `changes_requested`, treat `"fix"` as the
   proceed reply and load `arcus:implementation-runner`).
-- **Cold resume** (new session): the user types the branch's explicit phrase
-  (`"sync context for <STORY_ID>"` or `"fix <STORY_ID>"`), which re-activates the successor by
-  description-matching + the checkpoint.
+- **Cold resume** (new session): the user types the resume phrase (`"resume <STORY_ID>"` on
+  `approved`, `"fix <STORY_ID>"` on `changes_requested`), which re-activates the successor via the
+  checkpoint.
 
 ## Standalone Invocation
 
@@ -232,7 +218,7 @@ On `approved`:
 Summary: critical 0, warning <W>, suggestion <S>
 Artifacts: <STORY_DIR>/review.md
 Proceed? Reply "yes" to run Context Sync, or "no" to pause.
-Resume later with: "sync context for <STORY_ID>"
+Resume later with: "resume <STORY_ID>"
 ```
 
 On `changes_requested`:

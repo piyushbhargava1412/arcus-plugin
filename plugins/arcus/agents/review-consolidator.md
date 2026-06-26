@@ -39,14 +39,12 @@ problems block; a clean change with one or two minor nits is still an approval.
 
 ## Contract
 
-> Layer: **capability** — atomic, stateless, given declared inputs → produce one output. No checkpoint reads/writes, no branch ops, no ARCUS path construction.
-
 ### Inputs
-| Input | Type | Description | Typical source |
-|-------|------|-------------|----------------|
-| `specialist_findings` | list of structured findings | The collected outputs of the specialist reviewers — each finding carries a severity, a file (file:line where possible), a description, and a confidence score | the code-reviewer coordinator passes the specialists' outputs |
-| `change_set` | git diff or file contents | The diff under review, used for anchoring and verification (does a flagged file:line really belong to this change?) | coordinator passes it |
-| `acceptance_criteria` | markdown or text (optional) | Definition of Done for the change, to weight spec-compliance findings | coordinator passes the relevant plan section |
+| Input | Required | Type | Description |
+|-------|----------|------|-------------|
+| `specialist_findings` | yes | list of structured findings | Specialist reviewer outputs — each with severity, file:line, description, confidence |
+| `change_set` | yes | git diff or file contents | The diff under review, for anchoring and verification |
+| `acceptance_criteria` | no | markdown or text | Definition of Done, to weight spec-compliance findings |
 
 ### Outputs
 - **`review_report`** (markdown) — A consolidated, severity-tagged review with a calibrated verdict
@@ -55,11 +53,6 @@ problems block; a clean change with one or two minor nits is still an approval.
   Output convention: pipeline caller sets the path; standalone default
   `.arcus/outputs/review-consolidator/<story-id-or-timestamp>.md`. The capability never asks the user
   where to write.
-
-### Clarification Policy
-1. **Output path** — never ask. Default to `.arcus/outputs/review-consolidator/<story-id-or-timestamp>.md`; the coordinator overrides with an explicit path (it reads the report inline, no file written).
-2. **Optional inputs** — never ask. Proceed without `acceptance_criteria`; note the omission in the report.
-3. **Required inputs with no sensible default** — ask once, clearly. Cannot proceed without the `specialist_findings` list (and the `change_set` to anchor them against).
 
 ## Severity Taxonomy (canonical for all ARCUS reviewers)
 

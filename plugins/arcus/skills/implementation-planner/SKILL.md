@@ -21,23 +21,6 @@ This skill receives `mode` as an explicit input parameter. It branches on the `m
 
 In **both** modes you must still produce the design sections **and** the atomic task list — together the `implementation_plan` output (see Output). In dialogue mode the user's choice is authoritative and overrides the highest-scoring pick. If the `implementation_plan` output already has a populated `## Design Dialogue Answers` section, reuse it and do NOT re-ask the design question.
 
-## Inputs
-
-This skill runs **after** `spec-finalizer`, which supplies the grounded spec. Use the following named inputs:
-
-1. The `story` input — The original User Story / Requirements.
-2. The `context_pack` input — The repository subset relevant to the story (optional). Follow its **Relevant Flows** links into `.context/flows/*` for flow detail (Entry Points, Core Path, Data Touchpoints, Integrations, Tests).
-3. The `spec_grounding` input — The grounded spec from `spec-finalizer` (`## Context Grounding`, `## Resolved Ambiguities`, `## Dialogue Answers`, `## Implementation Boundary`, `## Guardrail Check`). These are the authoritative grounded choices that constrain the design.
-
-## Output
-
-This skill produces a single self-contained plan — nothing else — as the `implementation_plan` output (written to the caller-provided output path; standalone default `.arcus/outputs/implementation-planner/<story-id-or-timestamp>.md`), structured from `./assets/plan-template.md`. The plan contains:
-
-- The design deliberation: `## Approach Evaluation`, `## Chosen Approach & Reasoning`, `## Design / Impacted Files`, and `## Design Dialogue Answers` (**dialogue mode only**).
-- The machine-parsed atomic task list (`### Task N:` headings), consumed by `test-spec-compiler` and the Code stage.
-
-The grounded spec (`spec_grounding`) from `spec-finalizer` is an **input** to this skill, read but never modified; the plan is a separate file this skill owns end to end.
-
 ## Workflow
 
 **Read the `mode` input.** If `mode == dialogue`, follow the dialogue branch (interview the user on the design approach). If `mode == autonomous`, follow the autonomous branch (never block for input; auto-select the highest-scoring approach).
@@ -94,61 +77,20 @@ Record the impacted-file map and design notes into the `## Design / Impacted Fil
 ### Step 7: Write the Plan
 Write a single self-contained plan using `./assets/plan-template.md`, containing both the design sections — `## Approach Evaluation`, `## Chosen Approach & Reasoning`, `## Design / Impacted Files`, and (dialogue mode only) `## Design Dialogue Answers` — and the machine-parsed atomic task list (`### Task N:` headings). This constitutes the `implementation_plan` output, written to the caller-provided output path (standalone default `.arcus/outputs/implementation-planner/<story-id-or-timestamp>.md`); this skill constructs no ARCUS path itself. The task list is consumed by `test-spec-compiler` and the Code stage.
 
-## Success Criteria
-- **Actionable**: A junior agent should be able to pick up any task and execute it without further planning.
-- **Ordered**: Tasks are sequenced logically to resolve dependencies.
-- **Traceable**: Every task relates back to a requirement in the `story` input or a grounded decision in the `spec_grounding` input.
-- **Deliberated**: At least two candidate approaches were scored, and the chosen approach is recorded with reasoning (and, in dialogue mode, with the recorded user interview).
-
 ## Resources
 - **Plan Template**: `./assets/plan-template.md`
 - **Task Decomposition Guide**: `./references/task-decomposition.md`
 
 ## Contract
 
-> Layer: **capability** — atomic, stateless, given declared inputs → produce one output. No checkpoint reads/writes, no branch ops, no ARCUS path construction.
-
-> **Output**: a single self-contained `plan` that this skill owns end to end — the design sections
-> (`## Approach Evaluation`, `## Chosen Approach & Reasoning`, `## Design / Impacted Files`,
-> `## Design Dialogue Answers` in dialogue mode) plus the atomic `### Task N:` list. The grounded spec
-> is an input, read but never modified.
-
 ### Inputs
-| Input | Type | Description | Typical source |
-|-------|------|-------------|----------------|
-| `story` | markdown or text | The original user story requirement | orchestrator passes it / standalone user supplies it |
-| `context_pack` | markdown | Story-to-code correlations including flows, patterns, constraints | orchestrator passes it / standalone user supplies it |
-| `spec_grounding` | markdown | Resolved ambiguities and implementation boundary from spec finalization | orchestrator passes it / standalone user supplies it |
-| `mode` | string | Execution mode: `dialogue` (interview user on design approach choice) or `autonomous` (auto-select highest-scoring approach) | orchestrator passes it / standalone user supplies it |
+| Input | Required | Type | Description |
+|-------|----------|------|-------------|
+| `story` | yes | markdown or text | The original user story requirement |
+| `spec_grounding` | yes | markdown | Resolved ambiguities and implementation boundary from spec finalization |
+| `mode` | yes | string | `dialogue` or `autonomous` — see **Execution Modes** |
+| `context_pack` | no | markdown | Story-to-code correlations (flows, patterns, constraints); proceed without it, noting the omission |
 
 ### Outputs
-- **`implementation_plan`** (markdown) — Atomic task breakdown with Definition of Done per task, scored candidate approaches with chosen approach and rationale, impacted files map, and design dialogue answers (if mode=dialogue). Structured as a single self-contained plan document (design sections + task list).
-  Output convention: pipeline caller sets the path; standalone default `.arcus/outputs/implementation-planner/<story-id-or-timestamp>.md`. The capability never asks the user where to write.
+- **`implementation_plan`** (markdown) — a single self-contained plan (sections per `./assets/plan-template.md`): scored candidate approaches, chosen approach + rationale, impacted-files map, design dialogue answers (dialogue mode), and the atomic `### Task N:` list (consumed downstream by `test-spec-compiler` and the Code stage). Written to the caller-provided path or, standalone, defaulting to `.arcus/outputs/implementation-planner/<story-id-or-timestamp>.md`.
 
-### Mode
-| Mode | Behaviour |
-|------|-----------|
-| `dialogue` | Interview the user on the design-approach choice: present the scored candidate approaches with one **Recommended** option + rationale + a custom-answer option; the user's pick is authoritative and overrides the highest score; fold it in before decomposing into tasks. |
-| `autonomous` | Never block. Auto-select the highest-scoring candidate approach (break ties by lowest blast radius, then simplest), record the score-based rationale, and proceed. |
-
-The caller passes `mode` explicitly (full explicit-parameter wiring is finalized in a later task).
-
-### Clarification Policy
-1. **Output path** — never ask. Default to `.arcus/outputs/implementation-planner/<story-id-or-timestamp>.md`; orchestrators override with an explicit path.
-2. **Optional inputs** — never ask. Proceed without them; note the omission in the output.
-3. **Required inputs with no sensible default** — ask once, clearly. Cannot proceed without these.
-
-## Caller Guidance
-
-This capability receives **named inputs**, not file paths. How they arrive depends on the caller:
-
-- **Pipeline (via an orchestrator/coordinator)**: the caller resolves the ARCUS workspace spec
-  paths (the per-story spec directory under the ARCUS workspace) and passes the **content** of each
-  input plus an explicit `output_path`. The capability constructs no ARCUS paths itself.
-- **Standalone (a developer who has never used ARCUS)**: the user supplies the `story` text (and
-  optionally `context_pack` and `spec_grounding`) directly — pasted inline or as a file they point
-  to. Optional inputs absent → proceed without them and note the omission. Output defaults to
-  `.arcus/outputs/implementation-planner/<story-id-or-timestamp>.md`.
-
-The skill body below is written in terms of the named inputs; it never reads a hard-coded
-ARCUS workspace spec path.

@@ -68,6 +68,12 @@ color: cyan                  # OPTIONAL UI hint
   `user-invocable: false`, `disable-model-invocation: true`, and `disallowed-tools ⊇
   [Edit, Write, MultiEdit]` (enforced by `checkAdvisoryReadOnly`).
 
+## Body authoring
+
+Agent and skill **bodies** follow the prompt-authoring standard in
+[`authoring-style.md`](authoring-style.md): reference a callee's contract never its internals, say
+each thing once, and cut prose that does not change what the model does.
+
 ## Dispatch convention
 
 Agents are referenced from skill/agent bodies by the `arcus:<name>` token, exactly as skills are.
@@ -77,9 +83,10 @@ first-class, validated cross-reference.
 
 ## Roster
 
-Pure agents (11): `subagent-task-dispatcher`, `spec-compliance-reviewer`, `code-quality-reviewer`,
+Pure agents (10): `subagent-task-dispatcher`, `spec-compliance-reviewer`, `code-quality-reviewer`,
 `security-reviewer`, `performance-reviewer`, `history-context-reviewer`, `review-consolidator`,
-`code-simplifier`, `simplify-and-verify`, `context-pack-builder`, `context-drift-sync`.
+`code-simplifier`, `simplify-and-verify`, `context-pack-builder`.
 
-Execution agents behind a thin skill wrapper (2): `test-spec-compiler`, `pull-request-builder`
-(each has a `skills/<name>/SKILL.md` wrapper that owns the user trigger and dispatches here).
+Execution agents behind a thin skill wrapper (3): `test-spec-compiler`, `pull-request-builder`,
+`context-drift-sync` (each has a `skills/<name>/SKILL.md` wrapper that owns the user trigger and
+dispatches here).

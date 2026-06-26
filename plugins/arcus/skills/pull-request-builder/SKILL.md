@@ -19,8 +19,4 @@ or an orchestrator dispatch):
 
 1. **Dispatch the execution agent** — read and follow the `arcus:pull-request-builder` agent.
    Pass it the story's change set and the output path for the PR description.
-2. **Relay** the agent's produced PR description back to the caller (Closure then runs `pr.sh`).
-
-This wrapper holds **no** execution logic of its own — it is a thin trigger + dispatch shell so
-that "raise a PR" remains a first-class, user-invocable capability while the build runs in the
-isolated agent.
+2. **Relay** the agent's produced PR description back to the caller.

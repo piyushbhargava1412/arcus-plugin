@@ -63,8 +63,8 @@ Call the `arcus:simplify-and-verify` agent, passing it:
 - the `test_command` (the test command from the TDD verify step), and
 - the repository conventions (+ the task DoD as `acceptance_criteria`).
 
-The capability performs the mutate-toward-simplicity → re-run-tests → on-GREEN-`SIMPLIFIED` /
-on-RED-revert-and-`REVERTED` mechanics. See `arcus:simplify-and-verify` for the full mechanics.
+It returns `SIMPLIFIED` or `REVERTED` (see `arcus:simplify-and-verify` for the mutate-and-verify
+mechanics).
 
 **Step 4 — Relay**
 Relay the capability's result token back to the dispatcher unchanged (`SIMPLIFIED` or `REVERTED`).
@@ -85,14 +85,6 @@ The downstream `arcus:spec-compliance-reviewer` step reads this return value. `S
 dispatcher.
 
 ---
-
-## Layer Rules
-
-> Layer: **coordinator** — a thin, **stateless** sequencer of capabilities. Owns **no** pipeline state: no checkpoint reads/writes, no branch ops, no stage gates. Its only job is to call capabilities in a fan-out/consolidate or chained pattern and pass each one explicit inputs.
-
-- **Owned state**: none.
-- **Sequences**: Skip-on-`light` guard → load task DoD (from `plan.md`) as the DoD guard → call the `arcus:simplify-and-verify` agent with the changed `file_set` + the `test_command` + repository conventions (+ the task DoD as `acceptance_criteria`) → relay its `SIMPLIFIED`/`REVERTED` result back to the dispatcher.
-- **Delegation**: Linear chain — guards the refactor gate, then delegates the mutate/verify/revert mechanics to the `arcus:simplify-and-verify` agent and surfaces its result under the dispatcher contract.
 
 ## Constraints
 
