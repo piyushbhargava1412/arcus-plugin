@@ -69,7 +69,6 @@ ARCUS is built as a **three-tier capability library** — a modular architecture
 **Examples:**
 - `kick-off` — Run context-pack-builder → spec-finalizer (brainstorm/planning only, no implementation)
 - `code-reviewer` — Dispatch specialist reviewers + consolidate findings
-- `code-simplifier` — Simplify code and verify changes
 - `repo-agentifier` — Build repository context artifacts
 
 ### Orchestrator (Stateful Pipeline Driver)

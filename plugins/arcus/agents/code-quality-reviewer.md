@@ -2,8 +2,7 @@
 name: code-quality-reviewer
 description: >
   Review implementation code for quality: pattern fidelity, clean structure, test coverage,
-  and maintainability. Returns severity-tagged findings. Use when the code-reviewer coordinator
-  needs a holistic code-quality pass over the whole branch diff. Dispatched by arcus:code-reviewer.
+  and maintainability. Returns severity-tagged findings for a holistic code-quality pass over the whole branch diff. Dispatched by arcus:code-reviewer.
 layer: capability
 user-invocable: false
 disable-model-invocation: true
@@ -14,10 +13,6 @@ color: blue
 ---
 
 # Code Quality Reviewer
-
-## Overview
-
-Reviews implementation code for quality concerns — pattern fidelity, clean structure, maintainability, and adherence to repository conventions. Dispatched **once, holistically**, by the `code-reviewer` coordinator over the entire branch diff after implementation completes. It is **not** run per task: subagents never see prior tasks' code, so quality issues don't propagate between them, and a per-task binary FAIL conflicts with the coordinator's signal-over-noise threshold. Quality is judged once, in full context.
 
 ## Contract
 
@@ -32,7 +27,7 @@ Reviews implementation code for quality concerns — pattern fidelity, clean str
 - **`quality_findings`** (structured report) — Pattern fidelity violations, structural issues, maintainability concerns, error-handling gaps, test quality issues, and dead code, with severity, confidence, and file:line references.
   Output convention: pipeline caller sets the path; standalone default `.arcus/outputs/code-quality-reviewer/<story-id-or-timestamp>.md`. The capability never asks the user where to write.
 
-## Output
+## Output Format
 
 Do not emit a binary verdict. Return findings using the canonical severity taxonomy and let the
 coordinator judge:
@@ -47,6 +42,7 @@ SUMMARY: <one line>
 FINDINGS:
 - [critical] <issue> — <file:line> (confidence: N/100)
 - [warning] <issue> — <file:line> (confidence: N/100)
+- [suggestion] <issue> — <file:line> (confidence: N/100)
 ```
 
 Only report findings with confidence ≥ 80; drop anything below that threshold rather than surfacing uncertain signals.
@@ -98,8 +94,9 @@ their value:
   These bloat the build pipeline for redundant coverage.
 - **Mis-mocked tests**: so heavily mocked they assert the mock, not the behaviour.
 
-Judge against `test-plan.md` and the repo's existing test proportions (from `testing-patterns.md`).
-A test that meaningfully guards behaviour is never "excessive" — only redundant or misplaced ones are.
+Judge against the expected coverage in `acceptance_criteria` and the repo's existing test proportions
+(from `repo_conventions`). A test that meaningfully guards behaviour is never "excessive" — only
+redundant or misplaced ones are.
 
 ### 6. No Dead Code
 

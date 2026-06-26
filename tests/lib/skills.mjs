@@ -15,7 +15,6 @@ const AGENTS_DIR = resolve(repoRoot, 'plugins/arcus/agents');
 // Roster constants (name-based, STABLE)
 const DISPATCHED_ONLY = new Set([
   'code-quality-reviewer',
-  'code-simplifier',
   'history-context-reviewer',
   'model-strategy',
   'performance-reviewer',

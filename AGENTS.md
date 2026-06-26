@@ -35,7 +35,7 @@ ARCUS capabilities are split across **two surfaces** — an axis *orthogonal* to
 | Surface | Lives in | Invocation | Slash command | Roster |
 |---------|----------|-----------|---------------|--------|
 | **Skill** | `plugins/arcus/skills/<name>/SKILL.md` | user **and** model invocable; injected into the main context | `/arcus:<name>` | 17 dirs |
-| **Agent** | `plugins/arcus/agents/<name>.md` (flat file) | model-only; dispatched **by name** from a skill/orchestrator, never user-facing | none | 13 files |
+| **Agent** | `plugins/arcus/agents/<name>.md` (flat file) | model-only; dispatched **by name** from a skill/orchestrator, never user-facing | none | 12 files |
 
 An item is an **agent** if no human would type a trigger for it, it already runs as an isolated
 subagent, and it needs no main-thread dialogue. It is a **skill** if it is a user-facing entry point,
@@ -50,9 +50,9 @@ resolves every `arcus:<name>` cross-reference against the **union** of skill dir
   test-pattern-discovery, flow-and-scope-discovery, repository-context-builder, write-evals,
   model-strategy, plus the three **thin wrappers** test-spec-compiler + pull-request-builder +
   context-drift-sync.
-- **Pure AGENTS (13)**: subagent-task-dispatcher, spec-compliance-reviewer, code-quality-reviewer,
+- **Pure AGENTS (12)**: subagent-task-dispatcher, spec-compliance-reviewer, code-quality-reviewer,
   security-reviewer, performance-reviewer, history-context-reviewer, review-consolidator,
-  code-simplifier, simplify-and-verify, context-pack-builder, context-drift-sync, plus the two
+  simplify-and-verify, context-pack-builder, context-drift-sync, plus the two
   **execution agents** test-spec-compiler + pull-request-builder (behind their wrapper skills).
 
 > Per-surface packaging (Copilot CLI, VS Code) follows the Claude Code native `agents/` dialect as
@@ -68,7 +68,7 @@ orchestrator can be a skill (arcus-controller, implementation-runner) *or* an ag
 | Tier | What it is | State | Examples |
 |------|-----------|-------|----------|
 | **Capability** | Atomic, stateless, **plug-n-play**: given declared inputs -> one output. No checkpoint/branch ops, no ARCUS path construction. | none | spec-finalizer, implementation-planner *(skills)*; context-pack-builder, the 5 specialist/spec reviewers, review-consolidator, simplify-and-verify, context-drift-sync, test-spec-compiler + pull-request-builder execution *(agents)*; the discovery skills |
-| **Coordinator** | Thin, **stateless** sequencer of capabilities (fan-out/consolidate or chain). Owns no pipeline state. | none | kick-off, code-reviewer, repo-agentifier, test-spec-compiler + pull-request-builder *(thin skill wrappers)* *(skills)*; code-simplifier *(agent)* |
+| **Coordinator** | Thin, **stateless** sequencer of capabilities (fan-out/consolidate or chain). Owns no pipeline state. | none | kick-off, code-reviewer, repo-agentifier, test-spec-compiler + pull-request-builder *(thin skill wrappers)* *(skills)* |
 | **Orchestrator** | **Stateful** pipeline driver. Owns the checkpoint, the git branch, and the stage gates; resolves all ARCUS paths and passes capabilities explicit inputs. | checkpoint + branch | arcus-controller, implementation-runner *(skills)*; subagent-task-dispatcher *(agent)* |
 | *Substrate* | Shared reference skills (not part of the pipeline flow). | — | model-strategy, arcus-guide |
 

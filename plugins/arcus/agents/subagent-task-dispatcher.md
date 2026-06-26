@@ -85,8 +85,8 @@ After verification passes:
 
 **Skip condition**: if the task `complexity` == `light`, skip this step entirely and proceed directly to Step 7 (Spec Check).
 
-Otherwise, dispatch the `arcus:code-simplifier` agent subagent:
-- **Prompt**: Include the list of files modified by this task, the task's DoD from `plan.md`, and the instruction: "Read and follow the `arcus:code-simplifier` agent."
+Otherwise, dispatch a fresh subagent:
+- **Prompt**: the `file_set` (files modified by this task), the `test_command` (this task's TDD verify command), the task's DoD (from `plan.md`) as `acceptance_criteria`, and the instruction: "Read and follow the `arcus:simplify-and-verify` agent."
 - **Description**: `"Refactor: Task N"`
 - **Model**: Resolve complexity `medium` via the `arcus:model-strategy` skill
 
