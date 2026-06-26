@@ -81,6 +81,15 @@ The `layer:` frontmatter already declares the tier; do **not** restate it in a `
   ownership boundaries **not already stated in the body** (e.g. a loopback-round cap, which checkpoint
   keys exist). If the body already says it, drop it here too.
 
+## Execution model (who is spawned)
+
+Tier — not the skill/agent surface — decides execution: **capabilities are spawned as isolated
+subagents (the leaves); coordinators and orchestrators run in the thread that invoked them.** A
+coordinator is never spawned only to spawn again, so the dispatch tree stays **depth-1** and ARCUS runs
+on platforms without nested subagents. When a body dispatches, it spawns **capabilities**; when it
+hands off to a coordinator/orchestrator, it says "read and follow … in-thread." Full statement: the
+tier table in [`AGENTS.md`](../../AGENTS.md) (Three-Tier Capability Library).
+
 ## What is NOT noise (do not over-cut)
 
 - **A skill/agent explaining its OWN workflow** — that is its entire job.

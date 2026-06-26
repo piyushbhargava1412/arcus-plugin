@@ -116,9 +116,11 @@ Mechanical churn must not consume a loopback round. Only lint errors with **no**
 
 ### Step 3: Fan out to reviewers
 
-Dispatch specialists as subagents, in parallel where the platform allows. Each receives only the
-changed files plus the relevant spec section — not the full conversation. Resolve each model via the
-`arcus:model-strategy` skill.
+Spawn the specialists as subagents, in parallel where the platform allows. This coordinator runs
+**in the thread that invoked it** (the main chat thread, or the controller that loaded it) and the
+specialists are capabilities (leaves) — so the spawned subagents here are the only level, never
+nested behind another subagent. Each specialist receives only the changed files plus the relevant
+spec section — not the full conversation. Resolve each model via the `arcus:model-strategy` skill.
 
 | Reviewer | Agent | Complexity | Scope |
 |----------|-------|------------|-------|

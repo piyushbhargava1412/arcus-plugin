@@ -4,9 +4,9 @@ description: >
   ARCUS controller meta-skill. The single orchestrator that drives a story from spec to pull
   request, in either INTERACTIVE (gated, default) or AUTONOMOUS (afk) mode. It is state-driven:
   it reads the session checkpoint and runs every remaining stage in the same canonical order.
-  In autonomous mode it runs stages back-to-back as one-shot subagents with no gates, auto-deciding
-  and emitting milestone-only output. In interactive mode it runs dialogue stages in the main thread
-  and emits a handoff gate after each major phase group, waiting for the user before continuing.
+  In autonomous mode it runs stages back-to-back with no gates, auto-deciding and emitting
+  milestone-only output. In interactive mode it emits a handoff gate after each major phase group,
+  waiting for the user before continuing.
   Activates on "implement <STORY>" (default) and "plan <STORY>" → interactive; "forge <STORY>",
   "afk <STORY>", or "run afk on <STORY>" → autonomous; "resume <STORY>" → continue from the first
   incomplete stage in whatever mode the checkpoint persists.
@@ -20,12 +20,19 @@ argument-hint: <STORY>
 This skill is the **single orchestrator** that drives a story from spec to pull request. It runs the
 **same canonical stage sequence** in both modes; only the *invocation style* and the *gating* differ:
 
-- **interactive** (gated, default): dialogue stages run **in the main thread**, and the controller
-  emits a **handoff gate** after each major phase group (Brainstorm, Test Plan, Implementation, Code
-  Review, Closure), waiting for the user's "yes"/"proceed" before continuing. Every interview
-  question carries a single Recommended option + rationale + custom-answer.
-- **autonomous** (afk): every remaining stage runs **back-to-back with no handoff gates**,
-  auto-deciding at each step, emitting **milestone-only** output, as one-shot subagents.
+- **interactive** (gated, default): the controller emits a **handoff gate** after each major phase
+  group (Brainstorm, Test Plan, Implementation, Code Review, Closure), waiting for the user's
+  "yes"/"proceed" before continuing. Every interview question carries a single Recommended option +
+  rationale + custom-answer.
+- **autonomous** (afk): stages run **back-to-back with no handoff gates**, auto-deciding at each step,
+  emitting **milestone-only** output.
+
+The **execution model is the same in both modes** (only gating differs): per the tier execution rule,
+the controller **spawns capabilities** as isolated subagents and **runs coordinators/orchestrators
+in-thread** (loading their instructions into its own context, never spawning them). This keeps the
+dispatch tree depth-1 — the controller spawns leaves, a coordinator it loaded then spawns *its* leaves
+in the same thread. (A dialogue capability like spec-finalizer, when interactive, also runs in-thread
+so it can interview the user.)
 
 Interactive mode is handled **by this controller itself**, delegating the brainstorm context-pack +
 spec-finalize steps to the `arcus:kick-off` coordinator.
@@ -111,24 +118,27 @@ The handoff gate is emitted after each major phase group: **Brainstorm**, **Test
 
 ## Canonical Pipeline (Ordered Stage List)
 
-This is the **single canonical enumeration** of the ARCUS pipeline. The stage sequence is **identical
-in both modes** — only the dispatch style (one-shot subagent vs. main-thread dialogue) and the gating
-differ. Each stage names its checkpoint key, the owning skill/script, and the dispatch mode the
+This is the **single canonical enumeration** of the ARCUS pipeline. The stage sequence and execution
+model are **identical in both modes** — only the **gating** (whether to stop for the user) differs.
+Each stage names its checkpoint key, the owning skill/script, and the execution the
 controller uses per mode. Run them strictly in this order, skipping any whose checkpoint status is
 already `complete`.
 
-| # | Stage key(s) | Owner | Dispatch mode (autonomous / interactive) |
+Execution per stage follows the tier rule: **capabilities are spawned; coordinators/orchestrators run
+in-thread.** Gating (whether to stop for the user) is the only mode difference.
+
+| # | Stage key(s) | Owner (tier) | Execution |
 |---|--------------|-------|---------------|
-| 1 | `scaffold` | `scaffold.sh` (deterministic script) | Run the script: create the `.arcus/specs/<STORY_ID>/` folder, copy `story.md`, init the checkpoint. **No git branch.** (both modes) |
-| 2 | `context_pack` | `arcus:context-pack-builder` (via `arcus:kick-off`) | Delegated to `arcus:kick-off` (Brainstorm) |
-| 3 | `spec_finalizer` | `arcus:spec-finalizer` (via `arcus:kick-off`) | Delegated to `arcus:kick-off`: **autonomous** → one-shot non-interview (auto-resolve); **interactive** → main-thread dialogue |
-| 4 | `plan` | `arcus:implementation-planner` | **autonomous** → one-shot subagent, non-interview (auto-select highest-scoring approach); **interactive** → main-thread dialogue |
-| 5 | `test_plan` | `arcus:test-spec-compiler` | One-shot subagent (both modes) |
+| 1 | `scaffold` | `scaffold.sh` (script) | Run the script: create `.arcus/specs/<STORY_ID>/`, copy `story.md`, init the checkpoint. **No git branch.** |
+| 2 | `context_pack` | `arcus:context-pack-builder` (capability, via `arcus:kick-off`) | kick-off runs **in-thread** and spawns context-pack-builder |
+| 3 | `spec_finalizer` | `arcus:spec-finalizer` (capability, via `arcus:kick-off`) | kick-off runs in-thread; spawns spec-finalizer (**interactive** → runs it in-thread instead, so it can interview) |
+| 4 | `plan` | `arcus:implementation-planner` (capability) | Spawned (**interactive** → in-thread for the design interview) |
+| 5 | `test_plan` | `arcus:test-spec-compiler` (capability) | Spawned |
 | 6 | `branch` | `branch.sh` (git branch CREATED here) | **Delegated** — realized at the start of Implementation by `arcus:implementation-runner` |
-| 7 | `task_1`..`task_N` | `arcus:implementation-runner` | **Delegated** loop — do NOT inline the per-task loop |
-| 8 | `code_review` | `arcus:code-reviewer` | One-shot subagent; verdict `approved \| changes_requested` |
-| 9 | `context_sync` | `arcus:context-drift-sync` | One-shot subagent; runs **only after** `code_review` is `approved` (final diff) |
-| 10 | `closure` | `arcus:pull-request-builder` + `pr.sh` | One-shot subagent, then run the script |
+| 7 | `task_1`..`task_N` | `arcus:implementation-runner` (orchestrator) | Runs **in-thread**; spawns per-task capability subagents |
+| 8 | `code_review` | `arcus:code-reviewer` (coordinator) | Runs **in-thread**; spawns the specialist + consolidator capabilities. Verdict `approved \| changes_requested` |
+| 9 | `context_sync` | `arcus:context-drift-sync` (capability) | Spawned; runs **only after** `code_review` is `approved` (final diff) |
+| 10 | `closure` | `arcus:pull-request-builder` (capability) + `pr.sh` | Spawned, then run the script |
 
 Stages 6 and 7 are both owned by `arcus:implementation-runner`: a single delegation realizes the
 branch (`branch.sh`) and then drives the task loop. The controller does not split them.
@@ -187,13 +197,13 @@ The Brainstorm phase's **context-pack + spec-finalize** steps are delegated to t
 `arcus:kick-off` coordinator (the controller still owns scaffold + checkpoint init in Stage 0).
 `arcus:implementation-planner` remains a **separate** stage the controller runs **after** kick-off.
 
-1. **Context pack + spec finalize** — read and follow `arcus:kick-off`, passing the `story`, the
-   available `repo_context`, and the `mode`:
-   - In **autonomous** mode, pass `mode: autonomous` — kick-off runs context-pack-builder and
-     spec-finalizer one-shot, non-interview (auto-resolve every ambiguity).
-   - In **interactive** mode, pass `mode: dialogue` — kick-off runs **in the main thread**, with
-     spec-finalizer interviewing the user one question at a time (each question carrying exactly one
-     **Recommended** option + one-line rationale + an explicit custom-answer option).
+1. **Context pack + spec finalize** — read and follow `arcus:kick-off` **in-thread** (it is a
+   coordinator), passing the `story`, the available `repo_context`, and the `mode`. kick-off spawns
+   context-pack-builder, then runs spec-finalizer per `mode`:
+   - **autonomous** (`mode: autonomous`) — non-interview, auto-resolve every ambiguity.
+   - **interactive** (`mode: dialogue`) — spec-finalizer interviews the user one question at a time
+     (each question carrying exactly one **Recommended** option + one-line rationale + an explicit
+     custom-answer option); the dialogue runs in this thread.
    - kick-off produces a `context_pack` and a `spec_grounding`. The controller resolves these to the
      workspace files `.arcus/specs/<STORY_ID>/context-pack.md` and
      `.arcus/specs/<STORY_ID>/grounded-spec.md`. Verify both exist, then:
@@ -246,14 +256,14 @@ are owned by the canonical loop driver. **Delegate** the whole Implementation st
    - **interactive**: emit the `[Handoff] Implementation complete → next: Code Review` gate and
      **stop** until the user replies "yes"/"proceed".
 
-### Code Review (one-shot, verdict)
+### Code Review (verdict)
 
-1. **Run the review** — dispatch the review coordinator. This is the **last quality gate before the
-   PR**: it runs a deterministic tooling gate (typecheck, full test suite, build/startup, secret
-   scan, lint/format with autofix), then fans out to semantic reviewers.
-   - **Prompt**: "Read and follow the `arcus:code-reviewer` skill. Story ID: `<STORY_ID>`. Produce `.arcus/specs/<STORY_ID>/review.md` and end your reply with `VERDICT: approved | changes_requested`."
-   - **Description**: "Review: code-reviewer"
-   - **Model**: resolve complexity `heavy` via the `arcus:model-strategy` skill.
+1. **Run the review** — code-reviewer is a **coordinator**, so run it **in-thread**: read and follow
+   the `arcus:code-reviewer` skill in this context (Story ID: `<STORY_ID>`, output
+   `.arcus/specs/<STORY_ID>/review.md`). It runs a deterministic tooling gate (typecheck, full test
+   suite, build/startup, secret scan, lint/format with autofix), then **spawns** the semantic reviewer
+   capabilities and the consolidator — so this stage's only spawned subagents are those leaves (the
+   controller is not nested behind another subagent). It ends with `VERDICT: approved | changes_requested`.
    - Verify `review.md` exists. Capture the verdict and counts (`critical`, `warning`, `suggestion`),
      then `.arcus/bin/checkpoint.sh complete <STORY_ID> code_review`.
 2. **Decide on the verdict**:

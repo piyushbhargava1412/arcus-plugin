@@ -65,12 +65,20 @@ ARCUS skills **and agents** are organized into three tiers, declared via `layer:
 orchestrator can be a skill (arcus-controller, implementation-runner) *or* an agent
 (subagent-task-dispatcher):
 
-| Tier | What it is | State | Examples |
-|------|-----------|-------|----------|
-| **Capability** | Atomic, stateless, **plug-n-play**: given declared inputs -> one output. No checkpoint/branch ops, no ARCUS path construction. | none | spec-finalizer, implementation-planner *(skills)*; context-pack-builder, the 5 specialist/spec reviewers, review-consolidator, simplify-and-verify, context-drift-sync, test-spec-compiler + pull-request-builder execution *(agents)*; the discovery skills |
-| **Coordinator** | Thin, **stateless** sequencer of capabilities (fan-out/consolidate or chain). Owns no pipeline state. | none | kick-off, code-reviewer, repo-agentifier, test-spec-compiler + pull-request-builder *(thin skill wrappers)* *(skills)* |
-| **Orchestrator** | **Stateful** pipeline driver. Owns the checkpoint, the git branch, and the stage gates; resolves all ARCUS paths and passes capabilities explicit inputs. | checkpoint + branch | arcus-controller, implementation-runner *(skills)*; subagent-task-dispatcher *(agent)* |
-| *Substrate* | Shared reference skills (not part of the pipeline flow). | — | model-strategy, arcus-guide |
+| Tier | What it is | State | Execution | Examples |
+|------|-----------|-------|-----------|----------|
+| **Capability** | Atomic, stateless, **plug-n-play**: given declared inputs -> one output. No checkpoint/branch ops, no ARCUS path construction. | none | **spawned** isolated subagent (the leaf — isolation is its reason to exist) | spec-finalizer, implementation-planner *(skills)*; context-pack-builder, the 5 specialist/spec reviewers, review-consolidator, simplify-and-verify, context-drift-sync, test-spec-compiler + pull-request-builder execution *(agents)*; the discovery skills |
+| **Coordinator** | Thin, **stateless** sequencer of capabilities (fan-out/consolidate or chain). Owns no pipeline state. | none | runs **in the invoking thread** — it dispatches capabilities, it is **not itself spawned** | kick-off, code-reviewer, repo-agentifier, test-spec-compiler + pull-request-builder *(thin skill wrappers)* *(skills)* |
+| **Orchestrator** | **Stateful** pipeline driver. Owns the checkpoint, the git branch, and the stage gates; resolves all ARCUS paths and passes capabilities explicit inputs. | checkpoint + branch | runs **in the invoking thread** (the main thread, or a coordinator that loaded it) | arcus-controller, implementation-runner *(skills)*; subagent-task-dispatcher *(agent)* |
+| *Substrate* | Shared reference skills (not part of the pipeline flow). | — | reference only | model-strategy, arcus-guide |
+
+> **Execution rule (nesting-safe).** Only **capabilities** are spawned as subagents; **coordinators and
+> orchestrators run in the thread that invoked them** (the main chat thread, or a parent
+> coordinator/orchestrator that loaded their instructions in-context). A coordinator is never spawned
+> only to spawn again — so the dispatch tree is **depth-1 by construction** (driver in-thread → capability
+> leaves spawned). This holds in **both** modes and keeps ARCUS runnable on platforms without nested
+> subagents (e.g. Copilot's single-level `runSubagent`). The tier — not the skill/agent *surface* —
+> determines execution: a coordinator surfaced as a skill (`code-reviewer`) still runs in-thread.
 
 Capability contracts use **domain concept names** (`implementation_plan`, `spec_grounding`,
 `context_pack`, `acceptance_criteria`, `change_set`), never ARCUS artifact filenames — so each is
