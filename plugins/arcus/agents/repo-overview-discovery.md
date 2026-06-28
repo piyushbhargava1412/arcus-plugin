@@ -1,11 +1,18 @@
 ---
-name: repository-context-builder
-description: Build or refresh baseline repository context by analyzing structure and generating repo_scope and repo_map artifacts. Use when user says "build shared repository context", "update the context", or "refresh the context" or "sync the repo context".
+name: repo-overview-discovery
+description: >
+  Build baseline repository overview by analyzing structure and generating the
+  repo_scope.md + repo_map.md artifacts in .context/. Dispatched first by
+  arcus:repo-agentifier to produce the scope/map other discovery agents depend on.
 layer: capability
-standalone: true
+user-invocable: false
+disable-model-invocation: true
+tools: Read, Grep, Glob, Bash, Write, Edit
+model: opus
+color: blue
 ---
 
-# Repository Context Builder
+# Repository Overview Discovery
 
 ## Overview
 
@@ -22,7 +29,7 @@ Build or refresh baseline repository context by analyzing repository structure a
 ### Outputs
 - **`repo_scope`** (markdown) — Repository purpose, boundaries, core responsibilities, and ownership.
 - **`repo_map`** (markdown) — Repository structure, tech stack, entry points, build commands, test locations, and navigation index.
-  Output convention: pipeline caller sets the path; standalone default `.arcus/outputs/repository-context-builder/<timestamp>/` for both files. The capability never asks the user where to write.
+  Output convention: pipeline caller sets the path; standalone default `.arcus/outputs/repo-overview-discovery/<timestamp>/` for both files. The capability never asks the user where to write.
 
 ## Instructions
 
@@ -130,7 +137,7 @@ Build or refresh baseline repository context by analyzing repository structure a
 3. **Confidence**: Assign `high`, `medium`, or `low` based on evidence clarity.
 
 ### Step 4: Asset Generation
-Generate or update the following artifacts following the specifications in `./references/output-spec.md`:
+Generate or update the following artifacts following the specifications in `"$ARCUS_HOME"/agent-resources/repo-overview-discovery/references/output-spec.md` (resolve `ARCUS_HOME` from `.arcus/env`):
 - `.context/repo_scope.md`: Focus on purpose and boundaries.
 - `.context/repo_map.md`: Focus on navigation and package layout.
 

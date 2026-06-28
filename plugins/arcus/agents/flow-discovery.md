@@ -1,11 +1,18 @@
 ---
-name: flow-and-scope-discovery
-description: Identify business flows and persist each as a separate file in .context/flows. Use when user says "discover and persist flows", "generate context flows", or "what does this repo actually do".
+name: flow-discovery
+description: >
+  Identify business flows and persist each as a separate file in .context/flows.
+  Dispatched by arcus:repo-agentifier (in parallel with the test/design discovery
+  agents) after the repo overview exists.
 layer: capability
-standalone: true
+user-invocable: false
+disable-model-invocation: true
+tools: Read, Grep, Glob, Bash, Write, Edit
+model: opus
+color: blue
 ---
 
-# Flow and Scope Discovery
+# Flow Discovery
 
 ## Overview
 
@@ -21,7 +28,7 @@ Identify key business flows and map each flow to its associated implementation s
 
 ### Outputs
 - **`business_flows`** (set of markdown files) — One file per discrete business flow, each containing entry points, core path, scope, and confidence.
-  Output convention: pipeline caller sets the path; standalone default `.arcus/outputs/flow-and-scope-discovery/<timestamp>/flows/`. The capability never asks the user where to write.
+  Output convention: pipeline caller sets the path; standalone default `.arcus/outputs/flow-discovery/<timestamp>/flows/`. The capability never asks the user where to write.
 
 ## Instructions
 
@@ -36,14 +43,14 @@ Identify key business flows and map each flow to its associated implementation s
 3. **Trace Paths**: For each flow, trace the minimal path from entry point through services to repositories or external integrations.
 
 ### Step 3: Persistence
-1. Use the `./assets/flow.template.md` to generate one file per flow.
+1. Use the `"$ARCUS_HOME"/agent-resources/flow-discovery/assets/flow.template.md` to generate one file per flow (resolve `ARCUS_HOME` from `.arcus/env`).
 2. Files must be placed in `.context/flows/` using `kebab-case.md` file names.
 3. **Confidence Scoring**: Assign `high`, `medium`, or `low` based on how much of the path is explicitly confirmed by code evidence.
 
 **Core Rules**:
 - **No Aggregation**: Never create a single `all_flows.md`. Each flow must be its own file.
 - **Evidence Only**: Do not infer business rules that aren't visible in the code.
-- **Consult Specs**: See `./references/flow-spec.md` for granularity rules.
+- **Consult Specs**: See `"$ARCUS_HOME"/agent-resources/flow-discovery/references/flow-spec.md` for granularity rules.
 
 ## Examples
 

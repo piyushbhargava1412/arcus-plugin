@@ -1,8 +1,17 @@
 ---
 name: design-pattern-discovery
-description: Analyze existing source and persist shared repository design & coding patterns — conventions, idioms, layering/structure, naming, error-handling & logging, plus a curated "Avoid" list. Use when user says "what are our coding conventions?", "discover and persist design patterns", or "baseline the coding style".
+description: >
+  Analyze existing source and persist shared repository design & coding patterns —
+  conventions, idioms, layering/structure, naming, error-handling & logging, plus a
+  curated "Avoid" list — to .context/design-and-coding-patterns.md. Dispatched by
+  arcus:repo-agentifier (in parallel with the flow/test discovery agents) after the
+  repo overview exists.
 layer: capability
-standalone: true
+user-invocable: false
+disable-model-invocation: true
+tools: Read, Grep, Glob, Bash, Write, Edit
+model: opus
+color: blue
 ---
 
 # Design Pattern Discovery
@@ -71,7 +80,7 @@ when a genuinely new team-level pattern is adopted, not regenerated on routine d
    project guardrail (`AGENTS.md` / `CLAUDE.md` / `repo_scope` boundaries).
 
 ### Step 3: Persistence
-1. Use `./assets/design-and-coding-patterns.template.md` to generate the baseline.
+1. Use `"$ARCUS_HOME"/agent-resources/design-pattern-discovery/assets/design-and-coding-patterns.template.md` to generate the baseline (resolve `ARCUS_HOME` from `.arcus/env`).
 2. Write to the caller-provided output path (standalone default per the Contract's Output;
    orchestrators typically pass `.context/design-and-coding-patterns.md`).
 3. Canonical Examples: select a few specific real files that future agents should treat as
@@ -87,7 +96,7 @@ when a genuinely new team-level pattern is adopted, not regenerated on routine d
   `context-drift-sync` when a genuinely new team-level pattern/convention is adopted.
 - **Avoid = rules, not inventory**: The Avoid section holds prescriptive anti-pattern rules, never a
   list of specific offending files.
-- **Consult Specs**: See `./references/design-spec.md` for detailed extraction logic per dimension.
+- **Consult Specs**: See `"$ARCUS_HOME"/agent-resources/design-pattern-discovery/references/design-spec.md` for detailed extraction logic per dimension.
 
 ## Examples
 

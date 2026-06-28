@@ -1,8 +1,15 @@
 ---
 name: test-pattern-discovery
-description: Analyze existing tests and persist shared repository testing conventions. Use when user says "how do we write tests?", "discover and persist testing patterns", or "baseline the testing style".
+description: >
+  Analyze existing tests and persist shared repository testing conventions to
+  .context/testing-patterns.md. Dispatched by arcus:repo-agentifier (in parallel
+  with the flow/design discovery agents) after the repo overview exists.
 layer: capability
-standalone: true
+user-invocable: false
+disable-model-invocation: true
+tools: Read, Grep, Glob, Bash, Write, Edit
+model: sonnet
+color: blue
 ---
 
 # Test Pattern Discovery
@@ -61,7 +68,7 @@ Identify how tests are authored in the repository and persist shared conventions
      (prefer these; CI is authoritative for what gates a PR)
 
 ### Step 3: Persistence
-1. Use the `./assets/testing-patterns.template.md` to generate the baseline.
+1. Use the `"$ARCUS_HOME"/agent-resources/test-pattern-discovery/assets/testing-patterns.template.md` to generate the baseline (resolve `ARCUS_HOME` from `.arcus/env`).
 2. Write to the caller-provided output path (standalone default per the Contract's Output;
    orchestrators typically pass `.context/testing-patterns.md`).
 3. Canonical Files: Select a few specific files that future agents should use as gold-standard examples.
@@ -69,7 +76,7 @@ Identify how tests are authored in the repository and persist shared conventions
 **Core Rules**:
 - **Evidence-Only**: Do not suggest testing libraries that aren't already in the classpath.
 - **Maintain Consistency**: If the repo uses a specific style (e.g., BDD given/when/then), prioritize documenting it.
-- **Consult Specs**: See `./references/testing-spec.md` for detailed extraction logic.
+- **Consult Specs**: See `"$ARCUS_HOME"/agent-resources/test-pattern-discovery/references/testing-spec.md` for detailed extraction logic.
 
 ## Examples
 
