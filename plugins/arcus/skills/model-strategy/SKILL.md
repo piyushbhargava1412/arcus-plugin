@@ -71,9 +71,10 @@ Fixed complexity for orchestrator-level stages (does not vary per story):
 | security-reviewer        | medium     | Vulnerability detection in changed code      |
 | performance-reviewer     | medium     | Hot-path / resource regression detection     |
 | pull-request-builder     | light      | Template fill + summary                      |
-| repo-overview-discovery | heavy   | Full repo scan, multi-area coordination      |
-| flow-discovery | heavy      | Code path tracing across multiple layers     |
+| repo-overview-discovery  | heavy      | Full repo scan, multi-area coordination      |
+| flow-discovery           | heavy      | Code path tracing across multiple layers     |
 | test-pattern-discovery   | medium     | Pattern extraction, template-following       |
+| design-pattern-discovery | heavy      | Source-wide convention + anti-pattern synthesis |
 
 ## Classification Guardrails
 
