@@ -131,3 +131,23 @@ relevant to your current task.**
 - Treat `.context/` as authoritative; if it is stale, re-run `repo-agentifier` to refresh it.
 - Ground every change in repository evidence — do not infer behavior not present in the codebase.
 - Keep this index in sync: regenerate it whenever the repository structure changes materially.
+- **Keep the plugin version live (semver, `plugins/arcus/.claude-plugin/plugin.json`).** After every
+  interaction that materially changes the plugin, evaluate the bump, **apply it in the same turn**, log
+  the change under `CHANGELOG.md` `[Unreleased]`, and state what you did (e.g. "bumped 1.5.2 → 1.5.3
+  (patch)"). This keeps `plugin.json` consistent with the working tree so whoever commits — human or
+  model — gets a correct version without a follow-up bump commit. Non-material turns (questions,
+  exploration, reverted edits) bump nothing.
+  - The contract surface that semver protects: **user triggers / slash commands, the skill+agent
+    roster and names, inter-skill contracts (checkpoint stage keys, artifact filenames, emitted
+    milestone/handoff tokens), and helper-script CLIs.**
+  - **major** — backward-incompatible contract change: removed/renamed skill or trigger, changed/reordered
+    checkpoint stage key, renamed artifact, breaking helper-script CLI or emitted-token change.
+  - **minor** — backward-compatible addition: new skill/agent, trigger alias, optional script flag, or
+    pipeline stage.
+  - **patch** — no contract-surface change: prompt/wording edits, bug fixes, refactors, docs, tests.
+  - Heuristic: forces a `tests/e2e/triggers/corpus.json` change → ≥ minor (removed trigger → major);
+    changes a contractual-token assertion → major; neither → patch.
+  - **Bump only once per accumulated release** — do not stack per-prompt. If `[Unreleased]` is empty, the
+    current version is shipped: the change bumps it and opens `[Unreleased]`. If `[Unreleased]` already
+    has entries, the version is pending: bump only when the new change is a **higher** level than what is
+    already pending (else just add a changelog line). On release, promote `[Unreleased]` → `[x.y.z] - <date>`.

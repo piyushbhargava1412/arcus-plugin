@@ -1,7 +1,7 @@
 ---
 name: arcus-controller
 description: >
-  ARCUS controller meta-skill. The single orchestrator that drives a story from spec to pull
+  The single orchestrator that drives a story from spec to pull
   request, in either INTERACTIVE (gated, default) or AUTONOMOUS (afk) mode. It is state-driven:
   it reads the session checkpoint and runs every remaining stage in the same canonical order.
   In autonomous mode it runs stages back-to-back with no gates, auto-deciding and emitting
@@ -15,7 +15,7 @@ standalone: false
 argument-hint: <STORY>
 ---
 
-# ARCUS Controller (Orchestrator Meta-Skill)
+# Overview
 
 This skill is the **single orchestrator** that drives a story from spec to pull request. It runs the
 **same canonical stage sequence** in both modes; only the *invocation style* and the *gating* differ:
@@ -27,68 +27,34 @@ This skill is the **single orchestrator** that drives a story from spec to pull 
 - **autonomous** (afk): stages run **back-to-back with no handoff gates**, auto-deciding at each step,
   emitting **milestone-only** output.
 
-The **execution model is the same in both modes** (only gating differs): per the tier execution rule,
-the controller **spawns capabilities** as isolated subagents and **runs coordinators/orchestrators
-in-thread** (loading their instructions into its own context, never spawning them). This keeps the
-dispatch tree depth-1 — the controller spawns leaves, a coordinator it loaded then spawns *its* leaves
-in the same thread. (A dialogue capability like spec-finalizer, when interactive, also runs in-thread
-so it can interview the user.)
-
-Interactive mode is handled **by this controller itself**, delegating the brainstorm context-pack +
-spec-finalize steps to the `arcus:kick-off` coordinator.
-
-## Mode
-
-The controller runs in one of two modes, chosen by the activation trigger and then **persisted on
-the checkpoint**:
-
-| Mode | Trigger | Checkpoint value | Behavior |
-|------|---------|------------------|----------|
-| **interactive** | "implement <STORY>" (default), "plan <STORY>" | `gated` | Dialogue stages in main thread; handoff gate after each major phase group; Recommended-option interviews. |
-| **autonomous** | "forge <STORY>", "afk <STORY>", "run afk on <STORY>", "implement <STORY>.md --afk" | `afk` | One-shot subagents; no gates; auto-decide; milestone-only output. |
-
-> **Mapping note**: `checkpoint.sh set-mode` accepts `gated|afk` today. Treat **interactive ↔ gated**
-> and **autonomous ↔ afk**. The controller persists the checkpoint value and reads it back as the mode.
+Execution is identical in both modes: the controller **spawns capabilities** and **runs
+coordinators/orchestrators in-thread** (each stage states its own execution in the Execution
+Pipeline below). A dialogue capability (spec-finalizer, implementation-planner) also runs in-thread
+when interactive so it can interview the user.
 
 ## Activation
 
-Activate on either an interactive or an autonomous trigger; the trigger fixes the mode:
+The activation trigger fixes the mode, which is then **persisted on the checkpoint** and read back on
+resume (never re-inferred):
 
-| User says | Mode | Action |
-|-----------|------|--------|
-| "implement <STORY>" (default), "plan <STORY>" | interactive | Begin the pipeline at Stage 0 (or resume from the checkpoint), running dialogue stages in the main thread and emitting a handoff gate after each major phase group. |
-| "forge <STORY>", "run afk on <STORY>", "afk <STORY>", "implement <STORY>.md --afk" | autonomous | Begin the pipeline at Stage 0 (or resume from the checkpoint) and run every remaining stage with no gates. |
-| "resume <STORY>" | persisted | Continue from the first incomplete stage in whatever mode the checkpoint already persists (does not change the mode). |
+| User says | Mode | Checkpoint value | Action |
+|-----------|------|------------------|--------|
+| "implement <STORY>" (default), "plan <STORY>" | interactive | `gated` | Begin at Stage 0 (or resume from the checkpoint). |
+| "forge <STORY>", "afk <STORY>", "run afk on <STORY>", "implement <STORY>.md --afk" | autonomous | `afk` | Begin at Stage 0 (or resume from the checkpoint). |
+| "resume <STORY>" | persisted | — | Continue from the first incomplete stage in the checkpoint's mode (does not change the mode). |
 
-Do **not** activate on per-stage phrases ("brainstorm/generate tests/review/close <STORY>") or on
-bare "yes"/"proceed"/"continue" continuations outside of an active interactive run — those route to
-the individual stage skills (`arcus:kick-off`, etc.).
+> **Mapping note**: `checkpoint.sh set-mode` accepts `gated|afk` today — treat **interactive ↔ gated**
+> and **autonomous ↔ afk**.
 
 If `<STORY>` is omitted and exactly one in-progress story exists under `.arcus/specs/`, use it;
 otherwise ask which story.
 
-## Key Principles
+## Owned state
 
-- **Mode-driven gating**: in **autonomous** mode, run the whole pipeline in one shot — never stop at
-  a gate, never ask the user to confirm a handoff, never conduct an interview; auto-decide
-  everything. In **interactive** mode, run dialogue stages in the main thread and **stop at a handoff
-  gate after each major phase group**, waiting for the user's "yes"/"proceed".
-- **Dispatch style by mode**: in autonomous mode, generation-heavy stages are dispatched to fresh
-  subagents with scoped context, in **one-shot** (non-interview) mode. In interactive mode, the
-  stages that need user dialogue (spec-finalizer, implementation-planner) run **in the main thread in
-  dialogue mode** so they can interview the user; non-dialogue stages may still be dispatched as
-  subagents. Either way the controller stays lean: dispatch/run, verify output, update state, advance.
-- **State is the source of truth**: always read `session-checkpoint.json` first. The next action is
-  a pure function of the checkpoint, not of conversation memory. On resume, read the persisted `mode`
-  from the checkpoint and do not re-infer it.
-- **Deterministic ops via scripts**: use helper scripts for git and state. Never reason about branch
-  names, commit messages, or checkpoint JSON by hand.
-- **Deferred branch**: Stage 0 scaffolds the workspace and records the *planned* branch only — the
-  git branch is **not** created until the Implementation stage.
-- **DRY delegation**: the Implementation stage is **not** re-implemented here; it is delegated to the
-  `arcus:implementation-runner` skill (the single canonical loop driver).
-- **Resumable across sessions**: the pipeline can be re-entered with the same `forge`/`afk` phrase;
-  it picks up from the first incomplete stage in the checkpoint.
+The controller owns the session checkpoint (stage keys enumerated in the Canonical Pipeline table)
+and the planned/realized branch name. The next action is a pure function of the checkpoint — read it
+first, never reason from conversation memory. The loopback auto-loop is capped at `review_round` 3
+(see Loopback Protocol).
 
 ## Output Discipline
 
@@ -116,36 +82,25 @@ Proceed? Reply "yes" to continue, or "no" to pause.
 The handoff gate is emitted after each major phase group: **Brainstorm**, **Test Plan**,
 **Implementation**, **Code Review**, **Closure**.
 
-## Canonical Pipeline (Ordered Stage List)
+## Canonical Pipeline (checkpoint keys → phase groups)
 
-This is the **single canonical enumeration** of the ARCUS pipeline. The stage sequence and execution
-model are **identical in both modes** — only the **gating** (whether to stop for the user) differs.
-Each stage names its checkpoint key, the owning skill/script, and the execution the
-controller uses per mode. Run them strictly in this order, skipping any whose checkpoint status is
-already `complete`.
+The **single authoritative enumeration** of the checkpoint stage keys, in order, with the phase group
+each rolls up to (gates and milestone output work at phase-group granularity) and its owner. The
+sequence is identical in both modes; per-stage behavior is in the Execution Pipeline below. Run them
+strictly in this order, skipping any whose checkpoint status is already `complete`.
 
-Execution per stage follows the tier rule: **capabilities are spawned; coordinators/orchestrators run
-in-thread.** Gating (whether to stop for the user) is the only mode difference.
-
-| # | Stage key(s) | Owner (tier) | Execution |
-|---|--------------|-------|---------------|
-| 1 | `scaffold` | `scaffold.sh` (script) | Run the script: create `.arcus/specs/<STORY_ID>/`, copy `story.md`, init the checkpoint. **No git branch.** |
-| 2 | `context_pack` | `arcus:context-pack-builder` (capability, via `arcus:kick-off`) | kick-off runs **in-thread** and spawns context-pack-builder |
-| 3 | `spec_finalizer` | `arcus:spec-finalizer` (capability, via `arcus:kick-off`) | kick-off runs in-thread; spawns spec-finalizer (**interactive** → runs it in-thread instead, so it can interview) |
-| 4 | `plan` | `arcus:implementation-planner` (capability) | Spawned (**interactive** → in-thread for the design interview) |
-| 5 | `test_plan` | `arcus:test-spec-compiler` (capability) | Spawned |
-| 6 | `branch` | `branch.sh` (git branch CREATED here) | **Delegated** — realized at the start of Implementation by `arcus:implementation-runner` |
-| 7 | `task_1`..`task_N` | `arcus:implementation-runner` (orchestrator) | Runs **in-thread**; spawns per-task capability subagents |
-| 8 | `code_review` | `arcus:code-reviewer` (coordinator) | Runs **in-thread**; spawns the specialist + consolidator capabilities. Verdict `approved \| changes_requested` |
-| 9 | `context_sync` | `arcus:context-drift-sync` (capability) | Spawned; runs **only after** `code_review` is `approved` (final diff) |
-| 10 | `closure` | `arcus:pull-request-builder` (capability) + `pr.sh` | Spawned, then run the script |
-
-Stages 6 and 7 are both owned by `arcus:implementation-runner`: a single delegation realizes the
-branch (`branch.sh`) and then drives the task loop. The controller does not split them.
-
-Stage 9 (`context_sync`) runs **only after a final `approved` verdict** — when Code Review loops back
-(`changes_requested`), it re-enters Implementation; `context_sync` runs once, after the diff is
-stable and approved, and reconciles any `.context/` drift before Closure.
+| # | Stage key(s) | Phase group | Owner |
+|---|--------------|-------------|-------|
+| 1 | `scaffold` | Scaffold | `scaffold.sh` |
+| 2 | `context_pack` | Brainstorm | `arcus:context-pack-builder` (via `arcus:kick-off`) |
+| 3 | `spec_finalizer` | Brainstorm | `arcus:spec-finalizer` (via `arcus:kick-off`) |
+| 4 | `plan` | Brainstorm | `arcus:implementation-planner` |
+| 5 | `test_plan` | Test Plan | `arcus:test-spec-compiler` |
+| 6 | `branch` | Implementation | `branch.sh` (via `arcus:implementation-runner`) |
+| 7 | `task_1`..`task_N` | Implementation | `arcus:implementation-runner` |
+| 8 | `code_review` | Code Review | `arcus:code-reviewer` |
+| 9 | `context_sync` | Closure | `arcus:context-drift-sync` |
+| 10 | `closure` | Closure | `arcus:pull-request-builder` + `pr.sh` |
 
 ## Helper Scripts
 
@@ -163,9 +118,8 @@ that exists**: `.arcus/bin/` (preferred, staged by the plugin) → `$ARCUS_HOME/
 | `.arcus/bin/pr.sh <story-id>` | Push + create PR | Closure |
 | `.arcus/bin/checkpoint.sh <action> <story-id> [args]` | Manage state | init / read / complete / set-status / reopen / set-mode / **set-branch** |
 
-Checkpoint stage keys (ordered): `scaffold` → `context_pack` → `spec_finalizer` → `plan`
-→ `test_plan` → `branch` → `task_1`..`task_N` → `code_review` → `context_sync` → `closure`.
-Stage status values: `pending | in_progress | awaiting_handoff | complete | needs_rework`.
+Stage keys and their order are the Canonical Pipeline table above. Stage status values:
+`pending | in_progress | awaiting_handoff | complete | needs_rework`.
 
 The `set-branch` action records a bumped/realized branch name onto the checkpoint; `branch.sh`
 calls it itself when a collision forces a name change.
@@ -193,24 +147,14 @@ calls it itself when a collision forces a name change.
 
 ### Brainstorm (delegated to `arcus:kick-off`, then implementation-planner)
 
-The Brainstorm phase's **context-pack + spec-finalize** steps are delegated to the
-`arcus:kick-off` coordinator (the controller still owns scaffold + checkpoint init in Stage 0).
-`arcus:implementation-planner` remains a **separate** stage the controller runs **after** kick-off.
-
 1. **Context pack + spec finalize** — read and follow `arcus:kick-off` **in-thread** (it is a
-   coordinator), passing the `story`, the available `repo_context`, and the `mode`. kick-off spawns
-   context-pack-builder, then runs spec-finalizer per `mode`:
-   - **autonomous** (`mode: autonomous`) — non-interview, auto-resolve every ambiguity.
-   - **interactive** (`mode: dialogue`) — spec-finalizer interviews the user one question at a time
-     (each question carrying exactly one **Recommended** option + one-line rationale + an explicit
-     custom-answer option); the dialogue runs in this thread.
-   - kick-off produces a `context_pack` and a `spec_grounding`. The controller resolves these to the
-     workspace files `.arcus/specs/<STORY_ID>/context-pack.md` and
-     `.arcus/specs/<STORY_ID>/grounded-spec.md`. Verify both exist, then:
-     `.arcus/bin/checkpoint.sh complete <STORY_ID> context_pack` and
-     `.arcus/bin/checkpoint.sh complete <STORY_ID> spec_finalizer`.
-2. **Create implementation plan** — this is a **separate stage**, run by the controller after
-   kick-off returns (NOT inside kick-off):
+   coordinator), passing the `story`, the available `repo_context`, and the `mode` (`autonomous` →
+   non-interview; `dialogue` → the spec interview runs in this thread). It returns a `context_pack`
+   and a `spec_grounding`, which the controller resolves to the workspace files
+   `.arcus/specs/<STORY_ID>/context-pack.md` and `.arcus/specs/<STORY_ID>/grounded-spec.md`. Verify
+   both exist, then: `.arcus/bin/checkpoint.sh complete <STORY_ID> context_pack` and
+   `.arcus/bin/checkpoint.sh complete <STORY_ID> spec_finalizer`.
+2. **Create implementation plan**:
    - **autonomous**: dispatch a one-shot, **non-interview** subagent.
      - **Prompt**: "Read and follow the `arcus:implementation-planner` skill. Story ID: `<STORY_ID>`. `mode=autonomous`. Write the plan to `.arcus/specs/<STORY_ID>/plan.md`."
      - **Description**: "Brainstorm: implementation-planner"
@@ -241,15 +185,8 @@ The Brainstorm phase's **context-pack + spec-finalize** steps are delegated to t
 Do **not** re-implement the per-task TDD loop, the branch realization, or the loopback here — they
 are owned by the canonical loop driver. **Delegate** the whole Implementation stage:
 
-1. **Read and follow the `arcus:implementation-runner` skill**, passing `STORY_ID` and the persisted
-   `mode` (`afk` for autonomous, `gated` for interactive). That skill:
-   - realizes the git branch via `branch.sh` and marks the `branch` stage complete (deferred-branch
-     design — the branch did not exist before this point);
-   - parses the `### Task N:` headings from `plan.md` and drives each task through the
-     `arcus:subagent-task-dispatcher` protocol (per-task TDD + spec check + commit), marking each
-     `task_<N>` complete;
-   - in `afk` mode, runs to completion without stopping; in `gated` mode it honors its own per-task
-     gating (the controller owns the phase-group gate after Implementation completes).
+1. **Read and follow the `arcus:implementation-runner` skill** **in-thread**, passing `STORY_ID` and
+   the persisted `mode` (`afk` for autonomous, `gated` for interactive).
 2. **Output / gate**:
    - **autonomous**: emit `[Code] Complete: <N> files changed, <M> tests passing` and continue into
      Code Review.
@@ -258,12 +195,10 @@ are owned by the canonical loop driver. **Delegate** the whole Implementation st
 
 ### Code Review (verdict)
 
-1. **Run the review** — code-reviewer is a **coordinator**, so run it **in-thread**: read and follow
-   the `arcus:code-reviewer` skill in this context (Story ID: `<STORY_ID>`, output
-   `.arcus/specs/<STORY_ID>/review.md`). It runs a deterministic tooling gate (typecheck, full test
-   suite, build/startup, secret scan, lint/format with autofix), then **spawns** the semantic reviewer
-   capabilities and the consolidator — so this stage's only spawned subagents are those leaves (the
-   controller is not nested behind another subagent). It ends with `VERDICT: approved | changes_requested`.
+1. **Run the review** — code-reviewer is a **coordinator**, so read and follow the
+   `arcus:code-reviewer` skill **in-thread** (Story ID: `<STORY_ID>`, output
+   `.arcus/specs/<STORY_ID>/review.md`). It writes `review.md` and returns
+   `VERDICT: approved | changes_requested`.
    - Verify `review.md` exists. Capture the verdict and counts (`critical`, `warning`, `suggestion`),
      then `.arcus/bin/checkpoint.sh complete <STORY_ID> code_review`.
 2. **Decide on the verdict**:
@@ -306,14 +241,11 @@ shared `.context/` artifact that the approved change set materially drifted.
 
 On a `changes_requested` verdict, loop the findings back into Implementation. In **autonomous** mode
 this runs **automatically** (no user prompt); in **interactive** mode the controller surfaces the
-findings and confirms with the user before re-entering. Either way the loop is delegated to
-`arcus:implementation-runner`, which owns the loopback mechanics:
+findings and confirms with the user before re-entering. The loop itself is delegated to
+`arcus:implementation-runner`:
 
-1. **Re-enter `arcus:implementation-runner`** for the loopback. It runs
-   `.arcus/bin/checkpoint.sh reopen <STORY_ID> code_review` (sets `needs_rework`, bumps
-   `review_round`), converts each **critical** and **warning** finding in
-   `.arcus/specs/<STORY_ID>/review.md` into a fix-task appended to `plan.md`, and runs the loop
-   for the new fix-tasks only.
+1. **Re-enter `arcus:implementation-runner`** for the loopback (Story ID: `<STORY_ID>`), which turns
+   the `changes_requested` findings into fix-tasks and runs them.
 2. After the fix-tasks complete, **re-run Code Review** on the updated diff.
 3. **Loopback cap**: stop auto-looping once `review_round` reaches **3**. Beyond that, stop and
    **report** the remaining findings instead of looping a 4th round.
@@ -325,9 +257,7 @@ When a checkpoint already exists:
 1. Read it with `.arcus/bin/checkpoint.sh read <STORY_ID>`. Read the **persisted `mode`** from the
    checkpoint (`afk` → autonomous, `gated` → interactive) and use it; do **not** re-infer the mode
    from the resume phrase.
-2. Determine the next action from stage status, in this order:
-   `scaffold` → `context_pack` → `spec_finalizer` → `plan` → `test_plan` → `branch` →
-   `task_1`..`task_N` → `code_review` → `context_sync` → `closure`.
+2. Determine the next action from stage status, walking the Canonical Pipeline order:
    - Skip any stage whose status is `complete`.
    - Run the first stage that is `pending`, `in_progress`, or `needs_rework` (a `code_review` marked
      `needs_rework` means re-enter Implementation via `arcus:implementation-runner` on the fix-tasks,

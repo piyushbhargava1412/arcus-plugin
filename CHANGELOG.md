@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **`arcus-controller` SKILL.md trimmed to the authoring-style standard.** Cut the `Key Principles`
+  footer (replaced by a short `Owned state` note), stripped leaked callee internals from the
+  Brainstorm, Implementation, Code Review, and Loopback sections, merged the duplicate Mode/Activation
+  tables, removed duplicated stage-key lists, and reduced the Canonical Pipeline table to a
+  checkpoint-key → phase-group → owner map (dropped the internal-leaking `Execution` column). No
+  contract surface (triggers, tokens, stage keys) changed.
+- **Versioning working agreement (`AGENTS.md`).** Documented the semver bump policy: evaluate and
+  apply the bump on every material interaction, log under `CHANGELOG.md` `[Unreleased]`, bump once per
+  accumulated release, with major/minor/patch rules tied to the plugin's contract surface.
+
 ## [1.5.0] - 2026-06-25
 
 ### Added
