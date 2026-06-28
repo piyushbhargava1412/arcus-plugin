@@ -33,7 +33,9 @@ When activated, follow the **Execution Pipeline** below.
 - **Subagent Isolation**: Each stage dispatches a fresh subagent with scoped context.
 - **Parallelization**: Stages that share no dependency run in parallel (Stage 2a, 2b, and 2c).
 - **Model Strategy**: Resolve model tier via the `arcus:model-strategy` skill for each subagent.
-- **Template Adherence**: Subagents MUST follow the templates in this skill's `assets/` folder.
+- **Dispatch by name**: Stages dispatch the discovery **agents** (`arcus:repo-overview-discovery`,
+  `arcus:flow-discovery`, `arcus:test-pattern-discovery`, `arcus:design-pattern-discovery`) **by name** —
+  each agent owns its own templates/references under `agent-resources/<agent>/`.
 
 ## Prerequisites
 
@@ -41,10 +43,18 @@ The orchestrator MUST be invoked from the root of a git repository with the `arc
 
 ## Overwrite Guardrail
 
+`repo-agentifier` is a **forceful full (re)build** of `.context/` — it is *not* an incremental updater.
+For a graceful, incremental reconciliation of only the artifacts that drifted, point the user at
+**`sync context`** (the `arcus:context-drift-sync` agent) instead.
+
 Before executing, check if `.context/` exists and contains files:
-- If YES: Ask the user — "Shared context already exists in `.context/`. Rebuild from scratch? (y/N)"
+- If YES: Confirm with the user — "Shared context already exists in `.context/`. `repo-agentifier`
+  does a **full rebuild** (for a graceful incremental update, use `sync context` instead). Rebuild from
+  scratch? (y/N)"
 - If user declines: Stop. Output `[Context] No changes made.`
-- If user confirms or `.context/` does not exist: Proceed with the pipeline.
+- If user confirms: this is a **full rebuild** — first **delete stale `.context/flows/*.md`** so removed
+  flows do not linger, then proceed with the pipeline (which regenerates every artifact).
+- If `.context/` does not exist: Proceed with the pipeline.
 
 Separately, before Stage 3 writes the agentification files, detect which files already exist at the
 repository root and offer the matching options. Resolve the user's choice into a **Stage 3 mode**:
@@ -94,28 +104,26 @@ Your chat response MUST contain ONLY these milestone lines:
 **Purpose**: Produce `.context/repo_scope.md` and `.context/repo_map.md`.
 
 1. Ensure `.context/` directory exists.
-2. Read the subagent prompt template at `./assets/repo-context-prompt.md`.
-3. Dispatch a subagent:
-   - **Prompt**: The template content (it references the `repository-context-builder` skill internally)
-   - **Description**: `"Context: repository-context-builder"`
+2. Dispatch the `arcus:repo-overview-discovery` agent **by name**:
+   - **Description**: `"Context: repo-overview-discovery"`
    - **Model**: Resolve complexity `heavy` via the `arcus:model-strategy` skill
-4. **Verify**: Confirm both `.context/repo_scope.md` and `.context/repo_map.md` exist and are non-empty.
+3. **Verify**: Confirm both `.context/repo_scope.md` and `.context/repo_map.md` exist and are non-empty.
    - If missing: Report `[ERROR] Stage 1 failed: missing output files` and STOP.
-5. **Output**: `[Stage 1] Repository context: complete (repo_scope.md, repo_map.md)`
+4. **Output**: `[Stage 1] Repository context: complete (repo_scope.md, repo_map.md)`
 
 ### Stage 2: Parallel Discovery (depends on Stage 1 outputs)
 
 After Stage 1 completes successfully, read `.context/repo_scope.md` and `.context/repo_map.md`.
 
-Dispatch **all three** subagents below in parallel. For each: read its prompt template, inject the
-`repo_scope.md` and `repo_map.md` contents into the template's placeholders, dispatch with the given
-description and model tier (resolved via `arcus:model-strategy`), then run its verify check.
+Dispatch **all three** agents below in parallel **by name**, passing each the `repo_scope.md` and
+`repo_map.md` content as context, with the given description and model tier (resolved via
+`arcus:model-strategy`), then run its verify check.
 
-| # | Template (`./assets/`) | Description | Model | Verify output | On miss |
-|---|------------------------|-------------|-------|---------------|---------|
-| 2a Flow | `flow-discovery-prompt.md` | `"Context: flow-and-scope-discovery"` | `heavy` | `.context/flows/` has ≥1 `.md` | `[WARN] No flows discovered — repository may lack clear entry surfaces.` |
-| 2b Test | `test-pattern-prompt.md` | `"Context: test-pattern-discovery"` | `medium` | `.context/testing-patterns.md` non-empty | `[WARN] Test patterns not generated — no test files detected.` |
-| 2c Design | `design-pattern-prompt.md` | `"Context: design-pattern-discovery"` | `heavy` | `.context/design-and-coding-patterns.md` non-empty | `[WARN] Design patterns not generated — no first-party source detected.` |
+| # | Agent (dispatch by name) | Description | Model | Verify output | On miss |
+|---|--------------------------|-------------|-------|---------------|---------|
+| 2a Flow | `arcus:flow-discovery` | `"Context: flow-discovery"` | `heavy` | `.context/flows/` has ≥1 `.md` | `[WARN] No flows discovered — repository may lack clear entry surfaces.` |
+| 2b Test | `arcus:test-pattern-discovery` | `"Context: test-pattern-discovery"` | `medium` | `.context/testing-patterns.md` non-empty | `[WARN] Test patterns not generated — no test files detected.` |
+| 2c Design | `arcus:design-pattern-discovery` | `"Context: design-pattern-discovery"` | `heavy` | `.context/design-and-coding-patterns.md` non-empty | `[WARN] Design patterns not generated — no first-party source detected.` |
 
 ### Stage 2 Completion
 
