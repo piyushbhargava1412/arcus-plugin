@@ -18,6 +18,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Versioning working agreement (`AGENTS.md`).** Documented the semver bump policy: evaluate and
   apply the bump on every material interaction, log under `CHANGELOG.md` `[Unreleased]`, bump once per
   accumulated release, with major/minor/patch rules tied to the plugin's contract surface.
+- **`AGENTS.md` trimmed ~44% (1379 → 769 words).** Collapsed the inline "Two Surfaces" and
+  "Three-Tier Capability Library" sections into pointers to their canonical homes
+  (`plugins/arcus/agents.md`, `site/concepts/capability-library.md`), reduced the roster lists to a
+  link to `agents.md#roster`, dropped the deferred-branch / one-planning-file invariants already
+  stated in `.context/repo_scope.md`, and made the prose model-facing. Reduces eager session-load cost
+  (`CLAUDE.md` imports `AGENTS.md` via `@`). No content lost — only de-duplicated.
 
 ## [1.5.0] - 2026-06-25
 
