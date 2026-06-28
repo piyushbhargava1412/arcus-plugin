@@ -25,8 +25,8 @@ An item is an **agent** when no human would type a trigger for it, it already ru
 subagent, and it needs no main-thread dialogue. The reviewers, the per-task dispatcher, the refactor
 engine, and the pipeline-internal context builders/sync — including the four repo-context discovery
 agents (`repo-overview-discovery`, `flow-discovery`, `test-pattern-discovery`, `design-pattern-discovery`)
-— are agents (17); the user-facing entry points
-and dialogue-driven steps are skills (12). Two capabilities — `test-spec-compiler` and
+— are agents (16); the user-facing entry points
+and dialogue-driven steps are skills (13). Two capabilities — `test-spec-compiler` and
 `pull-request-builder` — are **split**: a thin user-facing *skill wrapper* dispatches an *execution
 agent* of the same name. The surface axis is independent of the tier axis: an orchestrator can be a
 skill (`arcus-controller`) or an agent (`subagent-task-dispatcher`).

@@ -16,7 +16,7 @@ color: blue
 
 ## Overview
 
-Identify key business flows and map each flow to its associated implementation scope. This skill transforms raw repository structure into a set of discrete, specialized context files in `.context/flows/`.
+Identify key business flows and map each flow to its associated implementation scope. This agent transforms raw repository structure into a set of discrete, specialized context files in `.context/flows/`.
 
 ## Contract
 
@@ -55,11 +55,11 @@ Identify key business flows and map each flow to its associated implementation s
 ## Examples
 
 **Defining a New Flow**
-- **User says**: "Generate a flow on how we handle user registration."
+- **Scenario**: The repo exposes a `UserRegistrationController` entry surface.
 - **Action**: Detect `UserRegistrationController`, trace it to `UserService` and `UserRepository`, then create `.context/flows/user-registration.md`.
 
 **Updating After Changes**
-- **User says**: "I added a new webhook for payments, update the flows."
+- **Scenario**: A new payments webhook listener was added since the last build.
 - **Action**: Identify the new listener, trace the handoff, and generate `.context/flows/payment-webhook-handling.md`.
 
 ## Troubleshooting

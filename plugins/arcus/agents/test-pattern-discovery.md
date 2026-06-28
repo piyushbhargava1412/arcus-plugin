@@ -81,15 +81,15 @@ Identify how tests are authored in the repository and persist shared conventions
 ## Examples
 
 **Initial Baseline**
-- **User says**: "Baseline our testing conventions."
+- **Scenario**: First baseline of a multi-layer test suite.
 - **Action**: Scan all test layers (unit, integration, functional, acceptance, performance, shell scripts), detect JUnit 5 + Mockito + TestContainers for JVM, Jest for TS, BATS/custom shell tests, and build the full pattern map.
 
 **Style Refresh**
-- **User says**: "We've started using AssertJ for new tests, update the patterns."
+- **Scenario**: Newly added tests have switched to AssertJ assertions.
 - **Action**: Scan recent test files, identify the switch in assertion style, update `.context/testing-patterns.md`.
 
 **Shell test discovery**
-- **User says**: "We have some acceptance tests as bash scripts, make sure they are captured."
+- **Scenario**: The repo has acceptance tests authored as bash scripts.
 - **Action**: Scan for `*.sh` / `*.bats` files under test and acceptance directories, extract execution commands, document shell test conventions in the Shell Script Tests section.
 
 ## Troubleshooting

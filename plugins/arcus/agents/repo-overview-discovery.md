@@ -148,11 +148,11 @@ Generate or update the following artifacts following the specifications in `"$AR
 ## Examples
 
 **Initial Onboarding**
-- **User says**: "Generate the context for this repository"
+- **Scenario**: First-time agentification of a repo that has no `.context/` snapshot yet.
 - **Action**: Run the full detection suite and create `.context/repo_scope.md` and `.context/repo_map.md`.
 
 **Context Refresh**
-- **User says**: "Refresh the context" or "Sync the context with the latest changes"
+- **Scenario**: A full rebuild over a repo whose structure changed since the last snapshot.
 - **Action**: Re-scan the structure and update existing files with the latest commit hash and package details.
 
 ## Troubleshooting

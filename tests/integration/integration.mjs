@@ -363,8 +363,8 @@ section('L1-13: Agent frontmatter validity (agent surface)');
 
 section('Layout sanity: skills/agents surface counts (ARC-0008)');
 {
-  // Guards the layout against future regression: 13 user-invocable
-  // skills + 16 dispatched agents. Three of the skills are thin wrappers over a
+  // Guards the layout against future regression: 13 skill dirs
+  // + 16 agent files. Three of the skills are thin wrappers over a
   // sibling agent (test-spec-compiler, pull-request-builder, context-drift-sync).
   // ARC-0009 converted the four repo-context discovery skills to pure agents
   // (repo-overview-discovery, flow-discovery, test-pattern-discovery, design-pattern-discovery).

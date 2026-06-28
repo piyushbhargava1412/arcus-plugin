@@ -101,18 +101,18 @@ when a genuinely new team-level pattern is adopted, not regenerated on routine d
 ## Examples
 
 **Initial Baseline**
-- **User says**: "Baseline our coding conventions."
+- **Scenario**: First coding-convention baseline of the repository.
 - **Action**: Scan each source layer the repo map identifies, detect recurring patterns (e.g. helper-script
   adapters, skill-spec + assets/references structure, deferred-branch idiom), naming/idioms, and
   error-handling conventions, then build the full pattern map plus an Avoid list.
 
 **Convention Refresh**
-- **User says**: "We've adopted the Result type for error returns, capture it."
+- **Scenario**: The codebase has adopted a Result type for error returns.
 - **Action**: Confirm the pattern now recurs (≥3 uses), then update the Error-Handling section and, if
   it supersedes a prior convention, add an Avoid rule against the old style.
 
 **Avoid-list grounding**
-- **User says**: "Make sure agents stop hand-rolling git commands."
+- **Scenario**: Git/state operations are centralized in helper scripts and should not be hand-rolled.
 - **Action**: Observe that git/state operations are centralized in `plugins/arcus/scripts/*.sh`, document
   that positive convention, and add a prescriptive Avoid rule: "Do not invoke raw git for state/branch
   operations — call the helper scripts."
