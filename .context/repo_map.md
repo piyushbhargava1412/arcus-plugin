@@ -30,15 +30,14 @@ arcus-plugin/
 │       │   ├── pr.sh
 │       │   ├── lib/branch_name.sh
 │       │   └── tests/checkpoint.test.sh
-│       ├── agents/                      # flat capability agents (13 .md files; Claude Code agent surface)
+│       ├── agents/                      # flat capability agents (16 .md files; Claude Code agent surface)
 │       └── skills/
 │           ├── arcus-controller/        # unified orchestrator (interactive + autonomous)
 │           ├── kick-off/                # brainstorm coordinator (context-pack → spec-finalizer)
 │           ├── implementation-runner/   # canonical Implementation loop
-│           ├── repo-agentifier/
-│           ├── repository-context-builder/
+│           ├── repo-agentifier/         # one-shot .context/ (re)builder; dispatches discovery agents
 │           ├── write-evals/             # Layer-2 eval-spec authoring capability
-│           └── ... (16 skill dirs)
+│           └── ... (13 skill dirs)
 ├── site/
 │   ├── .vitepress/config.ts
 │   ├── concepts/

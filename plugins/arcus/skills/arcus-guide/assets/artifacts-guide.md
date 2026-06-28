@@ -70,7 +70,7 @@ ARCUS creates two main directory structures:
 
 ### `repo_scope.md`
 
-**Created by:** `repository-context-builder` (via `repo-agentifier`)
+**Created by:** `repo-overview-discovery` (via `repo-agentifier`)
 
 **Purpose:** Define repository boundaries and technical scope
 
@@ -103,7 +103,7 @@ ARCUS creates two main directory structures:
 
 ### `repo_map.md`
 
-**Created by:** `repository-context-builder` (via `repo-agentifier`)
+**Created by:** `repo-overview-discovery` (via `repo-agentifier`)
 
 **Purpose:** Navigation index for common architectural patterns
 
@@ -136,7 +136,7 @@ ARCUS creates two main directory structures:
 
 ### `flows/*.md`
 
-**Created by:** `flow-and-scope-discovery` (via `repo-agentifier`)
+**Created by:** `flow-discovery` (via `repo-agentifier`)
 
 **Purpose:** Document business flows with entry points and data touchpoints
 
