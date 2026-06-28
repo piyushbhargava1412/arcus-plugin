@@ -1,5 +1,5 @@
 {
-  "skill_name": "flow-and-scope-discovery",
+  "skill_name": "flow-discovery",
   "cost_budget": { "max_tokens": 60000, "max_seconds": 180 },
   "evals": [
     {

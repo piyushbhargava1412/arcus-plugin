@@ -1,5 +1,5 @@
 {
-  "skill_name": "repository-context-builder",
+  "skill_name": "repo-overview-discovery",
   "cost_budget": { "max_tokens": 70000, "max_seconds": 180 },
   "evals": [
     {

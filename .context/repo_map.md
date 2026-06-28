@@ -1,8 +1,8 @@
 # Repository Map: arcus-plugin
 
 <!-- context-meta
-verification-commit: bcd35c43b6fe8286af5f8d45ab30c433ea67d727
-generated-at: 2026-06-25T07:35:00Z
+verification-commit: e47a3dc1ba49777670e659843a23d6a7e968f9d1
+generated-at: 2026-06-28T05:21:50Z
 confidence: high
 -->
 
@@ -30,15 +30,14 @@ arcus-plugin/
 │       │   ├── pr.sh
 │       │   ├── lib/branch_name.sh
 │       │   └── tests/checkpoint.test.sh
-│       ├── agents/                      # flat capability agents (13 .md files; Claude Code agent surface)
+│       ├── agents/                      # flat capability agents (16 .md files; Claude Code agent surface)
 │       └── skills/
 │           ├── arcus-controller/        # unified orchestrator (interactive + autonomous)
 │           ├── kick-off/                # brainstorm coordinator (context-pack → spec-finalizer)
 │           ├── implementation-runner/   # canonical Implementation loop
-│           ├── repo-agentifier/
-│           ├── repository-context-builder/
+│           ├── repo-agentifier/         # one-shot .context/ (re)builder; dispatches discovery agents
 │           ├── write-evals/             # Layer-2 eval-spec authoring capability
-│           └── ... (16 skill dirs)
+│           └── ... (13 skill dirs)
 ├── site/
 │   ├── .vitepress/config.ts
 │   ├── concepts/
@@ -86,7 +85,7 @@ arcus-plugin/
 | Plugin manifest + hook wiring | Declares plugin metadata and session hook behavior | `plugins/arcus/.claude-plugin/plugin.json`, `plugins/arcus/hooks/hooks.json` |
 | Orchestrator skills | Unified pipeline orchestrator (interactive + autonomous), Implementation loop driver, per-task dispatcher | `plugins/arcus/skills/arcus-controller/` (interactive + autonomous), `plugins/arcus/skills/implementation-runner/` (shared loop), `plugins/arcus/agents/subagent-task-dispatcher.md` |
 | Coordinator skills | Stateless multi-capability sequencers (brainstorm, review fan-out, simplify gate, agentification) | `plugins/arcus/skills/kick-off/`, `plugins/arcus/skills/code-reviewer/`, `plugins/arcus/agents/code-simplifier.md`, `plugins/arcus/skills/repo-agentifier/` |
-| Capability + supporting skill modules | Atomic, stateless capabilities: spec finalization, planning, review, context/test discovery, PR closure, review-consolidator, simplify-and-verify, eval-spec authoring (13 agent flat-files + 16 skill dirs = 29 total surfaces) | `plugins/arcus/agents/*.md`, `plugins/arcus/skills/*/` |
+| Capability + supporting skill modules | Atomic, stateless capabilities: spec finalization, planning, review, context/test discovery, PR closure, review-consolidator, simplify-and-verify, eval-spec authoring (16 agent flat-files + 13 skill dirs = 29 total surfaces) | `plugins/arcus/agents/*.md`, `plugins/arcus/skills/*/` |
 | Helper script runtime | Deterministic git/state helper scripts | `plugins/arcus/scripts/` |
 | Layer-1 test suite | Zero-dependency Node-ESM static checks (skill manifests, frontmatter, line budgets, cross-references, hooks integrity, artifact schemas) | `tests/` |
 | Docs site | User documentation and concepts site | `site/` |

@@ -1,8 +1,8 @@
 # Repository Scope: arcus-plugin
 
 <!-- context-meta
-verification-commit: bcd35c43b6fe8286af5f8d45ab30c433ea67d727
-generated-at: 2026-06-25T07:35:00Z
+verification-commit: e47a3dc1ba49777670e659843a23d6a7e968f9d1
+generated-at: 2026-06-28T05:21:50Z
 confidence: high
 -->
 
@@ -21,7 +21,7 @@ It provides orchestrator skills, supporting skills, and deterministic helper scr
 | Area | Scope | Evidence |
 |---|---|---|
 | Marketplace + plugin metadata | Marketplace catalog and plugin manifest metadata/versioning | `.claude-plugin/marketplace.json`, `plugins/arcus/.claude-plugin/plugin.json` |
-| Skill catalog | Three-tier library: Orchestrators (unified `arcus-controller`, shared `implementation-runner` loop), Coordinators (`kick-off`, `code-reviewer`, `repo-agentifier`), and Capabilities across two surfaces — 13 flat agent files + 16 skill dirs (incl. `subagent-task-dispatcher` and `code-simplifier` in agents/) | `plugins/arcus/agents/*.md`, `plugins/arcus/skills/*/SKILL.md` |
+| Skill catalog | Three-tier library: Orchestrators (unified `arcus-controller`, shared `implementation-runner` loop), Coordinators (`kick-off`, `code-reviewer`, `repo-agentifier`), and Capabilities across two surfaces — 16 flat agent files + 13 skill dirs (incl. `subagent-task-dispatcher` and `code-simplifier` in agents/) | `plugins/arcus/agents/*.md`, `plugins/arcus/skills/*/SKILL.md` |
 | Hook + script runtime | Session bootstrap hook and deterministic bash utilities (incl. `scaffold.sh`, `branch.sh`, and the shared `lib/branch_name.sh`) | `plugins/arcus/hooks/hooks.json`, `plugins/arcus/scripts/*.sh`, `plugins/arcus/scripts/lib/branch_name.sh` |
 | Test coverage | Shell-based checkpoint test harness; Node-ESM zero-dependency Layer-1 static suite (skill manifests, frontmatter, line budgets, cross-references, hooks integrity, artifact schemas) | `plugins/arcus/scripts/tests/checkpoint.test.sh`, `tests/` |
 | Documentation site | VitePress docs content and config | `site/.vitepress/config.ts`, `site/guide/*.md`, `site/concepts/*.md` |

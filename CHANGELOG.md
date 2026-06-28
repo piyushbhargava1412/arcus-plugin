@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Four repo-context discovery agents (ARC-0009).** The repo-context discovery capabilities are now
+  pure model-only **agents** under `plugins/arcus/agents/` (matching the
+  `context-pack-builder`/`subagent-task-dispatcher` precedent): `repo-overview-discovery` (renamed from
+  the `repository-context-builder` skill → `repo_scope.md` + `repo_map.md`), `flow-discovery` (renamed
+  from `flow-and-scope-discovery` → `flows/*.md`), `test-pattern-discovery` (→ `testing-patterns.md`),
+  and `design-pattern-discovery` (→ `design-and-coding-patterns.md`). Each is `user-invocable: false`,
+  `disable-model-invocation: true`, with its templates/references relocated under
+  `plugins/arcus/agent-resources/<agent>/` and referenced via `"$ARCUS_HOME"/agent-resources/...`.
+  Agent `description` fields carry **no** user trigger phrases — model-dispatch signal only.
+
+### Changed
+
+- **`repo-agentifier` is now the single user-facing entry for building `.context/` (ARC-0009).** It
+  dispatches the four discovery agents **by name** (overview first, then flow/test/design in parallel)
+  instead of reading prompt templates, and its existing-`.context/` behavior is **confirm → full
+  rebuild** (deleting stale `flows/*.md` first). Users wanting a graceful, incremental update are
+  pointed at `sync context` (`arcus:context-drift-sync`).
+- **Roster / model-strategy / test harness updated for the conversion.** `agents.md` pure-agent roster
+  9 → 13; `model-strategy` stage rows renamed (`repository-context-builder`→`repo-overview-discovery`,
+  `flow-and-scope-discovery`→`flow-discovery`); `tests/lib/skills.mjs` `DISPATCHED_ONLY` gains the four
+  agents; eval-spec folders renamed with `skill_name` updated; surface-count guard updated to **13 skill
+  dirs + 16 agent files**.
+
+### Removed
+
+- **The four standalone discovery skills and their eight user triggers (ARC-0009, BREAKING).** Removed
+  the `repository-context-builder`, `flow-and-scope-discovery`, `test-pattern-discovery`, and
+  `design-pattern-discovery` **skills** (now agents) along with their trigger phrases ("build shared
+  repository context", "refresh the context", "discover and persist flows", "what does this repo
+  actually do", "discover and persist testing patterns", "how do we write tests?", "discover and
+  persist design patterns", "baseline the coding style"). The only supported user verbs for context are
+  now **build/rebuild** (`repo-agentifier`) and **sync** (`context-drift-sync`). Also removed the four
+  now-redundant prompt templates from `repo-agentifier/assets/` (kept `agents-template.md`).
+
 ### Changed
 
 - **`arcus-controller` SKILL.md trimmed to the authoring-style standard.** Cut the `Key Principles`
