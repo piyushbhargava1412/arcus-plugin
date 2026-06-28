@@ -908,7 +908,7 @@ section('eval harness grading upgrade');
 
     // lint: accepts well-formed file assertions for ANY skill (no allowlist gate).
     const goodFa = {
-      skill_name: 'repository-context-builder',
+      skill_name: 'repo-overview-discovery',
       evals: [{ id: 'fa', prompt: 'p', mode: 'autonomous', kind: 'judged',
         fixture: { files: {} }, expectations: [{ text: 'writes a file', tier: 'quality' }],
         assertions: { required_files: ['AGENTS.md'], required_file_substrings: { 'AGENTS.md': ['Navigation'] } } }]
@@ -917,7 +917,7 @@ section('eval harness grading upgrade');
 
     // lint: rejects a malformed file assertion (required_files not an array).
     const badFa = {
-      skill_name: 'repository-context-builder',
+      skill_name: 'repo-overview-discovery',
       evals: [{ id: 'fa', prompt: 'p', mode: 'autonomous', kind: 'judged',
         fixture: { files: {} }, expectations: [{ text: 'writes a file', tier: 'quality' }],
         assertions: { required_files: 'AGENTS.md' } }]
