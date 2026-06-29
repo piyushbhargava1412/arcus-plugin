@@ -95,10 +95,6 @@ finalized_spec:
     - "Invalid/expired tokens show a clear error and offer to resend."
 ```
 
-The same pattern holds for any specialist reviewer — e.g. invoke `security-reviewer` directly with a
-`change_set` (a diff) and get back severity-tagged findings, with no checkpoint, no branch, and no PR
-in sight. The capability does exactly one job over the inputs you hand it.
-
 ## The Hybrid Output Convention
 
 Because a capability can be driven either by the orchestrator **or** standalone, it follows a simple
