@@ -36,6 +36,8 @@ replay_pid*
 .opencode/node_modules/
 .opencode/package.json
 .opencode/package-lock.json
+# Root opencode.json is user/project config — not repo content
+opencode.json
 
 # --- arcus-opencode npm package: derived build output ---
 plugins/arcus-opencode/bundled/
