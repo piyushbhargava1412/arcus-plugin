@@ -1,0 +1,82 @@
+name: release-opencode-plugin
+
+# Publishes a GitHub Release with the arcus-opencode tarball whenever the
+# canonical ARCUS version (plugins/arcus/.claude-plugin/plugin.json) changes on
+# main. The package version is derived from plugin.json at build time
+# (scripts/sync-version.mjs), so the Claude plugin and the OpenCode package
+# always share one version. The release is idempotent: if a release for the
+# current version already exists, the job is a no-op.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "plugins/arcus/.claude-plugin/plugin.json"
+      - "plugins/arcus-opencode/**"
+  workflow_dispatch: {}
+
+permissions: {}
+
+jobs:
+  release:
+    name: Build + publish arcus-opencode tarball
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # create the GitHub Release + tag
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+        with:
+          package_json_file: plugins/arcus-opencode/package.json
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 22
+
+      - name: Read canonical ARCUS version
+        id: ver
+        run: |
+          VERSION="$(node -p "require('./plugins/arcus/.claude-plugin/plugin.json').version")"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=arcus-opencode-v$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Canonical ARCUS version: $VERSION"
+
+      - name: Check whether this release already exists
+        id: exists
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "${{ steps.ver.outputs.tag }}" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "Release ${{ steps.ver.outputs.tag }} already exists — skipping."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install + build + pack
+        if: steps.exists.outputs.exists == 'false'
+        working-directory: plugins/arcus-opencode
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm pack
+          ls -la arcus-opencode-*.tgz
+
+      - name: Create GitHub Release with the tarball
+        if: steps.exists.outputs.exists == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ steps.ver.outputs.tag }}" \
+            plugins/arcus-opencode/arcus-opencode-${{ steps.ver.outputs.version }}.tgz \
+            plugins/arcus-opencode/install.sh \
+            --title "arcus-opencode v${{ steps.ver.outputs.version }}" \
+            --notes "OpenCode plugin build of ARCUS v${{ steps.ver.outputs.version }}.
+
+          One-line install (project):
+              curl -fsSL https://github.com/${{ github.repository }}/releases/download/${{ steps.ver.outputs.tag }}/install.sh | sh
+          Global (all repos): append \`-s -- --global\`.
+
+          Full guide: plugins/arcus-opencode/INSTALL.md"

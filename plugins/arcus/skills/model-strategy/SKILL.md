@@ -43,17 +43,19 @@ This mapping can be overridden for specific runs (e.g., "all Opus for a quality 
 
 The dispatcher resolves the model tier to a platform-specific string:
 
-| Model Tier | VS Code / GitHub Copilot        | Claude Code CLI |
-|------------|---------------------------------|-----------------|
-| opus       | "Claude Opus 4.6 (copilot)"    | "opus"          |
-| sonnet     | "Claude Sonnet 4.6 (copilot)"  | "sonnet"        |
-| haiku      | "Claude Haiku 4.5 (copilot)"   | "haiku"         |
+| Model Tier | VS Code / GitHub Copilot        | Claude Code CLI | OpenCode (provider/model-id)        |
+|------------|---------------------------------|-----------------|-------------------------------------|
+| opus       | "Claude Opus 4.6 (copilot)"    | "opus"          | `github-copilot/claude-opus-4.8`    |
+| sonnet     | "Claude Sonnet 4.6 (copilot)"  | "sonnet"        | `github-copilot/claude-sonnet-4.6`  |
+| haiku      | "Claude Haiku 4.5 (copilot)"   | "haiku"         | `github-copilot/claude-haiku-4.5`   |
 
 **Update this table** when new model versions are released.
 
 **VS Code / GitHub Copilot**: The `runSubagent` tool accepts a `model` parameter in `"Model Name (Vendor)"` format. Pass the resolved string directly.
 
-**Claude Code CLI**: Dispatch subagents with the **`Agent` tool**, which **accepts a per-subagent `model` parameter** (`"opus"` / `"sonnet"` / `"haiku"`). Pass the resolved string directly so each task/reviewer runs on its complexity-appropriate tier — light/mechanical work on `haiku`, standard work on `sonnet`, judgment-heavy work on `opus`. 
+**Claude Code CLI**: Dispatch subagents with the **`Agent` tool**, which **accepts a per-subagent `model` parameter** (`"opus"` / `"sonnet"` / `"haiku"`). Pass the resolved string directly so each task/reviewer runs on its complexity-appropriate tier — light/mechanical work on `haiku`, standard work on `sonnet`, judgment-heavy work on `opus`.
+
+**OpenCode**: There is no `runSubagent`/`Agent` model parameter — OpenCode resolves the model from each subagent's `model:` frontmatter (`provider/model-id`), falling back to the session model when unset. So the resolved string from the OpenCode column is **pinned per agent** in `plugins/arcus/agents.opencode/<name>.md`; it is not passed at dispatch time. The default column is the **GitHub Copilot** provider (enterprise license, flat cost). **Amazon Bedrock alternative** (anthropic via `AWS_BEARER_TOKEN_BEDROCK`): opus → `amazon-bedrock/anthropic.claude-opus-4-8`, sonnet → `amazon-bedrock/anthropic.claude-sonnet-4-6`, haiku → `amazon-bedrock/anthropic.claude-haiku-4-5-20251001-v1:0` (prefix with a region inference profile, e.g. `eu.`/`global.`, if required by your account).
 
 ## Static Stage Assignments
 
@@ -104,7 +106,8 @@ complexity (heavy|medium|light)
   → model tier (opus|sonnet|haiku)        [from Complexity-to-Model Mapping]
     → platform model string               [from Tier-to-Platform Mapping]
       → passed as `model` parameter to the subagent spawner
-        (Copilot: runSubagent; Claude Code: the Agent tool)
+        (Copilot: runSubagent; Claude Code: the Agent tool;
+         OpenCode: pinned in the subagent's `model:` frontmatter, not passed at dispatch)
 ```
 
 Skills MUST NOT fail when model selection is unavailable. The `model` parameter is always optional — if a platform or spawner ignores it, the subagent falls back to the session model.

@@ -9,6 +9,83 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **OpenCode integration as an npm plugin — `arcus-opencode` (additive, non-breaking).** ARCUS now
+  ships as a standalone OpenCode plugin package at `plugins/arcus-opencode/` (distribution model:
+  **bundle-and-stage**). The package carries a self-contained `bundled/` payload (skills, helper
+  scripts, agent-resources, schemas) **built from the authoring source `plugins/arcus/`** at publish
+  time via `scripts/build-bundle.mjs`, which bakes the OpenCode-specific transforms (skills copied;
+  `arcus:<name>` → `<name>` rewritten in each `SKILL.md` for OpenCode's flat addressing — staged copies
+  only, sources untouched). At session start the plugin (`src/index.ts`) resolves its **own install
+  dir** via `import.meta` (not the user's repo), stages `bundled/{skills,agents,commands}` into the
+  target repo's `.opencode/`, and runs `bundled/scripts/bootstrap.sh` (CWD = target repo) to stage the
+  deterministic helpers into `.arcus/bin` + write `.arcus/env`. Because resolution is package-relative,
+  `ARCUS_HOME` points at the installed package's `bundled/`, so it works in **any** target repo with no
+  `plugins/arcus/` present. Two install paths: (1) **npm** — `{ "plugin": ["arcus-opencode"] }` in the
+  target's `opencode.json` (requires the package published to npm; OpenCode fetches into
+  `~/.cache/opencode/node_modules/`); (2) **local** — `npm install` the package + a one-line
+  `.opencode/plugins/*.ts` re-export, no publish needed. Verified end-to-end in a **separate throwaway
+  repo** (OpenCode 1.17.11): all 13 skills staged into the target `.opencode/skills/`, `.arcus/bin` +
+  `.arcus/env` created, `ARCUS_HOME` = `<target>/node_modules/arcus-opencode/bundled`, and `arcus-guide`
+  loaded and used by the model. `plugins/arcus/` remains the single source of truth; `bundled/`, the
+  staged target dirs, and dev `node_modules` are git-ignored. No existing trigger, skill/agent roster
+  entry, checkpoint key, artifact name, or helper-script CLI changed. `model-strategy` gains an
+  **OpenCode column** in its Tier-to-Platform Model String table (default provider GitHub Copilot:
+  opus→`github-copilot/claude-opus-4.8`, sonnet→`github-copilot/claude-sonnet-4.6`,
+  haiku→`github-copilot/claude-haiku-4.5`; Amazon Bedrock documented as the alternative). Under
+  OpenCode the resolved string is pinned per agent via `model:` frontmatter (no dispatch-time `model`
+  param), so the per-agent pins land with the agent port (`agents.opencode/`). The plugin is
+  **intentionally silent in the TUI** — no toast, no terminal output: `bootstrap.sh`'s stdout is captured
+  via Bun `$.quiet()` (so its status line cannot ghost the prompt input) and the outcome is recorded only
+  through **structured logs** (`client.app.log`, service `arcus-opencode`). Successful skill/agent
+  discovery is its own confirmation. **No OpenCode command files** are
+  shipped: ARCUS's user-facing invocation is its natural-language trigger phrases (declared in skill
+  `description`s), which OpenCode auto-routes via the `skill` tool — verified in a target repo
+  (`what is arcus`→`arcus-guide`, `sync context`→`context-drift-sync` both routed unprompted). The
+  Claude/Copilot `/arcus:<name>` slash form was always a name-derived by-product, not an authored
+  artifact, so no command surface is recreated (it remains a future discoverability-only option). All
+  **16 agents** are now shipped: the build (`scripts/build-bundle.mjs`) converts the Claude-dialect
+  `plugins/arcus/agents/*.md` frontmatter to OpenCode dialect at build time (single source of truth, no
+  parallel dir) — `mode: subagent` + `hidden: true`, `model:` pinned per tier (4 opus / 1 haiku / 11
+  sonnet), `permission` derived from `tools`/`disallowed-tools` (incl. `question: deny` for
+  `subagent-task-dispatcher` as the `AskUserQuestion` analog), nested `metadata:` dropped, folded
+  descriptions collapsed, and Claude color words mapped to **quoted** `#hex` (a bare `#hex` is a YAML
+  comment → null, which OpenCode's validator rejects). `permission.task` is left at OpenCode's default
+  (allow) — a restrictive config would block dispatch. Verified in the target repo: OpenCode validates
+  all 16, and the model dispatched `security-reviewer` and `context-pack-builder` via the Task tool.
+  **Publish-ready:** the package now compiles its entry to `dist/index.js` via `esbuild` (matching the
+  published-OpenCode-plugin convention), ships `README.md` + `INSTALL.md`, and is **pnpm-native**
+  (`pnpm-lock.yaml`; `pnpm.ignoredBuiltDependencies` silences the esbuild build-script prompt — the build
+  works under `--ignore-scripts`). `prepack` rebuilds both `bundled/` and `dist/` so the tarball is always
+  complete (75 files, ~136 kB). **Distribution = GitHub Release tarball, no npm registry/login**: a target
+  repo installs via `pnpm add -D <release-tarball-url>` + a one-line `.opencode/plugins/*.ts` re-export of
+  `arcus-opencode`. (Empirically, OpenCode's `"plugin"` array does **not** install a `.tgz` path/URL — it
+  only resolves npm-registry names or local plugin dirs — so the tarball is installed into the repo's
+  `node_modules` and loaded via the local loader.) Verified end-to-end in a clean repo: the documented
+  flow stages 13 skills + 16 agents, the staged artifacts + `node_modules` are git-ignored, and the tree
+  is clean (ARCUS-ready) after committing the loader/config. `arcus-guide` loaded and answered.
+  **Single version + automated releases:** the OpenCode package no longer carries an independent version —
+  `scripts/sync-version.mjs` derives it from the canonical `plugins/arcus/.claude-plugin/plugin.json` at
+  build/pack time (the Claude plugin and the OpenCode package now always share one version; aligned at
+  `2.0.0`). A new GitHub Action (`.github/workflows/release-opencode-plugin.yml`) publishes a GitHub
+  Release with the `.tgz` whenever `plugin.json`'s version changes on `main` (idempotent: skips if the
+  release already exists), so bumping the canonical version is the only release action needed.
+  **Near-zero manual setup:** installation is now just two steps — `pnpm add -D <tarball>` + a one-line
+  `.opencode/plugins/*.ts` loader. No `opencode.json` is required (OpenCode allows skills by default,
+  verified), and the plugin **auto-manages `.gitignore`** (idempotently appends `.opencode/skills/`,
+  `.opencode/agents/`, `.arcus/` under a labeled header) so the working tree stays clean with no manual
+  ignore edits. The loader file remains the one irreducible step pre-publish — `"plugin":
+  ["arcus-opencode"]` only resolves from OpenCode's registry cache, not a repo's local `node_modules`
+  (confirmed), so it works only once the package is published to a registry. The loader may instead be
+  installed **globally** (`~/.config/opencode/` + `~/.config/opencode/plugins/arcus.ts`) so ARCUS loads
+  in **every** repo with no per-project setup — verified end-to-end in a fresh repo (skills/agents
+  staged, `.gitignore` managed, `ARCUS_HOME` resolved to the global install).
+  **One-command installer:** added `plugins/arcus-opencode/install.sh`, attached to each GitHub Release
+  as a standalone asset, so a user installs with a single `curl -fsSL .../releases/latest/download/install.sh | sh`
+  (no repo clone). It resolves the release tarball via the GitHub API (latest or `--version X.Y.Z`,
+  with an `ARCUS_OPENCODE_TARBALL_URL` override for private mirrors), runs `pnpm add`, and writes the
+  loader — supporting both project and `--global` scopes. POSIX `sh`, idempotent; verified end-to-end
+  in both scopes against a packed tarball.
+
 - **Four repo-context discovery agents (ARC-0009).** The repo-context discovery capabilities are now
   pure model-only **agents** under `plugins/arcus/agents/` (matching the
   `context-pack-builder`/`subagent-task-dispatcher` precedent): `repo-overview-discovery` (renamed from

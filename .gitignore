@@ -27,8 +27,23 @@ replay_pid*
 .vscode/
 
 .arcus
+
+# --- ARCUS OpenCode generated (staged from plugins/arcus/) ---
+.opencode/skills/
+.opencode/agents/
+.opencode/commands/
+# OpenCode auto-installs plugin deps here when testing the local dev-loader
+.opencode/node_modules/
+.opencode/package.json
+.opencode/package-lock.json
+
+# --- arcus-opencode npm package: derived build output ---
+plugins/arcus-opencode/bundled/
+plugins/arcus-opencode/dist/
+plugins/arcus-opencode/node_modules/
+plugins/arcus-opencode/*.tgz
+
 .github/agents
 .github/prompts
 .github/skills
 .superpowers
-
