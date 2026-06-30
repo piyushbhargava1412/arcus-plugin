@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-06-30
+
 ### Added
 
 - **OpenCode integration as an npm plugin — `arcus-opencode` (additive, non-breaking).** ARCUS now
@@ -122,7 +124,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **`arcus-controller` SKILL.md trimmed to the authoring-style standard.** Cut the `Key Principles`
+- **Documentation updated to reflect four supported platforms.** All user-facing docs (`README.md`,
+  `site/index.md`, `site/guide/introduction.md`, `site/guide/quickstart.md`,
+  `site/guide/how-it-works.md`, `plugins/arcus/skills/arcus-guide/assets/faq.md`, `AGENTS.md`,
+  `.context/repo_scope.md`) now list GitHub Copilot CLI, Claude Code, VS Code, **and OpenCode** as
+  supported tools. `README.md` gains an OpenCode install section (ToC entry, install table row, and
+  dedicated subsection with the one-command installer) and an OpenCode updating subsection.
+
+ Cut the `Key Principles`
   footer (replaced by a short `Owned state` note), stripped leaked callee internals from the
   Brainstorm, Implementation, Code Review, and Loopback sections, merged the duplicate Mode/Activation
   tables, removed duplicated stage-key lists, and reduced the Canonical Pipeline table to a

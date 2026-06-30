@@ -1,6 +1,6 @@
 # How it works
 
-ARCUS uses a combination of plugin hooks, helper scripts, and portable skill references to deliver a consistent experience across GitHub Copilot, Claude Code, and VS Code.
+ARCUS uses a combination of plugin hooks, helper scripts, and portable skill references to deliver a consistent experience across GitHub Copilot, Claude Code, VS Code, and OpenCode.
 
 ## Bootstrap Process
 
@@ -21,7 +21,7 @@ These helper scripts provide consistent, tested operations that ARCUS skills inv
 
 ## Plugin Portability
 
-When you install ARCUS, the plugin is copied into a cache directory managed by your tool (Copilot CLI, Claude Code, or VS Code). Because the installation path varies by tool and user, ARCUS is designed for location-independence:
+When you install ARCUS, the plugin is copied into a cache directory managed by your tool (Copilot CLI, Claude Code, VS Code, or OpenCode). Because the installation path varies by tool and user, ARCUS is designed for location-independence:
 
 ### Resource References
 

@@ -11,7 +11,7 @@ linked files up front.
 
 arcus-plugin is a plugin marketplace repository for ARCUS: orchestrator skills, supporting skills,
 deterministic helper scripts, and docs for a Spec -> Code -> Pull Request workflow across Copilot CLI,
-Claude Code, and VS Code.
+Claude Code, VS Code, and OpenCode.
 
 One `arcus-controller` orchestrator drives the pipeline over a single ordered set of checkpoint stage
 keys (`scaffold -> context_pack -> spec_finalizer -> plan -> test_plan -> branch -> task_1..N ->
@@ -99,3 +99,7 @@ relevant to your current task.**
     current version is shipped: the change bumps it and opens `[Unreleased]`. If `[Unreleased]` already
     has entries, the version is pending: bump only when the new change is a **higher** level than what is
     already pending (else just add a changelog line). On release, promote `[Unreleased]` → `[x.y.z] - <date>`.
+  - **Releasing** = bump `plugin.json`, promote `[Unreleased]` in `CHANGELOG.md`, and merge to `main`.
+    The `release-opencode-plugin` CI workflow then automatically builds the `arcus-opencode` tarball
+    and publishes it as a GitHub Release tagged `arcus-opencode-v<version>`. No manual tagging or
+    `pnpm publish` required.

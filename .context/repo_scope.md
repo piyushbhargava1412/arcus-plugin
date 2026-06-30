@@ -7,7 +7,7 @@ confidence: high
 -->
 
 ## Purpose
-ARCUS is a plugin marketplace repository that packages and documents an agentic Spec -> Code -> Pull Request SDLC workflow for Copilot CLI, Claude Code, and VS Code.
+ARCUS is a plugin marketplace repository that packages and documents an agentic Spec -> Code -> Pull Request SDLC workflow for Copilot CLI, Claude Code, VS Code, and OpenCode.
 It provides orchestrator skills, supporting skills, and deterministic helper scripts rather than an application runtime service.
 
 ## Core Responsibilities

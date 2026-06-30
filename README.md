@@ -2,7 +2,7 @@
 
 > **ARCUS (Any Repository Can Use Spec-driven development)** — a Spec → Code → Pull Request agentic
 > SDLC factory, delivered as an installable agent-skills **plugin** for GitHub Copilot, Claude Code,
-> and VS Code.
+> VS Code, and OpenCode.
 
 ARCUS turns a written user story into a reviewed, test-backed pull request through human-gated
 SDLC stages, with an opt-in fully-autonomous **Away From Keyboard (AFK)** mode. Its skills are
@@ -21,7 +21,7 @@ single versioned plugin.
     `afk` / `--afk` / `forge` / `run afk on <STORY>` and runs the whole pipeline end-to-end with no gates.
 
 This repository is also the **plugin marketplace** (`arcus`): one repo serves Copilot CLI,
-Claude Code, and VS Code from the same unified plugin format.
+Claude Code, VS Code, and OpenCode from the same unified plugin format.
 
 ---
 
@@ -31,6 +31,7 @@ Claude Code, and VS Code from the same unified plugin format.
   - [GitHub Copilot CLI](#github-copilot-cli)
   - [Claude Code](#claude-code)
   - [VS Code](#vs-code)
+  - [OpenCode](#opencode)
   - [IntelliJ / JetBrains](#intellij--jetbrains)
 - [Updating](#updating)
 - [Uninstalling](#uninstalling)
@@ -45,13 +46,14 @@ Claude Code, and VS Code from the same unified plugin format.
 
 ## Install
 
-All three primary tools share the same plugin format. Pick your tool below.
+All four primary tools share the same plugin format. Pick your tool below.
 
 | Tool                 | Supports plugin install | Mechanism                                     |
 | -------------------- | :---------------------: | --------------------------------------------- |
 | GitHub Copilot CLI   |           ✅            | `/plugin marketplace add` + `/plugin install` |
 | Claude Code          |           ✅            | `/plugin marketplace add` + `/plugin install` |
 | VS Code              |           ✅            | `chat.plugins.marketplaces` setting or *Install Plugin From Source* |
+| OpenCode             |           ✅            | Global install via `install.sh` or manual config |
 | IntelliJ / JetBrains |           ➰            | Via Claude Code / Copilot CLI in the IDE terminal |
 
 ### GitHub Copilot CLI
@@ -88,6 +90,19 @@ Then open the Command Palette → **Chat: Install Plugin** and choose `arcus-plu
 Alternatively, run **Chat: Install Plugin From Source** and paste the repository URL
 `https://github.com/piyushbhargava1412/arcus-plugin`. VS Code also auto-discovers
 plugins already installed through the Copilot CLI.
+
+### OpenCode
+
+ARCUS ships as a standalone OpenCode npm plugin (`arcus-opencode`). The fastest path is the
+one-command global installer:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/piyushbhargava1412/arcus-plugin/main/plugins/arcus-opencode/install.sh | bash
+```
+
+This installs ARCUS globally into `~/.config/opencode/` so it is available in every repo without
+per-project setup. See [`plugins/arcus-opencode/INSTALL.md`](plugins/arcus-opencode/INSTALL.md)
+for the full installation guide, including manual setup and per-project configuration.
 
 ### IntelliJ / JetBrains
 
@@ -131,6 +146,14 @@ claude plugin marketplace update arcus
 
 VS Code shares the Claude/Copilot plugin cache, so updating through either CLI (or the
 plugin manager UI) refreshes it everywhere.
+
+### OpenCode
+
+Re-run the installer to pull the latest release tarball:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/piyushbhargava1412/arcus-plugin/main/plugins/arcus-opencode/install.sh | bash
+```
 
 > **Version bumping is what triggers an update.** A tool compares the cached version against
 > the source's `version` in [plugins/arcus/.claude-plugin/plugin.json](plugins/arcus/.claude-plugin/plugin.json). If that field is unchanged, the
@@ -303,9 +326,10 @@ install location.
 
 Release flow:
 
-1. Bump `version` in `plugin.json` and update `CHANGELOG.md`.
-2. Tag the commit: `git tag v0.1.0 && git push --tags`.
-3. Consumers run `/plugin marketplace update arcus` to pull the new version.
+1. Bump `version` in `plugin.json` and promote `[Unreleased]` → `[x.y.z] - <date>` in `CHANGELOG.md`.
+2. Merge to `main` — CI (`release-opencode-plugin` workflow) automatically builds the `arcus-opencode` tarball and publishes it as a GitHub Release tagged `arcus-opencode-v<version>`.
+3. **Claude / Copilot / VS Code** consumers run `/plugin marketplace update arcus` to pull the new version.
+4. **OpenCode** consumers re-run the installer (`curl … | sh`) to fetch the new tarball from the GitHub Release.
 
 ---
 

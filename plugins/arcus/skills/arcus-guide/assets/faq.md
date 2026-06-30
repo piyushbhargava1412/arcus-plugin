@@ -8,7 +8,7 @@ Quick answers to common ARCUS questions
 
 ### Q: What is ARCUS?
 
-**A:** ARCUS (Any Repository Can Use Spec-driven development) is an agentic SDLC factory that turns written user stories into reviewed, tested pull requests. It's delivered as an installable plugin for GitHub Copilot CLI, Claude Code, and VS Code.
+**A:** ARCUS (Any Repository Can Use Spec-driven development) is an agentic SDLC factory that turns written user stories into reviewed, tested pull requests. It's delivered as an installable plugin for GitHub Copilot CLI, Claude Code, VS Code, and OpenCode.
 
 ---
 
@@ -31,6 +31,11 @@ claude
 ```
 
 **VS Code:** Add marketplace to settings, then install via Command Palette
+
+**OpenCode:** One-command global installer:
+```sh
+curl -fsSL https://raw.githubusercontent.com/piyushbhargava1412/arcus-plugin/main/plugins/arcus-opencode/install.sh | bash
+```
 
 See the full README for detailed instructions.
 
