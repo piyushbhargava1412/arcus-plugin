@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.1] - 2026-07-18
+
+### Fixed
+
+- **OpenCode adapter: deterministic `.arcus/bin` + `.arcus/env` staging (no skill change).** The
+  `arcus-opencode` plugin previously staged skills/agents at plugin load (factory time) but deferred
+  helper-script staging (`bootstrap.sh` → `.arcus/bin` + `.arcus/env`) to a `session.created` event
+  gated by an in-memory `bootstrapped` boolean, with failures swallowed. This created an ordering race
+  where skills were visible but their hard-dependency helper scripts were absent, and the in-memory
+  guard could skip re-staging without verifying on-disk presence — leaving `.arcus/bin` unstaged in the
+  session where work actually happened (observed in `bigfin_communication-service`). Bootstrap now runs
+  **awaited at factory time**, alongside skill/agent staging and before any session event — mirroring
+  Claude Code's pre-session `SessionStart` hook. The `session.created` handler is now a
+  **presence-checked** safety net (re-stages only when `.arcus/bin/scaffold.sh` is missing), removing
+  the reliance on in-memory state. Fix is confined to `plugins/arcus-opencode/src/index.ts`; the
+  cross-harness `arcus-controller` skill is unchanged (it already resolves `.arcus/bin/` → `$ARCUS_HOME`
+  and makes no assumption about *when* staging occurs).
+
 ## [2.0.0] - 2026-06-30
 
 ### Added
