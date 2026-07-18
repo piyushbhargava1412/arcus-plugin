@@ -12,11 +12,15 @@ import { fileURLToPath } from "node:url"
  * this module. The package ships a self-contained `bundled/` payload (built from
  * the authoring source plugins/arcus/ at publish time — see scripts/build-bundle.mjs).
  *
- * At session start the plugin:
+ * At plugin load (factory time — BEFORE any session event, mirroring Claude
+ * Code's pre-session SessionStart hook) the plugin:
  *   1. resolves its OWN install dir via import.meta (NOT the user's repo), then
  *   2. stages bundled/{skills,agents} into the target repo's .opencode/, and
  *   3. runs bundled/scripts/bootstrap.sh with the target repo as CWD to stage the
  *      deterministic helper scripts into .arcus/bin and write .arcus/env.
+ * A presence-checked session.created handler re-stages the scripts only if they
+ * are missing, as a safety net — it is NOT the primary trigger, so there is no
+ * ordering race between skill availability and helper-script availability.
  *
  * It is intentionally SILENT in the TUI: no toast, no terminal output. The
  * bootstrap script's stdout is captured (so it cannot ghost the prompt) and the
@@ -89,7 +93,37 @@ export const ArcusOpencode: Plugin = async ({ directory, worktree, $, client }) 
       .log({ body: { service: LOG_SERVICE, level, message, ...(extra ? { extra } : {}) } })
       .catch(() => {})
 
+  /**
+   * Stage the deterministic helper scripts into the target repo's .arcus/bin and
+   * write .arcus/env, by running the bundled bootstrap.sh with the repo as CWD.
+   *
+   * This is the OpenCode equivalent of the Claude Code `SessionStart` hook (see
+   * plugins/arcus/hooks/hooks.json). It is idempotent — bootstrap.sh always
+   * mkdir -p's and overwrites — so it is safe to call repeatedly. `.quiet()`
+   * captures stdout/stderr so bootstrap.sh's status line does NOT leak onto the
+   * TUI prompt (it would render as ghost text); the outcome is surfaced only via
+   * structured logs.
+   */
+  const stageHelperScripts = async (): Promise<void> => {
+    const script = join(BUNDLED, "scripts", "bootstrap.sh")
+    if (!existsSync(script)) {
+      await log("error", `bootstrap.sh missing at ${script}; run the package build`)
+      return
+    }
+    try {
+      const res = await $`bash ${script}`.cwd(repoRoot).quiet()
+      const out = (res.stdout?.toString() || "").trim()
+      await log("info", "bootstrap.sh staged .arcus/bin + .arcus/env", out ? { out } : undefined)
+    } catch (err) {
+      await log("error", "bootstrap.sh failed", { error: String(err) })
+    }
+  }
+
   // --- Factory-time staging from the package's bundled payload ---
+  // Everything the pipeline depends on is staged here, at plugin load, BEFORE any
+  // session event. This mirrors Claude Code's pre-session `SessionStart` hook and
+  // removes the ordering race where skills/agents were visible but .arcus/bin was
+  // not yet staged (helper scripts are a hard dependency of those very skills).
   try {
     if (existsSync(BUNDLED)) {
       await mkdir(targetOpencode, { recursive: true })
@@ -97,6 +131,8 @@ export const ArcusOpencode: Plugin = async ({ directory, worktree, $, client }) 
       for (const tree of STAGED_TREES) counts[tree] = await stageTree(tree, targetOpencode)
       await ensureGitignore(repoRoot)
       await log("info", "staged bundled content into target .opencode/", counts)
+      // Stage .arcus/bin + .arcus/env at load time (awaited), not on a later event.
+      await stageHelperScripts()
     } else {
       await log("error", `bundled payload missing at ${BUNDLED}; run the package build`)
     }
@@ -104,27 +140,14 @@ export const ArcusOpencode: Plugin = async ({ directory, worktree, $, client }) 
     await log("error", "staging failed", { error: String(err) })
   }
 
-  // Run bootstrap.sh at most once per top-level session.
-  let bootstrapped = false
-
   return {
+    // Safety net only: re-stage on the first session in case the repo state
+    // changed since load (e.g. .arcus was cleaned). Presence-checked so it is a
+    // no-op when .arcus/bin is already in place — no reliance on in-memory state.
     event: async ({ event }) => {
-      if (event.type !== "session.created" || bootstrapped) return
-      bootstrapped = true
-
-      // Stage helper scripts into the TARGET repo's .arcus/ on session start.
-      // `.quiet()` captures stdout/stderr so bootstrap.sh's status line does NOT
-      // leak onto the TUI prompt (it would render as ghost text). We surface the
-      // outcome only via structured logs — no toast, no terminal output.
-      const script = join(BUNDLED, "scripts", "bootstrap.sh")
-      if (!existsSync(script)) return
-      try {
-        const res = await $`bash ${script}`.cwd(repoRoot).quiet()
-        const out = (res.stdout?.toString() || "").trim()
-        await log("info", "bootstrap.sh staged .arcus/bin + .arcus/env", out ? { out } : undefined)
-      } catch (err) {
-        await log("error", "bootstrap.sh failed", { error: String(err) })
-      }
+      if (event.type !== "session.created") return
+      if (existsSync(join(repoRoot, ".arcus", "bin", "scaffold.sh"))) return
+      await stageHelperScripts()
     },
   }
 }
