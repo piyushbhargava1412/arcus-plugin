@@ -695,8 +695,8 @@ layout: page
 | `brainstorm <STORY>` / `kick off <STORY>` / `architect <STORY>` | **Brainstorm only** — context pack + finalized spec, no implementation. |
 | `generate test plan for <STORY>` | Cold-resume into **Quinn's Test Plan** at Gate A. |
 | `review <STORY>` | Cold-resume into **Steffi's Code Review** at Gate C. |
-| `sync context for <STORY>` / `sync context` | Standalone notebook sync, outside the board. |
-| `close <STORY>` | Cold-resume into **Lucie's Closure**. |
+| `sync context` | Standalone notebook sync, outside the board. |
+| `create pull request for <STORY>` | Cold-resume into **Lucie's Closure**. |
 | `resume <STORY>` | Continue from the first incomplete stage, in whatever mode the checkpoint remembers. |
 | "where am I" / "arcus help" | **Genie** — the always-on help desk. |
 
