@@ -11,7 +11,8 @@ export default withMermaid({
   themeConfig: {
     nav: [
       { text: 'Guide', link: '/guide/introduction' },
-      { text: 'Concepts', link: '/concepts/pipeline' }
+      { text: 'Concepts', link: '/concepts/pipeline' },
+      { text: 'Meet the Team 🧑‍💻', link: '/comic/' }
     ],
     sidebar: [
       {
@@ -19,7 +20,8 @@ export default withMermaid({
         items: [
           { text: 'Introduction', link: '/guide/introduction' },
           { text: 'Quickstart', link: '/guide/quickstart' },
-          { text: 'How it works', link: '/guide/how-it-works' }
+          { text: 'How it works', link: '/guide/how-it-works' },
+          { text: 'Meet the ARCUS Team 🧑‍💻', link: '/comic/' }
         ]
       },
       {

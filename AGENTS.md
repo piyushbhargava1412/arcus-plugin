@@ -103,3 +103,14 @@ relevant to your current task.**
     The `release-opencode-plugin` CI workflow then automatically builds the `arcus-opencode` tarball
     and publishes it as a GitHub Release tagged `arcus-opencode-v<version>`. No manual tagging or
     `pnpm publish` required.
+- **Keep the docs site live (`site/`, including `site/comic/`).** Evaluate this every session
+  alongside the version bump above — the two are separate checks, not one. If a session changes a
+  pipeline stage, gate, mode, skill/agent, trigger phrase, or artifact name, update every `site/`
+  page that describes it in the **same turn**: the relevant `site/guide/*.md` / `site/concepts/*.md`
+  page, and — since the comic teaches these same mechanics narratively — `site/comic/index.md` (the
+  chapter, panel, or fun fact that covers it) and `site/.vitepress/theme/comic/questions.ts` (any
+  quiz question whose answer the change invalidates). State which docs pages you touched (or that
+  none needed touching, and why) alongside the version-bump statement. Do not defer this to a
+  follow-up session — stale docs and a stale comic are exactly the kind of drift `context-drift-sync`
+  exists to prevent for `.context/`, and `site/` gets no equivalent automatic sync. Purely internal
+  refactors with no user-facing or conceptual change touch no `site/` docs.
