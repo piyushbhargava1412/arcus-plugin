@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Docs: "Meet the ARCUS Team" comic-strip onboarding manual.** A standalone, illustrated page at
+  `site/comic/` that teaches the plugin through a named persona cast — Lucie (Lead), Angelina
+  (Architect), Quinn (QA), Diana (Developer), Steffi (Staff Engineer), Benny (Build Bot), and Genie
+  (Guide/narrator) — opening with a "meet the team" roster before covering the toolkit
+  (`.context/` + `AGENTS.md`/`CLAUDE.md`, skills vs agents, hooks, the plugin/marketplace) and the
+  full pipeline in their voices — Angelina's day-one scan → the brainstorm interview → Lucie's
+  interactive/AFK mode split → Quinn's test matrix → Diana dispatched in parallel per ticket →
+  Benny's deterministic gate and Steffi's five-lens review → Angelina's wrap-up and Lucie's PR —
+  plus standalone teammate usage, a trigger-phrase cheat sheet, and a randomized 15-question exam
+  dealt from a 34-question pool (flip-card facts, shuffled answers, no two visits identical).
+  Deliberately teaches skill-vs-agent (a practical, user-facing distinction) but not the underlying
+  capability/coordinator/orchestrator tier vocabulary, in favor of a plain-language team hierarchy
+  ("who hands back one result vs. who holds the whole roadmap"). Superseded an initial Tom &
+  Jerry-themed pass after user feedback that the chase metaphor obscured more than it clarified.
+  Built as VitePress components (`site/.vitepress/theme/components/comic/`) reusing the same
+  pattern the krill-agent-plugin sibling project's comic already proved out, retinted to its own
+  warm studio palette. Linked from the site nav, sidebar, and homepage hero.
+
+### Changed
+
+- **AGENTS.md: added a docs-sync working agreement.** Alongside the existing per-session version-bump
+  check, agents must now also evaluate whether `site/` docs (including the comic) need updating when
+  a session changes a pipeline stage, gate, mode, skill/agent, trigger phrase, or artifact name — and
+  state which pages were touched (or why none needed touching) in the same turn.
+
 ## [2.0.1] - 2026-07-18
 
 ### Fixed

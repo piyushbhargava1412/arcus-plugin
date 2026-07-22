@@ -1,0 +1,36 @@
+/* Shared color tokens for the comic page — a warm, classic-cartoon palette
+   (cream title cards, deep red accent, brass secondary) distinct from the
+   rest of the ARCUS site, the same way krill's ocean comic didn't match its
+   docs either. Light values are the default; dark values apply only via
+   VitePress's own .dark class (toggled by the site's manual light/dark
+   switch), so the switch stays authoritative. */
+:root {
+  --comic-paper: #f6ecd6;
+  --comic-paper-dot: rgba(43, 30, 20, .07);
+  --comic-ink: #2b1e14;
+  --comic-ink-soft: #6b5642;
+  --comic-panel-border: #241a10;
+  --comic-bubble-bg: #fffaf0;
+  --comic-bubble-ink: #2b1e14;
+  --comic-caption-bg: #f3c14a;
+  --comic-caption-ink: #2b1e14;
+  --comic-fact-bg: #f3c14a;
+  --comic-fact-ink: #3a2408;
+  --comic-coral: #d1372a;
+  --comic-teal: #8a5a2b;
+  --comic-purple: #6a4fae;
+  --comic-green: #2e9e5b;
+  --comic-red: #d43d2a;
+}
+
+html.dark {
+  --comic-paper: #17110b;
+  --comic-paper-dot: rgba(230, 200, 160, .05);
+  --comic-ink: #f0e6d6;
+  --comic-ink-soft: #c2ad91;
+  --comic-panel-border: #050301;
+  --comic-bubble-bg: #f4ecd8;
+  --comic-bubble-ink: #241a10;
+  --comic-caption-bg: #f3c14a;
+  --comic-caption-ink: #241a10;
+}

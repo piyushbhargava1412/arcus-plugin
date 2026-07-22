@@ -21,6 +21,9 @@ hero:
     - theme: alt
       text: What's Inside
       link: https://github.com/piyushbhargava1412/arcus-plugin
+    - theme: alt
+      text: Meet-the-Team
+      link: /comic/
 
 features:
   - title: "Spec-driven-development (SDD)"
