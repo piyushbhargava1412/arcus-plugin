@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`repo-agentifier`: commit-convention detection + explicit managed-block markers.**
+  `repo-overview-discovery` now detects the repo's commit convention during Metadata Harvesting — a
+  pointer to the owning file (commitlint config, CONTRIBUTING commit section, `.gitmessage`) when one
+  exists, an "observed, not enforced" pattern inferred from `git log --no-merges` otherwise, or an
+  explicit "No commit convention detected" — and records it in `repo_map.md`'s new **Commit
+  Convention** section. Never fabricates a default ruleset (e.g. Conventional Commits). `AGENTS.md`'s
+  Navigation Index gains one pointer row to it, consistent with every other row: point at the
+  `.context/` file that owns the fact, never restate it. Separately, the three managed sections
+  (Project Context, Navigation Index, Business Flows) are now wrapped in explicit
+  `<!-- repo-agentifier:managed:start/end -->` markers so `update` mode can refresh them without
+  heading-name guesswork; pre-marker files are migrated in place on the next `update` run.
+
 - **Docs: "Meet the ARCUS Team" comic-strip onboarding manual.** A standalone, illustrated page at
   `site/comic/` that teaches the plugin through a named persona cast — Lucie (Lead), Angelina
   (Architect), Quinn (QA), Diana (Developer), Steffi (Staff Engineer), Benny (Build Bot), and Genie

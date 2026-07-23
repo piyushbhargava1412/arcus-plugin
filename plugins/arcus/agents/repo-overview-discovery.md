@@ -135,6 +135,18 @@ Build or refresh baseline repository context by analyzing repository structure a
 1. **Git Commit**: Run `git -C <repository_root> rev-parse HEAD`. Use `unknown` if git or commits are unavailable.
 2. **Timestamp**: Capture current ISO timestamp.
 3. **Confidence**: Assign `high`, `medium`, or `low` based on evidence clarity.
+4. **Commit Convention**: Determine how commits are made in this repo, in priority order:
+   - **File-owned convention** — a `commitlint.config.*`, a commit-message section in
+     `CONTRIBUTING*`, or a `.gitmessage` template. If found, record it in `repo_map.md`'s Commit
+     Convention section as a pointer to that file (do not restate its rules).
+   - **Inferred from history** — if no file owns it, run
+     `git -C <repository_root> log --format='%an <%ae>%x09%s' -n 50 --no-merges`, drop reverts and
+     bot/automation commits by author or subject, then take the dominant subject-line pattern (e.g.
+     `type(scope): subject`). Outliers do not define or dilute the pattern. Record it as an observed,
+     not-enforced pattern.
+   - **None detected** — if history is empty/unavailable or no pattern reaches a clear majority,
+     record "No commit convention detected" rather than defaulting to a ruleset such as Conventional
+     Commits.
 
 ### Step 4: Asset Generation
 Generate or update the following artifacts following the specifications in `"$ARCUS_HOME"/agent-resources/repo-overview-discovery/references/output-spec.md` (resolve `ARCUS_HOME` from `.arcus/env`):
@@ -171,6 +183,7 @@ Generate or update the following artifacts following the specifications in `"$AR
 - [ ] All dependency managers detected and listed in `repo_map.md`.
 - [ ] `.github/` workflows and actions scanned; pipeline stages captured.
 - [ ] Build & Run Commands table populated (build / run / lint / lint-autofix / format-check / format-write / typecheck / static-analysis), each with evidence or an explicit `Not found`.
+- [ ] Commit convention captured (file-owned pointer / inferred pattern tagged "observed, not enforced" / explicit "No commit convention detected" — never a fabricated default).
 - [ ] Scripts (`*.sh`, `Makefile`, etc.) surfaces catalogued.
 - [ ] All test layers identified (unit, integration, functional, acceptance, performance, shell-script).
 - [ ] Documentation (`README*`, `docs/`, ADRs) surfaced in `repo_map.md`.

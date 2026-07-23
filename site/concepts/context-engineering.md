@@ -48,7 +48,8 @@ The `.context/` artifacts are the source of truth; two root files make them disc
 
 - **`AGENTS.md`** — an agent-facing **navigation index** generated from `.context/`. It points agents
   at the right artifact for the task at hand (tech stack, directory layout, testing conventions,
-  design & coding patterns, business flows) so they load only what they need.
+  design & coding patterns, business flows, commit conventions) so they load only what they need —
+  every row is a pointer into a `.context/` file, never a restatement of what that file already says.
 - **`CLAUDE.md`** — a one-line `@AGENTS.md` import so Claude Code inlines the index at session start.
 
 ## Lifecycle

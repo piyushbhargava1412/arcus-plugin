@@ -56,6 +56,24 @@ Before executing, check if `.context/` exists and contains files:
   flows do not linger, then proceed with the pipeline (which regenerates every artifact).
 - If `.context/` does not exist: Proceed with the pipeline.
 
+### Managed-section markers
+
+AGENTS.md's generated content — **Project Context, Navigation Index, Business Flows** — is wrapped in
+an explicit HTML-comment boundary so `update` mode can refresh it without heading-name guesswork:
+
+```
+<!-- repo-agentifier:managed:start -->
+... the three managed sections ...
+<!-- repo-agentifier:managed:end -->
+```
+
+Everything outside the markers (e.g. a hand-written "Working Agreement" section) is custom content
+and is never touched by `update` mode.
+
+If an existing `AGENTS.md` predates this marker convention (heading-based only, no markers), treat
+the same three sections as the managed content to replace: wrap the freshly generated block in
+markers, and preserve every other heading as custom content outside the markers.
+
 Separately, before Stage 3 writes the agentification files, detect which files already exist at the
 repository root and offer the matching options. Resolve the user's choice into a **Stage 3 mode**:
 
@@ -63,7 +81,8 @@ repository root and offer the matching options. Resolve the user's choice into a
 
 - **`AGENTS.md` exists** → ask:
   > "`AGENTS.md` already exists. How should I proceed?
-  > [U]pdate — refresh the generated navigation index while preserving any custom sections you added.
+  > [U]pdate — refresh the generated managed block (between the markers) while preserving any custom
+  > sections you added.
   > [O]verwrite — replace the whole file with a freshly generated index.
   > [S]kip — leave it untouched."
   Map `U` → `update`, `O` → `overwrite`, `S` → `skip`.
@@ -147,15 +166,23 @@ are already on disk and only need to be read and indexed.
 3. List the `.md` files in `.context/flows/` to build the dynamic Business Flows index. Derive a
    human-readable label from each kebab-case filename (e.g. `order-checkout.md` → "Order Checkout").
 4. Read the template at `./assets/agents-template.md` and populate every placeholder using **only**
-   evidence from the context files (repo name, generated date, 1–2 line summary, flow index). Do not
-   invent content not present in `.context/`. Call this the **generated index**.
+   evidence from the context files (repo name, generated date, 1–2 line summary, flow index). Every
+   row is a pointer into a `.context/` file plus a one-line "why you'd go here" — never restate a
+   fact the pointed-to file already holds. Do not invent content not present in `.context/`. Call
+   this the **generated index**; it fills the region between the
+   `<!-- repo-agentifier:managed:start -->` / `<!-- repo-agentifier:managed:end -->` markers.
 5. Produce `AGENTS.md` at the repository root according to the resolved mode:
-   - `create` / `overwrite`: write the generated index as the full file contents.
-   - `update`: merge the generated index into the existing `AGENTS.md` — replace the managed
-     sections (Project Context, Navigation Index, Business Flows) with the freshly generated ones,
-     and **preserve any other custom sections** the user added. Refresh the `Generated` date.
+   - `create` / `overwrite`: write the generated index as the full file contents, wrapped in the
+     managed-block markers.
+   - `update`: replace only the content between the existing managed-block markers with the freshly
+     generated index, and **preserve everything outside the markers** (custom sections the user
+     added). If the existing file predates the marker convention (no markers found), treat the legacy
+     Project Context / Navigation Index / Business Flows headings as the managed content and replace
+     them with the newly-markered generated block; preserve every other heading as custom content
+     outside the markers. Refresh the `Generated` date.
    - `migrate`: create `AGENTS.md` from the existing `CLAUDE.md` content, then fold the generated
-     index into it (managed sections take the generated values; keep the migrated custom prose).
+     index into it as the markered managed block (keep the migrated custom prose outside the
+     markers).
 6. Produce `CLAUDE.md` at the repository root so Claude Code inlines the index at session start:
    - `create` / `overwrite` / `migrate`: write exactly one import line:
      ```
@@ -163,8 +190,9 @@ are already on disk and only need to be read and indexed.
      ```
    - `update`: if `CLAUDE.md` already imports `AGENTS.md`, leave it untouched; otherwise add an
      `@AGENTS.md` import line while preserving any existing content.
-7. **Verify**: Confirm `AGENTS.md` and `CLAUDE.md` exist and are non-empty, and that every
-   `.context/...` link in `AGENTS.md` points to a file that exists.
+7. **Verify**: Confirm `AGENTS.md` and `CLAUDE.md` exist and are non-empty, that the managed block is
+   wrapped in both markers exactly once, and that every `.context/...` link in `AGENTS.md` points to
+   a file that exists.
    - If missing: Report `[WARN] Stage 3 incomplete — AGENTS.md/CLAUDE.md not written.`
 8. **Output**: `[Stage 3] Agentify: complete (AGENTS.md, CLAUDE.md)`
 
