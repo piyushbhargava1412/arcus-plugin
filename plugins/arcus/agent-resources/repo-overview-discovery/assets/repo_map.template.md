@@ -146,6 +146,17 @@ confidence: high | medium | low
 <!-- List test stages explicitly (unit-test, integration-test, functional-test, acceptance-test, performance-test) -->
 <!-- If none: "No CI/CD configuration detected." -->
 
+## Commit Convention
+
+<!-- File-owned: point at the file that owns it (commitlint config, CONTRIBUTING commit section,
+     .gitmessage) — do not restate its rules here.
+     Inferred only: state the dominant pattern observed via `git log`, tagged "observed, not
+     enforced".
+     If neither: "No commit convention detected." Never default to a ruleset (e.g. Conventional
+     Commits) that isn't actually evidenced. -->
+
+[ pointer to owning file / observed pattern / "No commit convention detected" ]
+
 ## Documentation
 
 <!-- READMEs, docs/, ADRs, changelogs, contributing guides -->
@@ -189,6 +200,7 @@ confidence: high | medium | low
 | Scripts (sh / bash / Makefile)  | ✅ Detected / ❌ Not found |       |
 | CI/CD workflows                 | ✅ Detected / ❌ Not found |       |
 | GitHub Actions                  | ✅ Detected / ❌ Not found |       |
+| Commit convention               | ✅ File-owned / ✅ Inferred / ❌ Not detected |       |
 | Documentation (README / docs/)  | ✅ Detected / ❌ Not found |       |
 | ADRs                            | ✅ Detected / ❌ Not found |       |
 | Container config (Docker)       | ✅ Detected / ❌ Not found |       |

@@ -7,6 +7,8 @@ Coding agents: start here. This file points to the shared `.context/` snapshot �
 truth for how this repository is built, run, tested, and structured. Load only the sections you
 need for the task at hand; do not read everything up front.
 
+<!-- repo-agentifier:managed:start -->
+
 ## Project Context
 
 [1–2 line summary of what this repository is and the business domain it serves — drawn from
@@ -34,6 +36,7 @@ need for the task at hand; do not read everything up front.
 | Dependencies | [repo_scope.md#dependencies](.context/repo_scope.md#dependencies) |
 | Testing conventions | [testing-patterns.md](.context/testing-patterns.md) |
 | Design & coding patterns | [design-and-coding-patterns.md](.context/design-and-coding-patterns.md) |
+| Commit conventions | [repo_map.md#commit-convention](.context/repo_map.md#commit-convention) |
 
 ## Business Flows
 
@@ -47,6 +50,8 @@ relevant to your current task.**
 - [User Registration](.context/flows/user-registration.md)
 If no flows were discovered, replace the list with:
 _No flows discovered yet. Run `repo-agentifier` (or "agentify this repo") to generate them._ -->
+
+<!-- repo-agentifier:managed:end -->
 
 ## Working Agreement
 
