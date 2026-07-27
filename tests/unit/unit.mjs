@@ -664,6 +664,39 @@ section('L1-11');
     assert(validateJsonSchema('gated', enumSchema).ok === true, 'validateJsonSchema enum accepts allowed value');
     assert(validateJsonSchema('yolo', enumSchema).ok === false, 'validateJsonSchema enum rejects disallowed value');
 
+    // --- validateJsonSchema: patternProperties keyword ---
+    const patternSchema = {
+      type: 'object',
+      patternProperties: {
+        '^.*$': { type: 'string', enum: ['pending', 'complete'] }
+      }
+    };
+    assert(validateJsonSchema({ scaffold: 'complete', plan: 'pending' }, patternSchema).ok === true,
+           'validateJsonSchema patternProperties accepts all-matching values');
+    const patternBad = validateJsonSchema({ scaffold: 'complete', plan: 'bogus' }, patternSchema);
+    assert(patternBad.ok === false, 'validateJsonSchema patternProperties rejects a value outside the enum');
+    assert(patternBad.errors.some(e => e.includes('plan')),
+           'validateJsonSchema patternProperties error names the offending key');
+
+    // --- Regression: the tightened session-checkpoint schema now actually validates
+    // per-stage status values. Before patternProperties was added, "stages" was declared
+    // only as `{"type":"object"}` and validated NOTHING inside it — which is precisely why
+    // a stage silently carrying an invalid status (e.g. `awaiting_handoff` never being
+    // written by any code path) went uncaught. ---
+    const checkpointWithBadStageStatus = { ...goodCheckpoint, stages: { scaffold: 'complete', plan: 'bogus_status' } };
+    const badStageResult = validateJsonSchema(checkpointWithBadStageStatus, checkpointSchema);
+    assert(badStageResult.ok === false,
+           'validateJsonSchema now rejects a checkpoint with an invalid per-stage status');
+
+    // --- Regression: current_status enum is enforced ---
+    const checkpointWithBadCurrentStatus = { ...goodCheckpoint, current_status: 'YOLO' };
+    const badCurrentStatusResult = validateJsonSchema(checkpointWithBadCurrentStatus, checkpointSchema);
+    assert(badCurrentStatusResult.ok === false,
+           'validateJsonSchema rejects an out-of-enum current_status');
+    const checkpointWithAwaitingHandoff = { ...goodCheckpoint, current_status: 'AWAITING_HANDOFF' };
+    assert(validateJsonSchema(checkpointWithAwaitingHandoff, checkpointSchema).ok === true,
+           'validateJsonSchema accepts AWAITING_HANDOFF as a valid current_status');
+
     // --- validateJsonSchema: nested properties recursion ---
     const nestedSchema = {
       type: 'object',

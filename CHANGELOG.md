@@ -7,6 +7,58 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **`checkpoint.sh`: `mutate_json` no longer interpolates shell variables into `node -e` source.**
+  Every mutation now dispatches on a fixed literal op chosen by the `case` statement, and all dynamic
+  values (stage names, statuses, branch names, failure reasons) reach node via `process.argv` instead
+  of being spliced into the JavaScript text. Previously a stage or branch name containing a quote,
+  backtick, or `${...}` could break the JS or inject code. Latent while every value was
+  developer-supplied; a live injection surface the moment those values become issue-derived. Covered
+  by a new harness assertion that feeds `$(touch pwned)'; process.exit(1); //` through `set-branch`
+  and asserts it round-trips as inert string data.
+
+- **`checkpoint.sh init` no longer pre-seeds `task_1..task_8`.** A plan with three tasks previously
+  left five phantom `pending` task stages that the Resumption Protocol's "run the first `pending`
+  stage" rule would try to execute. Task slots are now created on demand by the new
+  `set-tasks <N>` action, which `arcus-controller` calls once the plan is compiled and the real task
+  count is known. `set-tasks` seeds only missing keys and prunes still-`pending` `task_N` above `N` —
+  never touching a task already `in_progress` or `complete` — which doubles as the in-place migration
+  for checkpoints written by earlier versions.
+
+- **`current_status` is now maintained rather than frozen at `IN_PROGRESS`.** It was written once at
+  init and never updated, so nothing could distinguish a finished story from an in-flight one. It now
+  tracks `IN_PROGRESS | AWAITING_HANDOFF | COMPLETE | FAILED` and is the single field the Resumption
+  Protocol checks *first*, before walking per-stage statuses.
+
+- **Handoff gates are now durably recorded.** `awaiting_handoff` was a documented, validated status
+  that **no code path ever wrote** — the controller emitted the gate text and stopped, so a resumed
+  session could not tell "gated, waiting for the user" from "crashed mid-stage" and would walk
+  straight past the gate. Every interactive gate in `arcus-controller` now calls the new
+  `checkpoint.sh await-handoff` first, and the Resumption Protocol re-emits the gate instead of
+  advancing. A matching `fail` action records `{stage, reason}` and sets `current_status` to `FAILED`
+  so a failed stage is not silently retried on resume.
+
+- **`pr.sh` no longer fails when a PR already exists for the branch.** `gh pr create` errors out on a
+  second invocation, which broke any resumed or re-run `closure` stage. It now detects an existing PR
+  via `gh pr view` and updates its body with `gh pr edit` instead.
+
+- **`extract_story_id.sh`: the `copilot --yolo` LLM fallback is disabled under CI.** Gated off when
+  `$CI` or `$ARCUS_ISSUE_NUMBER` is set — shelling out to an all-tools-allowed agent with raw story
+  text is a prompt-injection surface once that text is attacker-controlled issue content.
+
+- **`session-checkpoint.schema.json` now validates what it claimed to.** `stages` was declared as
+  bare `{"type": "object"}`, validating nothing inside it — which is precisely why "`awaiting_handoff`
+  is never written" went unnoticed for so long. It now constrains every stage value to the status
+  enum via `patternProperties`, and `current_status` to its own enum. The dependency-free draft-07
+  validator in `tests/lib/checks.mjs` gained `patternProperties` support to make this enforceable.
+
+- **`artifacts-guide.md`: corrected the session-checkpoint schema example.** The previous "illustrative"
+  block was wrong in every structural detail — nested `{"status": ...}` objects instead of plain
+  strings, `"mode": "interactive"` instead of `gated`, a nonexistent `last_updated` field, a branch
+  name missing its `-N` suffix, and no `current_status`. Replaced with the real shape plus the
+  `current_status` value table.
+
 ### Added
 
 - **`repo-agentifier`: commit-convention detection + explicit managed-block markers.**

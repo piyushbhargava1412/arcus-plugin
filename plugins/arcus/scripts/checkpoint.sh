@@ -13,9 +13,14 @@
 #   scripts/checkpoint.sh reopen     <STORY_ID> <stage>        # -> needs_rework, bumps review_round
 #   scripts/checkpoint.sh set-mode   <STORY_ID> <gated|afk>
 #   scripts/checkpoint.sh set-branch <STORY_ID> <branch> <base>
+#   scripts/checkpoint.sh set-tasks  <STORY_ID> <N>             # seed/prune task_1..task_N slots
+#   scripts/checkpoint.sh await-handoff <STORY_ID>              # -> current_status AWAITING_HANDOFF
+#   scripts/checkpoint.sh fail       <STORY_ID> <stage> <reason>
 #
 # Stage status values: pending | in_progress | awaiting_handoff | complete | needs_rework
 # Modes: gated (default, human handoff between stages) | afk (autonomous, auto-confirm)
+# current_status values: IN_PROGRESS | AWAITING_HANDOFF | COMPLETE | FAILED
+#   (AWAITING_INPUT is reserved for the async/cloud channel; no local code path sets it yet.)
 # ==============================================================================
 
 set -eo pipefail
@@ -24,7 +29,7 @@ ACTION="$1"
 STORY_ID="$2"
 
 if [ -z "$ACTION" ] || [ -z "$STORY_ID" ]; then
-    echo "[ERROR] Usage: checkpoint.sh <init|read|complete|set-status|reopen|set-mode> <STORY_ID> [args]" >&2
+    echo "[ERROR] Usage: checkpoint.sh <init|read|complete|set-status|reopen|set-mode|set-branch|set-tasks|await-handoff|fail> <STORY_ID> [args]" >&2
     exit 1
 fi
 
@@ -33,31 +38,114 @@ CHECKPOINT_FILE="$WORKSPACE_DIR/session-checkpoint.json"
 
 VALID_STATUSES="pending in_progress awaiting_handoff complete needs_rework"
 
-# Apply a node mutation to the checkpoint file in place. $1 = JS body operating
-# on `cp` (the parsed object). Legacy boolean stage values are migrated to
-# status strings on every write (true -> complete, false -> pending).
-mutate_json() {
-    local body="$1"
+# Apply a fixed, known mutation ("op") to the checkpoint file in place. All
+# dynamic values (stage names, statuses, branch names, ...) are passed to node
+# via argv and read from process.argv — never string-interpolated into the JS
+# source — so no combination of input characters (quotes, backticks, ${...})
+# can alter what code runs. `op` itself is always a literal chosen by the case
+# statement below, never the raw $ACTION.
+run_mutation() {
+    local op="$1"; shift
     if [ ! -f "$CHECKPOINT_FILE" ]; then
         echo "[ERROR] No checkpoint file found at $CHECKPOINT_FILE" >&2
         exit 1
     fi
     local temp_json
     temp_json=$(mktemp)
-    node -e "
-        const fs = require('fs');
-        const cp = JSON.parse(fs.readFileSync('$CHECKPOINT_FILE', 'utf8'));
+    node -e '
+        const fs = require("fs");
+        const [, checkpointFile, op, ...rest] = process.argv;
+        const cp = JSON.parse(fs.readFileSync(checkpointFile, "utf8"));
+
         // Migrate legacy boolean stages -> status strings.
         if (cp.stages) {
             for (const k of Object.keys(cp.stages)) {
                 const v = cp.stages[k];
-                if (v === true)  cp.stages[k] = 'complete';
-                if (v === false) cp.stages[k] = 'pending';
+                if (v === true)  cp.stages[k] = "complete";
+                if (v === false) cp.stages[k] = "pending";
             }
         }
-        $body
+
+        switch (op) {
+            case "complete": {
+                const [stage] = rest;
+                cp.stages[stage] = "complete";
+                cp.current_stage = stage;
+                cp.current_status = (stage === "closure") ? "COMPLETE" : "IN_PROGRESS";
+                break;
+            }
+            case "set-status": {
+                const [stage, status] = rest;
+                cp.stages[stage] = status;
+                cp.current_stage = stage;
+                if (status === "awaiting_handoff") {
+                    cp.current_status = "AWAITING_HANDOFF";
+                } else if (stage === "closure" && status === "complete") {
+                    cp.current_status = "COMPLETE";
+                } else {
+                    cp.current_status = "IN_PROGRESS";
+                }
+                break;
+            }
+            case "reopen": {
+                const [stage] = rest;
+                cp.stages[stage] = "needs_rework";
+                cp.current_stage = stage;
+                cp.review_round = (cp.review_round || 0) + 1;
+                cp.current_status = "IN_PROGRESS";
+                break;
+            }
+            case "set-mode": {
+                const [mode] = rest;
+                cp.mode = mode;
+                break;
+            }
+            case "set-branch": {
+                const [branch, base] = rest;
+                cp.branch_name = branch;
+                cp.base_branch = base;
+                break;
+            }
+            case "set-tasks": {
+                const [nStr] = rest;
+                const n = Number.parseInt(nStr, 10);
+                cp.stages = cp.stages || {};
+                // Seed task_1..task_n that do not already exist as pending.
+                for (let i = 1; i <= n; i++) {
+                    const key = `task_${i}`;
+                    if (!Object.prototype.hasOwnProperty.call(cp.stages, key)) {
+                        cp.stages[key] = "pending";
+                    }
+                }
+                // Prune phantom task_N slots above n that were never started —
+                // migrates checkpoints created before task seeding was bounded.
+                for (const key of Object.keys(cp.stages)) {
+                    const m = /^task_(\d+)$/.exec(key);
+                    if (m && Number(m[1]) > n && cp.stages[key] === "pending") {
+                        delete cp.stages[key];
+                    }
+                }
+                break;
+            }
+            case "fail": {
+                const [stage, reason] = rest;
+                cp.current_status = "FAILED";
+                cp.failure = { stage, reason: reason || "" };
+                break;
+            }
+            case "await-handoff": {
+                // Marks a pending handoff gate without touching any per-stage status —
+                // deliberately distinct from a stage being incomplete.
+                cp.current_status = "AWAITING_HANDOFF";
+                break;
+            }
+            default:
+                console.error(`[ERROR] Unknown mutation op: ${op}`);
+                process.exit(1);
+        }
+
         console.log(JSON.stringify(cp, null, 2));
-    " > "$temp_json"
+    ' "$CHECKPOINT_FILE" "$op" "$@" > "$temp_json"
     mv "$temp_json" "$CHECKPOINT_FILE"
 }
 
@@ -94,14 +182,6 @@ case "$ACTION" in
     "plan": "pending",
     "test_plan": "pending",
     "branch": "pending",
-    "task_1": "pending",
-    "task_2": "pending",
-    "task_3": "pending",
-    "task_4": "pending",
-    "task_5": "pending",
-    "task_6": "pending",
-    "task_7": "pending",
-    "task_8": "pending",
     "code_review": "pending",
     "context_sync": "pending",
     "closure": "pending"
@@ -126,7 +206,7 @@ EOF
             echo "[ERROR] Usage: checkpoint.sh complete <STORY_ID> <stage>" >&2
             exit 1
         fi
-        mutate_json "cp.stages['$STAGE'] = 'complete'; cp.current_stage = '$STAGE';"
+        run_mutation complete "$STAGE"
         echo "STAGE_COMPLETED: $STAGE"
         ;;
 
@@ -141,7 +221,7 @@ EOF
             echo "[ERROR] Invalid status '$STATUS'. Valid: $VALID_STATUSES" >&2
             exit 1
         fi
-        mutate_json "cp.stages['$STAGE'] = '$STATUS'; cp.current_stage = '$STAGE';"
+        run_mutation set-status "$STAGE" "$STATUS"
         echo "STAGE_STATUS: $STAGE = $STATUS"
         ;;
 
@@ -151,7 +231,7 @@ EOF
             echo "[ERROR] Usage: checkpoint.sh reopen <STORY_ID> <stage>" >&2
             exit 1
         fi
-        mutate_json "cp.stages['$STAGE'] = 'needs_rework'; cp.current_stage = '$STAGE'; cp.review_round = (cp.review_round || 0) + 1;"
+        run_mutation reopen "$STAGE"
         echo "STAGE_REOPENED: $STAGE"
         ;;
 
@@ -161,7 +241,7 @@ EOF
             echo "[ERROR] Usage: checkpoint.sh set-mode <STORY_ID> <gated|afk>" >&2
             exit 1
         fi
-        mutate_json "cp.mode = '$MODE';"
+        run_mutation set-mode "$MODE"
         echo "MODE_SET: $MODE"
         ;;
 
@@ -172,12 +252,38 @@ EOF
             echo "[ERROR] Usage: checkpoint.sh set-branch <STORY_ID> <branch> <base>" >&2
             exit 1
         fi
-        mutate_json "cp.branch_name = '$BRANCH'; cp.base_branch = '$BASE';"
+        run_mutation set-branch "$BRANCH" "$BASE"
         echo "BRANCH_SET: $BRANCH (base: $BASE)"
         ;;
 
+    set-tasks)
+        N="$3"
+        if [ -z "$N" ] || ! printf '%s' "$N" | grep -qE '^[0-9]+$'; then
+            echo "[ERROR] Usage: checkpoint.sh set-tasks <STORY_ID> <N> (N must be a non-negative integer)" >&2
+            exit 1
+        fi
+        run_mutation set-tasks "$N"
+        echo "TASKS_SET: $N"
+        ;;
+
+    await-handoff)
+        run_mutation await-handoff
+        echo "AWAITING_HANDOFF"
+        ;;
+
+    fail)
+        STAGE="$3"
+        REASON="$4"
+        if [ -z "$STAGE" ]; then
+            echo "[ERROR] Usage: checkpoint.sh fail <STORY_ID> <stage> <reason>" >&2
+            exit 1
+        fi
+        run_mutation fail "$STAGE" "$REASON"
+        echo "STORY_FAILED: $STAGE"
+        ;;
+
     *)
-        echo "[ERROR] Unknown action: $ACTION. Use init|read|complete|set-status|reopen|set-mode|set-branch." >&2
+        echo "[ERROR] Unknown action: $ACTION. Use init|read|complete|set-status|reopen|set-mode|set-branch|set-tasks|await-handoff|fail." >&2
         exit 1
         ;;
 esac

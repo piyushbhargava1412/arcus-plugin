@@ -258,36 +258,51 @@ snapshot.
 
 **Safe to edit:** ⚠️ Rarely (can manually reset stage status if needed)
 
-**Schema (illustrative):**
+**Schema:**
 ```json
 {
   "story_id": "STORY-123",
-  "mode": "interactive",
-  "branch_name": "arcus/STORY-123",
+  "branch_name": "arcus/STORY-123-1",
   "base_branch": "main",
-  "stages": {
-    "scaffold":       {"status": "complete"},
-    "context_pack":   {"status": "complete"},
-    "spec_finalizer": {"status": "in_progress"},
-    "plan":           {"status": "pending"},
-    "test_plan":      {"status": "pending"},
-    "branch":         {"status": "pending"},
-    "task_1":         {"status": "pending"},
-    "code_review":    {"status": "pending"},
-    "context_sync":   {"status": "pending"},
-    "closure":        {"status": "pending"}
-  },
+  "workflow": "arcus",
+  "schema_version": 2,
+  "mode": "gated",
+  "current_status": "IN_PROGRESS",
+  "current_stage": "spec_finalizer",
   "review_round": 0,
-  "last_updated": "2026-06-18T10:30:00Z"
+  "stages": {
+    "scaffold": "complete",
+    "context_pack": "complete",
+    "spec_finalizer": "in_progress",
+    "plan": "pending",
+    "test_plan": "pending",
+    "branch": "pending",
+    "code_review": "pending",
+    "context_sync": "pending",
+    "closure": "pending"
+  }
 }
 ```
 
-**Status values:**
+Stage values are **plain status strings**, not nested objects. `mode` is `gated` or `afk`
+(the human-facing names are "interactive" and "autonomous"). `task_1..task_N` keys are **not**
+pre-seeded at init — they are added by `checkpoint.sh set-tasks <N>` once the plan is compiled and
+the real task count is known, so the checkpoint never carries phantom task slots that a resume
+could mistakenly try to run.
+
+**Per-stage status values** (the `stages` map):
 - `pending` — Not started
 - `in_progress` — Currently running
 - `awaiting_handoff` — Paused at gate, waiting for user
 - `complete` — Finished
 - `needs_rework` — Review failed, requires fixes
+
+**Top-level `current_status`** — the single global signal the orchestrator reads *first* on resume,
+before walking the per-stage map:
+- `IN_PROGRESS` — Normal execution; resume by running the first non-complete stage
+- `AWAITING_HANDOFF` — A handoff gate is pending the user's "yes"/"proceed"; re-ask, do not advance
+- `COMPLETE` — `closure` finished; the story is done
+- `FAILED` — A stage failed twice; `failure.stage` / `failure.reason` record which and why
 
 ---
 
