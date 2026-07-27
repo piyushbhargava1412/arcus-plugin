@@ -5,6 +5,7 @@
 // excluded here; invoke it explicitly via `pnpm test:evals`.
 
 import { spawnSync } from 'node:child_process';
+import { existsSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -19,14 +20,27 @@ const tiers = [
   { name: 'evals:lint', args: [join(__dirname, 'e2e', 'evals', 'run-evals.mjs'), '--lint-only'] }
 ];
 
+// The Bash-native suites under plugins/arcus/scripts/tests/ cover the helper
+// scripts — checkpoint state transitions, mutate_json injection safety, the
+// arcus-state orphan branch, open-question suppression. They were previously
+// runnable only by hand, so none of it was gated by CI. Discovered rather than
+// listed, so a new *.test.sh is picked up without editing this file.
+const scriptTestDir = join(__dirname, '..', 'plugins', 'arcus', 'scripts', 'tests');
+const shellTiers = existsSync(scriptTestDir)
+  ? readdirSync(scriptTestDir)
+      .filter((f) => f.endsWith('.test.sh'))
+      .sort()
+      .map((f) => ({ name: `scripts:${f.replace('.test.sh', '')}`, cmd: 'bash', args: [join(scriptTestDir, f)] }))
+  : [];
+
 console.log('='.repeat(60));
 console.log('ARCUS Plugin Test Suite (zero-token tiers)');
 console.log('='.repeat(60));
 
 const results = [];
-for (const tier of tiers) {
+for (const tier of [...tiers, ...shellTiers]) {
   console.log(`\n--- Running ${tier.name} tests ---`);
-  const result = spawnSync('node', tier.args, { stdio: 'inherit', encoding: 'utf-8' });
+  const result = spawnSync(tier.cmd ?? 'node', tier.args, { stdio: 'inherit', encoding: 'utf-8' });
   const exitCode = result.status ?? 1;
   console.log(`\n${tier.name} tests exit code: ${exitCode}`);
   results.push({ name: tier.name, exitCode });

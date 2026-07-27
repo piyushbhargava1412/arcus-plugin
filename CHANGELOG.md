@@ -7,6 +7,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **ARCUS cloud, phase 1: a labelled GitHub issue runs Brainstorm and posts its open questions back
+  as an issue comment.** New reusable workflow `.github/workflows/arcus-pipeline.yml`
+  (`on: workflow_call`); a target repo vendors a ~25-line caller. Scope is deliberately narrow —
+  scaffold → context_pack → spec_finalizer → plan, then halt. No implementation, no PR, no resume.
+
+  It needed **no new skill and no `channel` field**, because the Brainstorm capabilities already
+  write their `## Open Questions` as a machine-readable YAML block at a fixed path. The workflow
+  reads that file directly. This is the PR-2 decision to put questions in the artifact rather than
+  the return message paying off exactly as argued: *a return-message block cannot survive the cold
+  resumes the cloud surface requires.* Transport is therefore fully deterministic — no scraping of
+  model prose.
+
+  Three new helper scripts, staged by `bootstrap.sh` like every other:
+  - `issue_story.sh` — materializes an issue into `story.md`. **The story id is `ISSUE-<n>`, derived
+    from the issue number and never the title**: that value becomes a filesystem path, a git branch
+    name, and a `node` argument, so a title-derived id would be a path-traversal and argument-
+    injection surface fed by untrusted text. Title and body are rendered via `node`, never through a
+    shell.
+  - `state_sync.sh` — `pull`/`push` a story workspace to the `arcus-state` **orphan** branch, since
+    `.arcus/` is gitignored and runners are ephemeral. Deliberately not the story branch: artifacts
+    keep changing after the PR opens, which would push commits onto a branch under review.
+    **Never force-pushes** — a non-fast-forward means a concurrent run holds newer state, so it
+    aborts rather than clobbering.
+  - `questions_comment.sh` — renders unanswered questions as an issue comment. A question is
+    unanswered iff its id is absent from `## Dialogue Answers`, keeping one source of truth for
+    answered-ness.
+
+  Security posture: the trust boundary is **authorship, not repo visibility** — both the issue author
+  and the triggering actor must hold `write`/`admin`, checked against the collaborators API rather
+  than the derivable `author_association`. Plus a fork guard, a per-issue `concurrency` group with
+  `cancel-in-progress: false` (cancelling mid-stage would leave a half-written artifact
+  indistinguishable from a crash), and the issue body reaching the model only by path, framed as data.
+
+- **`version-tags.yml`** — publishes an immutable `v<x.y.z>` tag and moves a floating `v<major>`, so
+  callers can pin `uses: …/arcus-pipeline.yml@v2`. Kept separate from `release-opencode-plugin.yml`,
+  which early-exits once its own release exists and would otherwise skip tagging too.
+
+- **The Bash test suites now run in CI.** `plugins/arcus/scripts/tests/*.test.sh` were runnable only
+  by hand, so 64 checkpoint assertions — including the `mutate_json` injection proof — had never
+  been gated by a build. `run-tests.mjs` now discovers and runs them as additional tiers, joined by
+  22 new assertions for the cloud scripts (orphan-branch lifecycle, fresh-runner restore,
+  answered-question suppression, path-traversal rejection).
+
 ### Fixed
 
 - **Agent dispatch now works on GitHub Copilot CLI, and stops wasting a failed tool call on Claude
