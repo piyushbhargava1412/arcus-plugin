@@ -95,10 +95,15 @@ relevant to your current task.**
   - **patch** — no contract-surface change: prompt/wording edits, bug fixes, refactors, docs, tests.
   - Heuristic: forces a `tests/e2e/triggers/corpus.json` change → ≥ minor (removed trigger → major);
     changes a contractual-token assertion → major; neither → patch.
-  - **Bump only once per accumulated release** — do not stack per-prompt. If `[Unreleased]` is empty, the
-    current version is shipped: the change bumps it and opens `[Unreleased]`. If `[Unreleased]` already
-    has entries, the version is pending: bump only when the new change is a **higher** level than what is
-    already pending (else just add a changelog line). On release, promote `[Unreleased]` → `[x.y.z] - <date>`.
+  - **Every merged PR that changes `plugins/arcus/**` bumps the version — at least a patch.** Not
+    once per "release": `main` **is** the distribution channel. Consumers install a copied snapshot
+    and refresh by comparing their cached `version` against the source's, so an unbumped merge makes
+    `/plugin update` a silent no-op and strands every already-installed user on the previous content,
+    with no error anywhere. Multiple merged PRs must never share one version number. Enforced by
+    `.github/workflows/version-guard.yml`; see README "Updating" for the consumer-side mechanics.
+  - Within a **single PR**, do not stack bumps per-prompt — accumulate the whole PR's changes at the
+    highest level any one of them warrants, and bump once before merge. `[Unreleased]` collects the
+    changelog entries; promote it to `[x.y.z] - <date>` when you cut a tagged release.
   - **Releasing** = bump `plugin.json`, promote `[Unreleased]` in `CHANGELOG.md`, and merge to `main`.
     The `release-opencode-plugin` CI workflow then automatically builds the `arcus-opencode` tarball
     and publishes it as a GitHub Release tagged `arcus-opencode-v<version>`. No manual tagging or

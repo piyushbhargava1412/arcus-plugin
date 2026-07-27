@@ -42,8 +42,8 @@ The **default, user-driven** mode. You enter with `implement <STORY>` or `plan <
   `brainstorm <STORY>` / `kick off <STORY>` / `architect <STORY>`
 - Pause and resume — your session checkpoint persists across agent sessions; on a cold resume, type
   the next stage's phrase
-- Answer recommendation-first interviews — every question presents one **Recommended** option
-  with a rationale, plus a custom-answer option
+- Answer the batched open questions — raised all at once, each presenting one **Recommended**
+  option with a rationale, and you can always answer in your own words
 
 ### Autonomous (AFK) mode — `arcus-controller`
 

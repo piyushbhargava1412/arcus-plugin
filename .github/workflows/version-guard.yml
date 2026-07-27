@@ -1,0 +1,74 @@
+name: version guard
+
+# Consumers install ARCUS as a COPIED SNAPSHOT and refresh it by comparing the cached
+# `version` against the source's. If a PR changes plugin content without bumping that
+# field, `/plugin update` is a silent no-op and every already-installed user is stranded
+# on the previous content — with no error anywhere. This job makes that failure loud.
+#
+# See README "Updating" and the AGENTS.md version-bump policy.
+
+on:
+  pull_request:
+    paths:
+      - "plugins/arcus/**"
+
+permissions: {}
+
+jobs:
+  version-bumped:
+    name: plugin.json version bumped
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read # checkout
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          fetch-depth: 0 # need the base commit to diff against
+          persist-credentials: false
+
+      - name: Require a version bump when plugin content changes
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          MANIFEST="plugins/arcus/.claude-plugin/plugin.json"
+
+          # Ignore PRs that only touch the manifest itself, or only delete files.
+          CHANGED=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA" -- 'plugins/arcus/**' \
+                    | grep -v "^${MANIFEST}$" || true)
+          if [ -z "$CHANGED" ]; then
+            echo "No plugin content changed outside the manifest — nothing to enforce."
+            exit 0
+          fi
+
+          BASE_VERSION=$(git show "$BASE_SHA:$MANIFEST" | node -p "JSON.parse(require('fs').readFileSync(0,'utf8')).version")
+          HEAD_VERSION=$(node -p "require('./$MANIFEST').version")
+
+          echo "base version: $BASE_VERSION"
+          echo "head version: $HEAD_VERSION"
+          echo "changed plugin files:"
+          echo "$CHANGED" | sed 's/^/  /'
+
+          if [ "$BASE_VERSION" = "$HEAD_VERSION" ]; then
+            echo ""
+            echo "::error file=$MANIFEST::This PR changes plugins/arcus/** but leaves version at $HEAD_VERSION. Installed plugins refresh by comparing this field, so an unbumped version means /plugin update is a no-op and existing users never receive these changes. Bump it (patch at minimum) and add a CHANGELOG entry."
+            exit 1
+          fi
+
+          # Reject a downgrade — semver must move forward.
+          node -e '
+            const [b, h] = [process.argv[1], process.argv[2]];
+            const p = v => v.split(".").map(Number);
+            const [bv, hv] = [p(b), p(h)];
+            for (let i = 0; i < 3; i++) {
+              if (hv[i] > bv[i]) process.exit(0);
+              if (hv[i] < bv[i]) {
+                console.error(`::error::version moved backwards: ${b} -> ${h}`);
+                process.exit(1);
+              }
+            }
+            process.exit(0);
+          ' "$BASE_VERSION" "$HEAD_VERSION"
+
+          echo "Version bumped $BASE_VERSION -> $HEAD_VERSION."

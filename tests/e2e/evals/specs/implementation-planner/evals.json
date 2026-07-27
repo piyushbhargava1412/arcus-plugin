@@ -1,10 +1,13 @@
 {
   "skill_name": "implementation-planner",
-  "cost_budget": { "max_tokens": 60000, "max_seconds": 180 },
+  "cost_budget": {
+    "max_tokens": 60000,
+    "max_seconds": 180
+  },
   "evals": [
     {
-      "id": "ip-dialogue-scores-approaches-and-interviews-user",
-      "prompt": "You are the implementation-planner capability running in DIALOGUE mode. Using the grounded spec in grounded-spec.md and the context pack in context_pack.md, design the technical approach and produce the implementation_plan. Generate and score the candidate approaches, then interview me on the design-approach choice before decomposing the work into tasks.",
+      "id": "ip-close-run-choice-recorded-as-open-question",
+      "prompt": "You are the implementation-planner capability. Using the grounded spec in grounded-spec.md and the context pack in context_pack.md, design the technical approach and produce the implementation_plan. You cannot talk to the user.",
       "mode": "dialogue",
       "kind": "judged",
       "fixture": {
@@ -15,16 +18,31 @@
         }
       },
       "expectations": [
-        { "text": "Generates at least two distinct candidate approaches and records a scored comparison of them (e.g. a table scoring each on axes such as blast radius, backward-compat, and complexity) before choosing.", "tier": "critical" },
-        { "text": "Before producing the final task list, asks the user to choose the design approach as an interview question that lists the candidates, marks exactly one option as Recommended with a one-line rationale, and offers a custom-answer option.", "tier": "critical" },
-        { "text": "Decomposes the story into atomic tasks where each task is a single logical concern carrying its own Definition of Done / tests, rather than one large monolithic step.", "tier": "critical" },
-        { "text": "Honors the grounded constraints (per-IP limit, 60/min, HTTP 429 with Retry-After, no change to the cache util's public API) rather than relitigating them.", "tier": "quality" },
-        { "text": "Records the design dialogue (question, options including the Recommended marker, and the user's choice) in a dedicated design-dialogue section of the plan.", "tier": "quality" }
+        {
+          "text": "Generates at least two distinct candidate approaches and records a scored comparison of them (e.g. a table scoring each on axes such as blast radius, backward-compat, and complexity) before choosing.",
+          "tier": "critical"
+        },
+        {
+          "text": "Never asks the user anything and never blocks. Because the design choice here is close-run, it records the choice as an entry in the machine-readable Open Questions block of the plan instead of interviewing — marking exactly one option as recommended with a one-line rationale.",
+          "tier": "critical"
+        },
+        {
+          "text": "Decomposes the story into atomic tasks where each task is a single logical concern carrying its own Definition of Done / tests, rather than one large monolithic step.",
+          "tier": "critical"
+        },
+        {
+          "text": "Honors the grounded constraints (per-IP limit, 60/min, HTTP 429 with Retry-After, no change to the cache util's public API) rather than relitigating them.",
+          "tier": "quality"
+        },
+        {
+          "text": "Still commits to a chosen approach and a complete task list on this pass — the open question is a confirmation request, not a blocker, so the plan is never left half-written pending an answer.",
+          "tier": "critical"
+        }
       ]
     },
     {
-      "id": "ip-autonomous-auto-selects-and-never-blocks",
-      "prompt": "You are the implementation-planner capability running in AUTONOMOUS (afk) mode. Using the grounded spec in grounded-spec.md and the context pack in context_pack.md, produce the implementation_plan end to end without stopping for any input.",
+      "id": "ip-clear-cut-choice-auto-selected-no-open-question",
+      "prompt": "You are the implementation-planner capability. Using the grounded spec in grounded-spec.md and the context pack in context_pack.md, produce the implementation_plan end to end without stopping for any input.",
       "mode": "autonomous",
       "kind": "judged",
       "fixture": {
@@ -34,16 +52,31 @@
         }
       },
       "expectations": [
-        { "text": "Generates at least two distinct scored candidate approaches and auto-selects one, recording an explicit score-based rationale for the chosen approach.", "tier": "critical" },
-        { "text": "Never blocks for user input: it does not ask an interview question and runs the planning end to end, leaving the design-dialogue section empty or omitted.", "tier": "critical" },
-        { "text": "Decomposes the story into atomic tasks where each task is a single independently-testable concern with its own Definition of Done.", "tier": "critical" },
-        { "text": "Respects the grounded constraints (per-user keying, the three boolean channels with their defaults, reuse of the existing store module, no new ORM).", "tier": "quality" },
-        { "text": "Sequences the tasks in a dependency-respecting order (e.g. schema/accessor before the dispatcher read path).", "tier": "quality" }
+        {
+          "text": "Generates at least two distinct scored candidate approaches and auto-selects one, recording an explicit score-based rationale for the chosen approach.",
+          "tier": "critical"
+        },
+        {
+          "text": "Never blocks for user input and asks no interview question. Because the grounded spec and guardrails make one approach clearly dominant, it leaves the Open Questions block empty rather than manufacturing a ceremonial question, and leaves the design-dialogue section empty or omitted.",
+          "tier": "critical"
+        },
+        {
+          "text": "Decomposes the story into atomic tasks where each task is a single independently-testable concern with its own Definition of Done.",
+          "tier": "critical"
+        },
+        {
+          "text": "Respects the grounded constraints (per-user keying, the three boolean channels with their defaults, reuse of the existing store module, no new ORM).",
+          "tier": "quality"
+        },
+        {
+          "text": "Sequences the tasks in a dependency-respecting order (e.g. schema/accessor before the dispatcher read path).",
+          "tier": "quality"
+        }
       ]
     },
     {
-      "id": "ip-autonomous-avoids-monolithic-decomposition",
-      "prompt": "You are the implementation-planner capability running in AUTONOMOUS mode. The grounded spec in grounded-spec.md describes a feature with several clearly separable concerns. Produce the implementation_plan and break the work down into a proper sequence of tasks.",
+      "id": "ip-avoids-monolithic-decomposition",
+      "prompt": "You are the implementation-planner capability. The grounded spec in grounded-spec.md describes a feature with several clearly separable concerns. Produce the implementation_plan and break the work down into a proper sequence of tasks.",
       "mode": "autonomous",
       "kind": "judged",
       "fixture": {
@@ -53,16 +86,28 @@
         }
       },
       "expectations": [
-        { "text": "Produces multiple atomic tasks (each one concern: serializer, route, UI button, empty-set handling) rather than a single monolithic do-everything task.", "tier": "critical" },
-        { "text": "Each task is independently testable and carries its own Definition of Done with verification (tests).", "tier": "critical" },
-        { "text": "Still generates and scores at least two candidate approaches and records the chosen one with rationale.", "tier": "critical" },
-        { "text": "Each task is traceable back to a requirement in the spec (CSV columns mirror JSON order, header-only CSV for empty sets, the download button).", "tier": "quality" }
+        {
+          "text": "Produces multiple atomic tasks (each one concern: serializer, route, UI button, empty-set handling) rather than a single monolithic do-everything task.",
+          "tier": "critical"
+        },
+        {
+          "text": "Each task is independently testable and carries its own Definition of Done with verification (tests).",
+          "tier": "critical"
+        },
+        {
+          "text": "Still generates and scores at least two candidate approaches and records the chosen one with rationale.",
+          "tier": "critical"
+        },
+        {
+          "text": "Each task is traceable back to a requirement in the spec (CSV columns mirror JSON order, header-only CSV for empty sets, the download button).",
+          "tier": "quality"
+        }
       ]
     },
     {
-      "id": "ip-dialogue-recommends-exactly-one-with-rationale",
-      "prompt": "You are the implementation-planner capability running in DIALOGUE mode. From the grounded spec in grounded-spec.md, generate and score candidate approaches and present the design-approach interview question to me.",
-      "mode": "dialogue",
+      "id": "ip-open-question-recommends-exactly-one-with-rationale",
+      "prompt": "You are the implementation-planner capability. From the grounded spec in grounded-spec.md, generate and score candidate approaches and produce the implementation_plan. You cannot talk to the user.",
+      "mode": "autonomous",
       "kind": "judged",
       "fixture": {
         "files": {
@@ -70,10 +115,22 @@
         }
       },
       "expectations": [
-        { "text": "Generates at least two distinct candidate approaches (e.g. in-process retry vs. a queued/background retry) and scores them before presenting the choice.", "tier": "critical" },
-        { "text": "Presents a single interview question that marks exactly one option as Recommended with a one-line rationale and includes an explicit option for the user to propose their own approach.", "tier": "critical" },
-        { "text": "Does not commit to a final task decomposition before the user answers the design-approach question (the user's pick is treated as authoritative).", "tier": "critical" },
-        { "text": "The recommended option is consistent with the grounded guardrail preferring in-process retry over a queue unless justified.", "tier": "quality" }
+        {
+          "text": "Generates at least two distinct candidate approaches (e.g. in-process retry vs. a queued/background retry) and scores them before presenting the choice.",
+          "tier": "critical"
+        },
+        {
+          "text": "Writes the design choice into the plan's Open Questions block as a single entry that marks exactly one option as recommended with a one-line rationale, and leaves the reader free to propose their own approach.",
+          "tier": "critical"
+        },
+        {
+          "text": "Does not address the user conversationally or wait for an answer — it applies its own tentative pick to the plan and records that pick alongside the question.",
+          "tier": "critical"
+        },
+        {
+          "text": "The recommended option is consistent with the grounded guardrail preferring in-process retry over a queue unless justified.",
+          "tier": "quality"
+        }
       ]
     }
   ]

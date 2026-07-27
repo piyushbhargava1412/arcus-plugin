@@ -338,8 +338,8 @@ before walking the per-stage map:
 **Created by:** `spec-finalizer` (the `spec_finalizer` stage)
 
 **Purpose:** Home for the **grounded story decisions** — context grounding, resolved
-ambiguities, the gated-mode dialogue answers, the implementation boundary, and the
-guardrail check. Written solely by spec-finalizer.
+ambiguities, the open questions it raised, any answers you gave, the implementation boundary, and
+the guardrail check. Written solely by spec-finalizer.
 
 **Safe to edit:** ✅ Yes, refine grounded decisions before the `plan` stage
 
@@ -348,8 +348,13 @@ guardrail check. Written solely by spec-finalizer.
 - Validation rules and error handling approach
 - Performance constraints, security considerations, integration decisions
 - Implementation boundary (what's in / out of scope)
-- **In interactive mode:** the recorded Q&A from the recommendation-first interview (each
-  question carried one **Recommended** option + rationale plus a custom-answer option)
+- **`## Open Questions`** — always present: the decisions spec-finalizer resolved but would prefer
+  you to confirm, as a machine-readable YAML block (max 7, each with exactly one **Recommended**
+  option + rationale). The spec is fully resolved regardless — these are confirmation requests, not
+  blockers. In interactive mode the orchestrator shows them to you all at once; in AFK they are
+  recorded but never surfaced.
+- **`## Dialogue Answers`** — populated only once you have answered: one `### Round N` table mapping
+  each question id to your **verbatim** wording and the resolved choice (max 2 rounds)
 
 **Example excerpt:**
 ```markdown
@@ -367,8 +372,22 @@ guardrail check. Written solely by spec-finalizer.
 - Email format: RFC 5322
 - Password: min 8 chars, require uppercase, number, special char
 
-## Clarifications (gated dialogue)
-- Q: Where should validation live? → A: Controller layer (Recommended)
+## Open Questions
+```yaml
+- id: SF-1
+  gap: Where should validation live?
+  reason: low-confidence
+  options:
+    - {key: A, text: Controller layer, recommended: true, rationale: Matches the existing request-validation pattern}
+    - {key: B, text: Service layer}
+  tentative: A
+```
+
+## Dialogue Answers
+### Round 1
+| Question | What the user said (verbatim) | Resolved to |
+|----------|-------------------------------|-------------|
+| SF-1 | "controller is fine" | A — Controller layer |
 ```
 
 ---
@@ -378,7 +397,7 @@ guardrail check. Written solely by spec-finalizer.
 **Created by:** `implementation-planner` (the `plan` stage)
 
 **Purpose:** Home for the implementation-planner's **design deliberation** (approach
-evaluation, chosen approach & reasoning, design / impacted files, design dialogue answers)
+evaluation, chosen approach & reasoning, design / impacted files, open questions, design dialogue answers)
 **plus** the atomic task list the implementation loop reads. Written solely by
 implementation-planner.
 

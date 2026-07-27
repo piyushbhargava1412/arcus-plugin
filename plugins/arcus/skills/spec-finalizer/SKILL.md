@@ -2,7 +2,8 @@
 name: spec-finalizer
 description: >
   Analyze a user story for completeness and resolve all ambiguities by generating
-  options grounded in repository patterns and selecting the best choice autonomously.
+  options grounded in repository patterns and selecting the best choice autonomously, then record
+  the least-confident decisions as a ranked Open Questions block for a human to optionally confirm.
   Trigger on "finalize spec", "resolve ambiguities", or "ground the story".
 layer: capability
 standalone: true
@@ -14,23 +15,58 @@ standalone: true
 
 Acts as a Senior Tech Lead performing a completeness audit on a user story. Identifies every gap, generates 2-3 resolution options grounded in repository patterns, selects the best option with documented rationale, and verifies internal consistency before handing off to implementation planning.
 
-## Execution Modes
+It always produces a **fully resolved** spec, and separately records the decisions it was **least confident about** as a ranked `## Open Questions` block. It never converses and never blocks — surfacing those questions to a human is the orchestrator's job.
 
-This skill receives `mode` as an explicit input parameter. It branches on the `mode` value:
+## Execution Model
 
-| Mode | Behaviour |
-|------|-----------|
-| **dialogue** | Auto-resolve what you confidently can, then **ask the user** the highest-impact open questions **one at a time**, folding each answer in before asking the next. Each question presents **exactly one Recommended option** with a **one-line rationale** plus an explicit custom-answer option. Record answers in the `## Dialogue Answers` section of the `spec_grounding` output. |
-| **autonomous** (afk) | Never block for input. Auto-resolve every ambiguity with the safest option, flagging weak picks `⚠️ LOW CONFIDENCE`. Surface unresolved items via the Step 7 `NEEDS_INPUT` escalation block. Skip / leave empty the `## Dialogue Answers` section. |
+**This skill never talks to the user and never blocks for input.** It has no mode parameter. On
+every run it does exactly two things:
 
-In **both** modes you must still produce a complete `spec_grounding` output (spec-finalizer's owned
-sections — see Output). In dialogue mode, the user's answers are authoritative and override your
-tentative picks. If the `spec_grounding` output already has a populated `## Dialogue Answers` section,
-reuse it and do NOT re-ask questions already answered.
+1. Produces a **complete, usable** `spec_grounding` — every ambiguity resolved, weak picks flagged
+   `⚠️ LOW CONFIDENCE`, zero-option items given the safest available placeholder.
+2. Emits a **ranked list of what it was least sure about** into the `## Open Questions` section of
+   that same output.
+
+Whether anyone *answers* those questions is the orchestrator's concern, not yours. An autonomous run
+ignores them; a gated run surfaces them and re-invokes you with an `answers` input. You behave
+identically either way — which is why you can always run as an isolated subagent.
+
+### The answer round-trip
+
+| `answers` input | What you do |
+|-----------------|-------------|
+| absent (first pass) | Run Steps 1–7. Emit `## Open Questions`. |
+| present (resume pass) | Run Step 0 (map the answers), then **skip Steps 1–3** and resume at Step 4. |
+
+The user's answers are authoritative and override your tentative picks.
+
+**Round cap — 2.** Round 1 asks every currently-known open question. Round 2 asks **only** gaps that
+round-1 answers newly created or revealed. A third round is forbidden: resolve whatever remains with
+the safest option, flag it `⚠️ LOW CONFIDENCE`, and note in the artifact that it was auto-resolved
+after the round cap. Determine the current round by counting `### Round N` subsections already
+present under `## Dialogue Answers`.
 
 ## Workflow
 
-**Read the `mode` input.** If `mode == dialogue`, follow the dialogue branch (interview the user on low-confidence items). If `mode == autonomous`, follow the autonomous branch (never block for input; auto-resolve everything).
+### Step 0: Fold In Answers (resume pass only — skip when `answers` is absent)
+
+You are being re-invoked with the user's free-form reply to the questions you previously wrote into
+`## Open Questions`. Humans do not answer in a fixed syntax — expect *"for #2 go with B, and the
+third one use your judgement"*.
+
+1. Map each reply fragment to a question `id` from the existing `## Open Questions` block.
+2. Append a `### Round N` subsection to `## Dialogue Answers` recording, per question: the `id`, the
+   **verbatim quoted** fragment of the user's reply you matched to it, and the resolved choice.
+   Writing the mapping down is mandatory — it is what makes a wrong match reviewable rather than
+   invisible.
+3. Any question left unmatched is either re-asked in round 2 (if rounds remain) or auto-resolved with
+   an explicit `⚠️ LOW CONFIDENCE` note. **Never silently drop a question.**
+4. Update the affected entries in `## Resolved Ambiguities` to reflect the user's answers.
+
+**Guard — do not re-analyze.** If `## Open Questions` exists and every `id` in it is answered in
+`## Dialogue Answers`, skip Steps 1–3 entirely and resume at Step 4. Re-running the completeness
+scan is not just wasted work: it re-derives the ambiguity list non-deterministically, so `SF-3` may
+no longer denote the same gap the user answered.
 
 ### Step 1: Completeness Analysis
 
@@ -46,7 +82,10 @@ Use the `story` input and the `context_pack` input. Systematically scan for:
 | **Security Gaps** | Data access without authorization model, PII without masking |
 | **Testing Gaps** | Behaviors described without clear acceptance criteria |
 
-Produce a numbered list of identified ambiguities.
+Produce a numbered list of identified ambiguities, assigning each a **stable id** of the form
+`SF-1`, `SF-2`, … These ids are the contract the user's answers are matched against, so once
+assigned they must not be renumbered between rounds. (The `SF-` prefix keeps this id space from
+colliding with `arcus:implementation-planner`'s `PL-` ids, so one reply can address both.)
 
 ### Step 2: Option Generation (Per Ambiguity)
 
@@ -73,29 +112,28 @@ For each ambiguity, select the best option using the priority order defined in `
 
 Document the selected option and the rationale (1 sentence). Flag low-confidence decisions with ⚠️.
 
-**Dialogue mode only — confirm with the user:** After autonomous selection, identify the items that
-are `zero-option` or `⚠️ LOW CONFIDENCE`. Ask the user about these **one at a time**, presenting the
-gap and the generated options. Incorporate each answer before asking the next. Stop once the remaining
-ambiguities can be resolved confidently. Do not ask about fast-tracked or high/medium-confidence
-decisions — resolve those silently.
+**Select the open-question set.** Identify the items that are `zero-option` or `⚠️ LOW CONFIDENCE` —
+these are the candidates for `## Open Questions` (Step 6a). Never surface a fast-tracked or
+high/medium-confidence decision; resolve those silently.
 
-**HARD REQUIREMENT — every gated question presents YOUR own recommendation.** When you ask the user
-about a `zero-option` / `⚠️ LOW CONFIDENCE` item, the question MUST present its options with **exactly
-one** option explicitly marked **Recommended** plus a **one-line rationale** for why it is recommended,
-AND an explicit custom-answer option (e.g. "or provide your own"). This is mandatory for every gated
-question — no exceptions. Example shape:
+**Two rules govern what actually gets asked:**
 
-```
-Q: <the gap, phrased as a question>
-  A — <option A> (Recommended) — <one-line rationale for why A is recommended>
-  B — <option B>
-  C — <option C>
-  Or provide your own answer.
-```
+- **Ask only independent gaps.** If resolving gap X would change or dissolve gap Y, surface X and
+  hold Y back for round 2. Batching removes the natural protection the old one-at-a-time interview
+  had — where answer 1 could dissolve question 3 before it was asked — so you must do that filtering
+  yourself. Asking two questions whose answers can contradict each other is a defect.
+- **Cap the batch at 7**, ranked by blast radius (highest first). Anything past the cap is
+  auto-resolved with the safest option, flagged `⚠️ LOW CONFIDENCE`, and noted as capped. Five good
+  questions beat fifteen mediocre ones, and a wall of questions is its own failure mode.
 
-Record each chosen answer (whether the recommended option or the user's custom answer) into the
-`## Dialogue Answers` section of the `spec_grounding` output. The user's answer is authoritative
-and overrides your recommendation.
+**HARD REQUIREMENT — every question carries YOUR own recommendation.** Every entry in
+`## Open Questions` MUST present its options with **exactly one** marked `recommended: true` plus a
+**one-line rationale**, and the reader must always be free to answer in their own words. This makes
+your reasoning visible while keeping the user's answer authoritative.
+
+Regardless of what is asked, the `spec_grounding` output is **always fully resolved** on this pass —
+you never leave a decision blank pending an answer. `## Open Questions` records what you would
+*prefer* a human to confirm, not what is missing.
 
 ### Step 4: Boundary Definition
 
@@ -116,40 +154,51 @@ Fix any issues inline. Do not skip this step.
 ### Step 6: Write Output
 
 Write the decisions to the `spec_grounding` output (at the caller-provided output path) using the
-template at `./assets/grounded-spec-template.md`. In dialogue mode, fill the `## Dialogue Answers`
-section from the recorded Q&A; in autonomous mode, leave it empty or omit it.
+template at `./assets/grounded-spec-template.md`. Fill `## Dialogue Answers` from the Step 0 mapping
+when this is a resume pass; on a first pass leave it empty or omit it.
 
-### Step 7: Emit Escalation Signal (return message)
+### Step 6a: Write `## Open Questions`
 
-After writing the file, your return message to the orchestrator MUST end with a machine-readable
-escalation block so the orchestrator can decide whether to involve the user. List every ambiguity
-that is either `zero-option` or `⚠️ LOW CONFIDENCE` (omit fast-tracked / high / medium decisions):
+Write the Step 3 open-question set into the `## Open Questions` section of the **same output file**,
+as a fenced `yaml` block. This is the machine-readable carrier the orchestrator reads — it lives in
+the artifact, not in your return message, so it survives a cold resume where no conversation history
+exists.
 
-```
-NEEDS_INPUT:
-- id: <ambiguity number from Step 1>
+```yaml
+- id: SF-1
+  gap: <the gap, phrased as a question>
   reason: zero-option | low-confidence
-  gap: <one-line description of what is unresolved>
-  options: <"A: ...; B: ..." — or "none" for zero-option>
-  tentative: <the option you selected autonomously — or "none" for zero-option>
-  why: <one line: why confidence is low / why no option could be formed>
+  options:
+    - {key: A, text: <option>, recommended: true, rationale: <one line: why this one>}
+    - {key: B, text: <option>}
+  tentative: A
 ```
 
-If there are no such ambiguities, emit exactly:
+Rules: exactly one option carries `recommended: true`; `tentative` names the option you actually
+applied to the spec; `zero-option` entries may have an empty `options` list and `tentative: none`.
+If nothing warrants asking, write the section with an empty list. **Do not add a `status` field** —
+whether a question is answered is derived from `## Dialogue Answers`, which is the single source of
+truth for that.
+
+### Step 7: Emit the Summary Token (return message)
+
+End your return message with exactly one line so the orchestrator can branch without re-reading the
+file:
 
 ```
-NEEDS_INPUT: none
+OPEN_QUESTIONS: <n>
 ```
 
-This block is informational. You still resolve every ambiguity autonomously in the grounded spec
-(zero-option items get the safest available placeholder, flagged `⚠️ LOW CONFIDENCE`). The
-orchestrator — not this skill — decides whether to pause and ask the user.
+where `<n>` is the number of entries written in Step 6a, or `none` when there are none.
 
 ## Constraints
 
-- **Always fully resolved**: regardless of mode (see Execution Modes), the `spec_grounding` output must
-  end up fully resolved — where no answer is available, select the safest option and flag it
-  `⚠️ LOW CONFIDENCE`, or mark it `zero-option` if no option can be formed.
+- **Always fully resolved**: the `spec_grounding` output must end up fully resolved on **every** pass —
+  where no answer is available, select the safest option and flag it `⚠️ LOW CONFIDENCE`, or mark it
+  `zero-option` if no option can be formed. Never block waiting for an answer.
+- **Never converse**: emit questions into `## Open Questions` and stop. Do not address the user
+  directly, and do not ask a question in your return message.
+- **At most 7 open questions per round, at most 2 rounds.**
 - **Maximum 15 ambiguities**: If more than 15 gaps are found, the story is likely too large. Note this in the output and proceed with the top 15 by severity.
 - **Time-bound**: Do not spend excessive reasoning on trivial ambiguities. Use the fast-track rule from the decision heuristics.
 
@@ -164,11 +213,12 @@ orchestrator — not this skill — decides whether to pause and ask the user.
 | Input | Required | Type | Description |
 |-------|----------|------|-------------|
 | `story` | yes | markdown or text | The user story to analyze for completeness |
-| `mode` | yes | string | `dialogue` or `autonomous` — see **Execution Modes** |
 | `context_pack` | no | markdown | Story-to-code correlations (flows, patterns, constraints); proceed without it, noting the omission |
-| guardrails | no | markdown | Project guardrails from `AGENTS.md` / `CLAUDE.md` if present |
+| `guardrails` | no | markdown | Project guardrails from `AGENTS.md` / `CLAUDE.md` if present |
+| `answers` | no | text | The user's free-form reply to a previously emitted `## Open Questions` block. When present, run Step 0 and skip Steps 1–3. |
 
 ### Output
 - **`spec_grounding`** (markdown) — a self-contained grounded-spec record (sections per
-  `./assets/grounded-spec-template.md`), written to the caller-provided path or, standalone, defaulting
-  to `.arcus/outputs/spec-finalizer/<timestamp>.md`.
+  `./assets/grounded-spec-template.md`, including `## Open Questions`), written to the caller-provided
+  path or, standalone, defaulting to `.arcus/outputs/spec-finalizer/<timestamp>.md`.
+- **Return message** ends with `OPEN_QUESTIONS: <n>` or `OPEN_QUESTIONS: none`.

@@ -17,7 +17,7 @@ backward-compat, complexity, security (where relevant), plus a total/notes colum
 | B — [name] |  |  |  |  |  |
 
 ## Chosen Approach & Reasoning
-[The selected approach and why. In dialogue mode the user's choice is authoritative and overrides the
+[The selected approach and why. On a resume pass the user's choice is authoritative and overrides the
 highest-scoring pick.]
 
 ## Design / Impacted Files
@@ -27,19 +27,37 @@ impacted-file map.]
 - `path/to/file1`: [Modification/Creation details]
 - `path/to/file2`: [Modification/Creation details]
 
+## Open Questions
+
+*(ALWAYS present. Holds the design choice ONLY when it is genuinely close-run — top two candidates
+within 2 points — or hard to reverse (schema migration, public API shape, new dependency). When one
+approach clearly dominates, write an empty list; do not manufacture a ceremonial question. The plan
+is complete either way. Answered-ness is derived from `## Design Dialogue Answers` — do NOT add a
+`status` field here.)*
+
+```yaml
+- id: PL-1
+  gap: Which approach should we take for [the design decision]?
+  reason: low-confidence
+  options:
+    - {key: A, text: [candidate A], recommended: true, rationale: [one line: why this one]}
+    - {key: B, text: [candidate B]}
+  tentative: A
+```
+
 ## Design Dialogue Answers
 
-*(Dialogue mode only. One block per design question actually asked of the user. In autonomous mode
-there is no interview; leave this section empty or omit it.)*
+*(Resume pass only — populated when the caller re-invokes with an `answers` input. One `### Round N`
+subsection per round, max 2 rounds. On a first pass leave empty or omit.)*
 
-### Q1: [The design question asked]
-**Options presented:**
-- A — [approach] **(Recommended)** — *[one-line rationale]*
-- B — [approach]
-- Custom — [user may propose their own approach]
+### Round 1
 
-**Chosen answer**: [Recommended option / custom answer]
-**Rationale**: [Why — user direction is authoritative]
+| Question | What the user said (verbatim) | Resolved to |
+|----------|-------------------------------|-------------|
+| PL-1 | "[the exact fragment of the user's reply matched to this question]" | [option key or custom approach] |
+
+*(Quoting verbatim is mandatory — it makes a mis-matched answer reviewable rather than invisible.
+The user's answer is authoritative and overrides the highest-scoring pick.)*
 
 ---
 

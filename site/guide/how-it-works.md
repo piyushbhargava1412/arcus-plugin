@@ -48,8 +48,9 @@ orchestrator runs the same pipeline in two modes:
 - **Interactive (default, user-driven)** — the gated mode. You enter with `implement <STORY>` or
   `plan <STORY>`; the orchestrator pauses at each handoff gate. A same-session `"yes"` advances to the
   next stage, and a cold resume uses the stage's explicit phrase plus the checkpoint to pick up where
-  you left off. The spec-finalizer and implementation-planner dialogues run **in the main thread** so
-  they can interview you directly. (For brainstorm-only — context pack + finalized spec — the
+  you left off. spec-finalizer and implementation-planner run as one-shot subagents and never interview you; each
+  records its least-confident decisions in an `## Open Questions` block that the orchestrator shows
+  you **all at once**. (For brainstorm-only — context pack + finalized spec — the
   `kick-off` coordinator runs via `brainstorm <STORY>` / `kick off <STORY>` / `architect <STORY>`.)
 - **Autonomous (AFK)** — the hands-off mode of the same orchestrator. It activates on AFK
   phrases (`afk`, `--afk`, `forge`, `run afk on <STORY>`), dispatches each stage as a one-shot

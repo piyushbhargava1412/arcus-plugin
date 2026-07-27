@@ -22,15 +22,17 @@ This skill is the **single orchestrator** that drives a story from spec to pull 
 
 - **interactive** (gated, default): the controller emits a **handoff gate** after each major phase
   group (Brainstorm, Test Plan, Implementation, Code Review, Closure), waiting for the user's
-  "yes"/"proceed" before continuing. Every interview question carries a single Recommended option +
+  "yes"/"proceed" before continuing. It additionally surfaces any open questions **as one batch** at
+  the two Brainstorm stages that raise them. Every question carries a single Recommended option +
   rationale + custom-answer.
 - **autonomous** (afk): stages run **back-to-back with no handoff gates**, auto-deciding at each step,
   emitting **milestone-only** output.
 
 Execution is identical in both modes: the controller **spawns capabilities** and **runs
 coordinators/orchestrators in-thread** (each stage states its own execution in the Execution
-Pipeline below). A dialogue capability (spec-finalizer, implementation-planner) also runs in-thread
-when interactive so it can interview the user.
+Pipeline below). No capability ever interviews the user — `spec-finalizer` and
+`implementation-planner` emit a `## Open Questions` block into their own artifact and the controller
+surfaces it (see **Open-Questions Protocol**), so both are always spawned as isolated subagents.
 
 ## Activation
 
@@ -157,20 +159,19 @@ gate is pending a "yes"/"proceed", distinct from a stage genuinely being incompl
 ### Brainstorm (delegated to `arcus:kick-off`, then implementation-planner)
 
 1. **Context pack + spec finalize** — read and follow `arcus:kick-off` **in-thread** (it is a
-   coordinator), passing the `story`, the available `repo_context`, and the `mode` (`autonomous` →
-   non-interview; `dialogue` → the spec interview runs in this thread). It returns a `context_pack`
+   coordinator), passing the `story` and the available `repo_context`. It returns a `context_pack`
    and a `spec_grounding`, which the controller resolves to the workspace files
    `.arcus/specs/<STORY_ID>/context-pack.md` and `.arcus/specs/<STORY_ID>/grounded-spec.md`. Verify
-   both exist, then: `.arcus/bin/checkpoint.sh complete <STORY_ID> context_pack` and
+   both exist, then run the **Open-Questions Protocol** against `grounded-spec.md`. Once it returns,
+   `.arcus/bin/checkpoint.sh complete <STORY_ID> context_pack` and
    `.arcus/bin/checkpoint.sh complete <STORY_ID> spec_finalizer`.
-2. **Create implementation plan**:
-   - **autonomous**: dispatch a one-shot, **non-interview** subagent.
-     - **Prompt**: "Read and follow the `arcus:implementation-planner` skill. Story ID: `<STORY_ID>`. `mode=autonomous`. Write the plan to `.arcus/specs/<STORY_ID>/plan.md`."
-     - **Description**: "Brainstorm: implementation-planner"
-     - **Model**: resolve complexity `heavy` via the `arcus:model-strategy` skill.
-   - **interactive**: read and follow `arcus:implementation-planner` **in the main thread** with
-     `mode=dialogue` (so it can interview the user), writing the plan to `.arcus/specs/<STORY_ID>/plan.md`.
-   - Verify `plan.md` exists, then `.arcus/bin/checkpoint.sh complete <STORY_ID> plan`.
+2. **Create implementation plan** — dispatch a one-shot subagent (identical in both modes; the skill
+   never interviews):
+   - **Prompt**: "Read and follow the `arcus:implementation-planner` skill. Story ID: `<STORY_ID>`. Write the plan to `.arcus/specs/<STORY_ID>/plan.md`."
+   - **Description**: "Brainstorm: implementation-planner"
+   - **Model**: resolve complexity `heavy` via the `arcus:model-strategy` skill.
+   - Verify `plan.md` exists, then run the **Open-Questions Protocol** against `plan.md`, then
+     `.arcus/bin/checkpoint.sh complete <STORY_ID> plan`.
 3. **Record the task count**: run `.arcus/bin/checkpoint.sh set-tasks <STORY_ID> <N>` (N = `### Task`
    headings in `plan.md`) so the checkpoint reflects every planned task slot immediately, instead of
    relying on per-task keys appearing only as `implementation-runner` starts each one.
@@ -254,6 +255,45 @@ shared `.context/` artifact that the approved change set materially drifted.
 3. **Mark complete**: `.arcus/bin/checkpoint.sh complete <STORY_ID> closure`.
 4. **Output**: `[Complete] PR deployed: <link from pr.sh output>`.
 
+## Open-Questions Protocol (mid-stage, Brainstorm only)
+
+`arcus:spec-finalizer` and `arcus:implementation-planner` never converse. Each always writes a
+**complete** artifact, and separately records the decisions it was least confident about in a
+`## Open Questions` YAML block inside that same artifact. Surfacing them is the controller's job.
+
+Run this immediately after the owning stage produces its artifact, before marking the stage complete:
+
+1. **Read `## Open Questions`** from the artifact (`grounded-spec.md` or `plan.md`). If the section
+   is absent or its list is empty, return immediately — there is nothing to ask.
+2. **In autonomous mode, return immediately regardless.** The artifact is already fully resolved;
+   the questions are informational only. Note them in the milestone line as
+   `<n> low-confidence decisions` and move on.
+3. **In interactive mode**, present **every** question in the block in a **single** turn — not one at
+   a time. Render each as:
+
+   ```
+   [Questions] <n> open before <stage>:
+
+   SF-1 — <gap>
+     A — <option> (Recommended) — <rationale>
+     B — <option>
+     C — or answer in your own words
+
+   SF-2 — …
+   ```
+
+   Then run `.arcus/bin/checkpoint.sh set-status <STORY_ID> <stage> awaiting_handoff` and **stop**.
+4. **On the user's reply**, re-dispatch the same skill with its `answers` input set to the user's
+   reply verbatim, writing to the same output path. The skill maps answers to ids, records the
+   mapping in `## Dialogue Answers`, and skips re-deriving what it already resolved.
+5. **Echo the mapping back** so a mis-parse is visible rather than silent:
+   `[Questions] Read your answers as: SF-1→B, SF-2→custom("…")`.
+6. **Repeat at most once.** A second `## Open Questions` block (round 2) may only contain gaps the
+   round-1 answers newly revealed. Never run a third round — the skills auto-resolve past the cap.
+
+Answers are never written by the controller. The owning skill writes its own `## Dialogue Answers`,
+so each artifact keeps exactly one writer.
+
 ## Loopback Protocol (Code Review → Implementation)
 
 On a `changes_requested` verdict, loop the findings back into Implementation. In **autonomous** mode
@@ -279,12 +319,18 @@ When a checkpoint already exists:
    - `FAILED`: stop. Report the `failure.stage` / `failure.reason` recorded on the checkpoint and wait
      for explicit user direction — do not silently retry the failed stage.
    - `COMPLETE`: the story is done. Report that and do nothing further.
-   - `AWAITING_HANDOFF`: the prior phase group finished and is waiting on the user's "yes"/"proceed" —
-     re-emit the `[Handoff] <phase group> complete → next: <next phase group>` gate for the phase
-     group `current_stage` belongs to (per the Canonical Pipeline table) and **stop**. Do **not** walk
-     forward into the next stage until the user confirms. This is the status the plain stage-status
-     walk in step 3 must never be allowed to skip past — `awaiting_handoff`/`AWAITING_HANDOFF` is not
-     a "run it" status and not a "skip it" status; it is "re-ask before doing anything."
+   - `AWAITING_HANDOFF`: something is waiting on the user. Distinguish the two cases by reading the
+     `current_stage`'s artifact:
+     - Its `## Open Questions` has entries **not** yet answered in `## Dialogue Answers` → the stage
+       is mid-**Open-Questions Protocol**. Re-emit the `[Questions]` block and **stop**.
+     - Otherwise → a phase group is gated. Re-emit the
+       `[Handoff] <phase group> complete → next: <next phase group>` gate for the phase group
+       `current_stage` belongs to (per the Canonical Pipeline table) and **stop**.
+
+     In both cases, do **not** walk forward into the next stage until the user replies. This is the
+     status the plain stage-status walk in step 3 must never be allowed to skip past —
+     `awaiting_handoff`/`AWAITING_HANDOFF` is not a "run it" status and not a "skip it" status; it is
+     "re-ask before doing anything."
    - `IN_PROGRESS`: proceed to step 3.
 3. Determine the next action from stage status, walking the Canonical Pipeline order:
    - Skip any stage whose status is `complete`.

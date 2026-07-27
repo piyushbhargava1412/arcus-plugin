@@ -154,8 +154,8 @@ end-to-end.
       <ul>
         <li>Builds a story-specific context pack (stage key <code>context_pack</code>)</li>
         <li>Analyzes the story for completeness and resolves ambiguity (stage key <code>spec_finalizer</code>)</li>
-        <li><strong>Gated:</strong> spec-finalizer and implementation-planner run as <strong>dialogues in the main thread</strong>; every interview question presents exactly one <strong>Recommended</strong> option + one-line rationale + a custom-answer option</li>
-        <li><strong>AFK:</strong> both run one-shot inside subagents, auto-resolving every ambiguity / auto-selecting the highest-scoring approach</li>
+        <li>Both capabilities always run one-shot inside subagents and always resolve every ambiguity / select an approach themselves. Each also records what it was least confident about in an <code>## Open Questions</code> block in its own artifact — every entry presenting exactly one <strong>Recommended</strong> option + one-line rationale, with the reader free to answer in their own words</li>
+        <li><strong>Gated:</strong> the orchestrator surfaces that block to you, <strong>all questions at once</strong>, and folds your reply back in. <strong>AFK:</strong> the block is recorded but never surfaced</li>
         <li>Produces the implementation plan and task list (stage key <code>plan</code>)</li>
       </ul>
     </td>
@@ -163,15 +163,15 @@ end-to-end.
       <ul>
         <li><code>kick-off</code> coordinator <em>(skill)</em> — sequences context-pack-builder → spec-finalizer</li>
         <li><code>context-pack-builder</code> <em>(agent)</em></li>
-        <li><code>spec-finalizer</code> (dialogue in interactive, one-shot in autonomous)</li>
-        <li><code>implementation-planner</code> (dialogue in interactive, one-shot in autonomous)</li>
+        <li><code>spec-finalizer</code> <em>(one-shot subagent, both modes)</em></li>
+        <li><code>implementation-planner</code> <em>(one-shot subagent, both modes)</em></li>
         <li>Driven by <code>arcus-controller</code> (orchestrator; interactive or autonomous)</li>
       </ul>
     </td>
     <td>
       <ul>
         <li><code>context-pack.md</code> — Story-specific context bundle</li>
-        <li><code>grounded-spec.md</code> — Grounded story decisions (context grounding, resolved ambiguities, dialogue answers, implementation boundary) — written by spec-finalizer</li>
+        <li><code>grounded-spec.md</code> — Grounded story decisions (context grounding, resolved ambiguities, open questions, dialogue answers, implementation boundary) — written by spec-finalizer</li>
         <li><code>plan.md</code> — Design deliberation (approach evaluation, chosen approach, impacted files) plus the atomic <code>### Task N:</code> task list — written by implementation-planner</li>
       </ul>
     </td>
@@ -542,7 +542,7 @@ Each story produces a working area under `.arcus/specs/[STORY-ID]/` with the fol
 | `session-checkpoint.json` | Resumable per-stage execution state (ordered stage keys + status enum), including the planned/realized `branch_name` and `base_branch` |
 | `story.md` | Canonical copy of the input story |
 | `context-pack.md` | Compact, token-efficient context bundle |
-| `grounded-spec.md` | Grounded story decisions: context grounding, resolved ambiguities, dialogue answers, implementation boundary (written by spec-finalizer) |
+| `grounded-spec.md` | Grounded story decisions: context grounding, resolved ambiguities, open questions, dialogue answers, implementation boundary (written by spec-finalizer) |
 | `plan.md` | Design deliberation plus the atomic task list (written by implementation-planner) |
 | `test-plan.md` | Generated verification matrix and test cases |
 | `review.md` | Deterministic gate results + holistic code-review findings + verdict |

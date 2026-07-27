@@ -1,10 +1,13 @@
 {
   "skill_name": "spec-finalizer",
-  "cost_budget": { "max_tokens": 60000, "max_seconds": 180 },
+  "cost_budget": {
+    "max_tokens": 60000,
+    "max_seconds": 180
+  },
   "evals": [
     {
-      "id": "l2-4-dialogue-asks-one-at-a-time-recommended-shape",
-      "prompt": "Finalize and ground this user story in DIALOGUE mode against the supplied files. Run a completeness audit, resolve what you confidently can, and interview the user on the highest-impact open questions. Inputs: story=story.md, context_pack=context_pack.md, mode=dialogue.",
+      "id": "l2-4-emits-batched-open-questions-recommended-shape",
+      "prompt": "Finalize and ground this user story against the supplied files. Run a completeness audit and resolve every ambiguity. You cannot talk to the user. Inputs: story=story.md, context_pack=context_pack.md.",
       "mode": "dialogue",
       "kind": "judged",
       "fixture": {
@@ -15,26 +18,61 @@
       },
       "expectations": [
         {
-          "text": "Asks the user clarifying questions one at a time about genuinely ambiguous, high-impact gaps (such as the report time window or export format), folding each answer in before asking the next, rather than dumping all questions at once.",
+          "text": "Writes ALL of its open questions at once into a single Open Questions section of the grounded spec, rather than asking the user anything conversationally or one question at a time. It never addresses the user directly and never blocks waiting for an answer.",
           "tier": "critical"
         },
         {
-          "text": "Each question it asks presents exactly one option explicitly marked Recommended with a one-line rationale, plus an explicit option for the user to provide their own custom answer.",
+          "text": "Each entry in the Open Questions block presents exactly one option explicitly marked as recommended with a one-line rationale, and leaves the reader free to answer in their own words.",
           "tier": "critical"
         },
         {
-          "text": "Does not ask about ambiguities that have an obvious repository precedent (e.g. CSV export format, admin authorization, 30-day window); it resolves those silently by grounding in the context pack patterns.",
+          "text": "The grounded spec is fully resolved even though questions were raised — every ambiguity has a decision applied, with the open questions recorded as confirmation requests rather than blockers.",
+          "tier": "critical"
+        },
+        {
+          "text": "Does not raise open questions for ambiguities that have an obvious repository precedent (e.g. CSV export format, admin authorization, 30-day window); it resolves those silently by grounding in the context pack patterns.",
           "tier": "quality"
         },
         {
-          "text": "Records the user's answers into a Dialogue Answers section of the grounded spec, treating the user's answer as authoritative over its own tentative pick.",
+          "text": "Question ids use a stable SF- prefix (SF-1, SF-2, ...) so they can be referenced unambiguously in a later reply.",
           "tier": "quality"
         }
       ]
     },
     {
-      "id": "l2-4-autonomous-never-blocks-logs-assumptions",
-      "prompt": "Finalize and ground this user story in AUTONOMOUS (afk) mode against the supplied files. You cannot talk to the user. Resolve every ambiguity with the safest option and flag weak picks. Inputs: story=story.md, context_pack=context_pack.md, mode=autonomous.",
+      "id": "l2-4-resume-with-answers-maps-and-does-not-reask",
+      "prompt": "Finalize and ground this user story against the supplied files. A previous pass already wrote grounded-spec.md with an Open Questions block; the user has now replied. Inputs: story=story.md, context_pack=context_pack.md, existing spec_grounding=grounded-spec.md, answers=\"for the first one go with B, and for SF-2 just use your judgement\".",
+      "mode": "dialogue",
+      "kind": "judged",
+      "fixture": {
+        "files": {
+          "story.md": "# STORY-2401: Export account activity report\n\nAs an admin I want to export a report of account activity so I can audit usage.\n\n- The report should cover recent activity.\n- Export it in a suitable format.\n- Make it available to authorized users.\n",
+          "context_pack.md": "# Context Pack: STORY-2401\n\n## Flows\n- Existing reports under `src/reports/` are generated as CSV via `csvExporter`.\n- Authorization uses the `requireRole('admin')` middleware in `src/auth/roles.ts`.\n\n## Patterns\n- Time windows elsewhere default to a 30-day rolling window (`src/reports/usage.ts`).\n- Background generation uses the `jobQueue` for any report over 10k rows.\n",
+          "grounded-spec.md": "# Grounded Spec: STORY-2401\n\n## Context Grounding\n- **Primary Flow**: report export\n- **Confidence Level**: Medium\n\n## Resolved Ambiguities\n\n### 1. Retention window for exported data\n**Gap**: How long exported reports are retained.\n**Decision**: Option A — delete after 7 days. ⚠️ LOW CONFIDENCE\n\n### 2. Behaviour when the export is empty\n**Gap**: What to return when no activity matches.\n**Decision**: Option A — return an empty CSV with headers. ⚠️ LOW CONFIDENCE\n\n## Open Questions\n\n```yaml\n- id: SF-1\n  gap: How long should exported report files be retained?\n  reason: low-confidence\n  options:\n    - {key: A, text: Delete after 7 days, recommended: true, rationale: Matches the shortest existing retention in the repo}\n    - {key: B, text: Delete after 30 days}\n  tentative: A\n- id: SF-2\n  gap: What should an export with zero matching rows return?\n  reason: low-confidence\n  options:\n    - {key: A, text: Empty CSV with headers, recommended: true, rationale: Keeps the response shape stable for consumers}\n    - {key: B, text: HTTP 204 No Content}\n  tentative: A\n```\n\n## Implementation Boundary\n\n### Included\n- CSV export endpoint\n\n### Excluded\n- Scheduled/recurring exports\n\n## Guardrail Check\n- No guardrail conflicts identified.\n"
+        }
+      },
+      "expectations": [
+        {
+          "text": "Interprets the free-form reply correctly: maps 'the first one go with B' to question SF-1 choosing option B, and recognises that SF-2 was explicitly delegated back to its own judgement.",
+          "tier": "critical"
+        },
+        {
+          "text": "Records the mapping in a Dialogue Answers section that quotes the user's own wording verbatim alongside each question id, so a mis-matched answer would be visible rather than silent.",
+          "tier": "critical"
+        },
+        {
+          "text": "Does NOT re-ask the questions that were already answered, and does not re-run the completeness audit to derive a fresh, differently-numbered list of ambiguities.",
+          "tier": "critical"
+        },
+        {
+          "text": "Updates the corresponding entry in Resolved Ambiguities so the retention decision now reflects the user's choice of 30 days rather than its own original 7-day pick.",
+          "tier": "quality"
+        }
+      ]
+    },
+    {
+      "id": "l2-4-never-blocks-logs-assumptions",
+      "prompt": "Finalize and ground this user story against the supplied files. You cannot talk to the user. Resolve every ambiguity with the safest option and flag weak picks. Inputs: story=story.md, context_pack=context_pack.md.",
       "mode": "autonomous",
       "kind": "judged",
       "fixture": {
@@ -53,15 +91,15 @@
           "tier": "critical"
         },
         {
-          "text": "Leaves the Dialogue Answers section empty or omits it entirely, since no dialogue occurred in autonomous mode.",
+          "text": "Leaves the Dialogue Answers section empty or omits it entirely, since no answers input was supplied on this pass.",
           "tier": "quality"
         }
       ]
     },
     {
-      "id": "l2-5-high-blast-radius-low-confidence-asked-in-dialogue",
-      "prompt": "Finalize and ground this user story in DIALOGUE mode against the supplied files. Inputs: story=story.md, context_pack=context_pack.md, mode=dialogue.",
-      "mode": "dialogue",
+      "id": "l2-5-high-blast-radius-low-confidence-surfaced-in-open-questions",
+      "prompt": "Finalize and ground this user story against the supplied files. You cannot talk to the user. Inputs: story=story.md, context_pack=context_pack.md.",
+      "mode": "autonomous",
       "kind": "judged",
       "fixture": {
         "files": {
@@ -75,36 +113,18 @@
           "tier": "critical"
         },
         {
-          "text": "Because this is dialogue mode, it ASKS the user about the high-blast-radius low-confidence ambiguity (presenting a Recommended option plus a custom-answer option) rather than silently auto-resolving it.",
-          "tier": "critical"
-        }
-      ]
-    },
-    {
-      "id": "l2-5-high-blast-radius-low-confidence-flagged-needs-input-autonomous",
-      "prompt": "Finalize and ground this user story in AUTONOMOUS (afk) mode against the supplied files. You cannot talk to the user. Inputs: story=story.md, context_pack=context_pack.md, mode=autonomous.",
-      "mode": "autonomous",
-      "kind": "judged",
-      "fixture": {
-        "files": {
-          "story.md": "# STORY-2402: Bulk-delete inactive customer accounts\n\nAs an operator I want to bulk-delete inactive customer accounts to clean up the system.\n\n- Inactive accounts should be removed.\n- This should happen automatically.\n",
-          "context_pack.md": "# Context Pack: STORY-2402\n\n## Flows\n- Account records in `src/accounts/` are currently only soft-deleted (`deleted_at` timestamp), never hard-deleted.\n- Account data is referenced by `orders`, `invoices`, and `audit_log` tables.\n\n## Constraints\n- There is no precedent in the repo for permanently destroying customer data, and no defined retention policy.\n"
-        }
-      },
-      "expectations": [
-        {
           "text": "Does not block; it auto-resolves the destruction-semantics ambiguity with the safest option (e.g. soft-delete, matching existing repo behaviour) and flags it as LOW CONFIDENCE in the grounded spec.",
           "tier": "critical"
         },
         {
-          "text": "Surfaces the high-blast-radius low-confidence ambiguity in a machine-readable NEEDS_INPUT escalation block in its return message, with a reason of low-confidence and the tentative option it selected.",
+          "text": "Records that high-blast-radius low-confidence ambiguity as an entry in the machine-readable Open Questions block of the grounded spec — with a reason of low-confidence and the tentative option it selected — rather than only burying it in prose.",
           "tier": "critical"
         }
       ]
     },
     {
-      "id": "l2-5-trivial-ambiguity-auto-resolved-both-modes",
-      "prompt": "Finalize and ground this user story in DIALOGUE mode against the supplied files. Inputs: story=story.md, context_pack=context_pack.md, mode=dialogue.",
+      "id": "l2-5-trivial-ambiguity-auto-resolved-silently",
+      "prompt": "Finalize and ground this user story against the supplied files. Inputs: story=story.md, context_pack=context_pack.md.",
       "mode": "dialogue",
       "kind": "judged",
       "fixture": {
@@ -126,7 +146,7 @@
     },
     {
       "id": "l2-6-grounding-with-context-pack-fast-path",
-      "prompt": "Finalize and ground this user story in AUTONOMOUS mode. A context pack is provided, so use it as the primary grounding source. Inputs: story=story.md, context_pack=context_pack.md, mode=autonomous.",
+      "prompt": "Finalize and ground this user story. A context pack is provided, so use it as the primary grounding source. Inputs: story=story.md, context_pack=context_pack.md.",
       "mode": "autonomous",
       "kind": "judged",
       "fixture": {
@@ -148,7 +168,7 @@
     },
     {
       "id": "l2-6-grounding-with-repo-no-pack-full-scan-path",
-      "prompt": "Finalize and ground this user story in AUTONOMOUS mode. No context pack is provided; ground the story directly against the repository source files supplied. Inputs: story=story.md, mode=autonomous.",
+      "prompt": "Finalize and ground this user story. No context pack is provided; ground the story directly against the repository source files supplied. Inputs: story=story.md.",
       "mode": "autonomous",
       "kind": "judged",
       "fixture": {
@@ -176,7 +196,7 @@
     },
     {
       "id": "l2-6-story-only-no-repo-emits-grounding-source-marker",
-      "prompt": "Finalize and ground this user story in AUTONOMOUS mode. There is no context pack and no repository source to ground against — only the story itself. Inputs: story=story.md, mode=autonomous.",
+      "prompt": "Finalize and ground this user story. There is no context pack and no repository source to ground against — only the story itself. Inputs: story=story.md.",
       "mode": "autonomous",
       "kind": "judged",
       "fixture": {

@@ -6,7 +6,8 @@ its own separate `plan.md`). Sections:
   - `# Grounded Spec: <STORY-ID>` (title)
   - `## Context Grounding`
   - `## Resolved Ambiguities`
-  - `## Dialogue Answers` (dialogue mode only)
+  - `## Open Questions` (always present; empty list when nothing warrants asking)
+  - `## Dialogue Answers` (resume pass only — populated once a user has answered)
   - `## Implementation Boundary`
   - `## Guardrail Check`
 -->
@@ -46,25 +47,40 @@ its own separate `plan.md`). Sections:
 
 *(Repeat for each ambiguity)*
 
+## Open Questions
+
+*(ALWAYS present. The `zero-option` / ⚠️ LOW CONFIDENCE decisions this spec resolved but would
+prefer a human to confirm — max 7, ranked by blast radius, only mutually independent gaps. The
+spec is fully resolved regardless; this is a confirmation request, not a blocker. Write an empty
+list when nothing warrants asking. Answered-ness is derived from `## Dialogue Answers` — do NOT
+add a `status` field here.)*
+
+```yaml
+- id: SF-1
+  gap: [the gap, phrased as a question]
+  reason: zero-option | low-confidence
+  options:
+    - {key: A, text: [option], recommended: true, rationale: [one line: why this one]}
+    - {key: B, text: [option]}
+  tentative: A
+```
+
 ## Dialogue Answers
 
-*(Gated/dialogue mode only. One block per question actually asked of the user — the
-`zero-option` / ⚠️ LOW CONFIDENCE items. In one-shot/afk mode there is no dialogue; leave
-this section empty or omit it.)*
+*(Resume pass only — populated when the caller re-invokes with an `answers` input. One `### Round N`
+subsection per round, max 2 rounds. On a first pass there is no dialogue; leave empty or omit.)*
 
-### Q1: [The question asked]
-**Options presented:**
-- A — [option] **(Recommended)** — *[one-line rationale for why this is recommended]*
-- B — [option]
-- C — [option]
-- Custom — [user may provide their own answer]
+### Round 1
 
-**Chosen answer**: [Recommended option / custom answer the user gave]
-**Rationale**: [Why this answer was chosen — user direction is authoritative]
+| Question | What the user said (verbatim) | Resolved to |
+|----------|-------------------------------|-------------|
+| SF-1 | "[the exact fragment of the user's reply matched to this question]" | [option key or custom answer] |
+| SF-2 | "[…]" | […] |
 
----
-
-*(Repeat for each question asked)*
+*(Quoting the user verbatim is mandatory — it is what makes a mis-matched answer reviewable rather
+than invisible. A question with no matching fragment is re-asked in round 2 or auto-resolved with an
+explicit ⚠️ LOW CONFIDENCE note; it is never silently dropped. The user's answer is authoritative and
+overrides the tentative pick.)*
 
 ## Implementation Boundary
 

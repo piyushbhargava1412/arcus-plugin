@@ -7,6 +7,60 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Batched clarification questions replace the one-at-a-time interview — in every mode.**
+  `spec-finalizer` and `implementation-planner` **no longer take a `mode` parameter** and never
+  converse. Each always produces a **fully resolved** artifact *and* records the decisions it was
+  least confident about in a new `## Open Questions` YAML block inside that same artifact. Whether a
+  human ever sees those questions is now purely the orchestrator's concern: `afk` ignores them,
+  gated surfaces them. This generalizes the path `spec-finalizer` already took in autonomous mode
+  (resolve everything, emit an escalation list) and deletes the dialogue path, rather than adding a
+  third behavior.
+
+  The old interview asked one question at a time so an early answer could dissolve a later question.
+  Batching removes that protection, so two rules replace it: only **mutually independent** gaps may
+  be surfaced together (dependent ones are held for round 2), and the batch is **capped at 7**,
+  ranked by blast radius, with the tail auto-resolved and flagged `⚠️ LOW CONFIDENCE`. Rounds are
+  capped at **2**, counted from `### Round N` subsections under `## Dialogue Answers` so the cap
+  survives a cold resume with no checkpoint change.
+
+  Consequences worth noting:
+  - **`kick-off`'s "dialogue MUST run in the MAIN THREAD" rule is deleted.** It existed only because
+    the skill conversed. Both capabilities are now always **spawned as isolated subagents**,
+    restoring the depth-1 execution rule that dialogue mode had been violating, and collapsing the
+    controller's two-branch Brainstorm dispatch into one.
+  - **Answers round-trip as a skill input, not an orchestrator write.** The controller passes the
+    user's raw reply as a new optional `answers` input; the re-invoked skill maps it to question ids
+    and writes `## Dialogue Answers` itself. Each artifact keeps exactly one writer.
+  - **The mapping is recorded and echoed back** — id → *verbatim user wording* → resolved choice — so
+    a mis-parsed free-form answer is visible rather than silent. No question is ever dropped without
+    an explicit note.
+  - **Strengthened idempotency guard.** The old guard suppressed re-*asking* but not re-*analysis*,
+    so a resume re-derived the ambiguity list non-deterministically and `SF-3` could stop denoting
+    the gap the user answered. Now: if every id in `## Open Questions` is answered, Steps 1–3 are
+    skipped outright.
+  - **`NEEDS_INPUT:` is removed.** It was defined, documented, and consumed by nothing. The
+    `## Open Questions` artifact section replaces it — a return-message block cannot survive the cold
+    resumes the cloud surface will require. A one-line `OPEN_QUESTIONS: <n>|none` token remains for
+    cheap orchestrator branching.
+  - New `arcus-controller` **Open-Questions Protocol**; `AWAITING_HANDOFF` now distinguishes
+    "questions pending" from "phase gate pending" by inspecting the stage's artifact on resume.
+
+- **Version policy: every merged PR touching `plugins/arcus/**` now bumps at least a patch.**
+  Previously AGENTS.md said to bump "once per accumulated release", which is wrong for this project
+  because `main` **is** the distribution channel — consumers install a copied snapshot and refresh by
+  comparing their cached `version` against the source's. Letting several merged PRs share one version
+  number makes `/plugin update` a silent no-op and strands installed users on whatever content
+  shipped first under that number, with no error anywhere. This actually happened: the checkpoint
+  hardening below merged under an unchanged `2.1.0` and could not reach anyone. Now enforced by CI.
+
+### Added
+
+- **CI: `version-guard.yml`.** Fails a PR that changes `plugins/arcus/**` without bumping
+  `plugin.json`'s `version`, and rejects a backwards move. Turns the distribution rule above from a
+  discipline note into a hard gate.
+
 ### Fixed
 
 - **`checkpoint.sh`: `mutate_json` no longer interpolates shell variables into `node -e` source.**
