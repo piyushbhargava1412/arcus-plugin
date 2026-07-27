@@ -25,14 +25,22 @@ to a human is the **caller's** job, not kick-off's.
 
 ## Protocol
 
-1. **Context pack** — dispatch the `arcus:context-pack-builder` **agent**, passing it the `story` and
-   the available `repo_context`. It produces a `context_pack` describing the story-relevant slice of
-   the repository.
+Both steps are **generic one-shot subagents** whose *prompt* names the capability to follow. Do
+**not** try to invoke `context-pack-builder` or `spec-finalizer` as a named skill/tool — the first is
+an agent with no skill surface, and neither is addressable that way. Spawn a subagent and let the
+prompt do the routing, exactly as `arcus:arcus-controller` does for every other stage.
 
-2. **Spec finalization** — dispatch `arcus:spec-finalizer`, passing it the `story`, the `context_pack`
-   from step 1, and — when the caller supplied one — the `answers` input carrying a user reply to a
-   previously emitted `## Open Questions` block. It analyzes the story for completeness and resolves
-   every ambiguity, producing a `spec_grounding`.
+1. **Context pack** — dispatch a one-shot subagent:
+   - **Prompt**: "Read and follow the `arcus:context-pack-builder` agent. Story: `<STORY>`. Repo context: `<repo_context>`. Write the context pack to `<context_pack_path>`."
+   - **Description**: "Brainstorm: context-pack-builder"
+   - **Model**: resolve complexity `medium` via the `arcus:model-strategy` skill.
+   - It produces a `context_pack` describing the story-relevant slice of the repository.
+
+2. **Spec finalization** — dispatch a one-shot subagent:
+   - **Prompt**: "Read and follow the `arcus:spec-finalizer` skill. Story: `<STORY>`. Context pack: `<context_pack_path>`. Write the grounded spec to `<spec_grounding_path>`." — appending, only when the caller supplied one, "The user has answered the previously emitted Open Questions; `answers`: `<answers>`."
+   - **Description**: "Brainstorm: spec-finalizer"
+   - **Model**: resolve complexity `heavy` via the `arcus:model-strategy` skill.
+   - It analyzes the story for completeness and resolves every ambiguity, producing a `spec_grounding`.
 
 After step 2 completes, kick-off stops and returns its outputs, along with the
 `OPEN_QUESTIONS: <n>|none` token `arcus:spec-finalizer` returned.

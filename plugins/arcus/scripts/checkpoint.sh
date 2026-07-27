@@ -21,6 +21,11 @@
 # Modes: gated (default, human handoff between stages) | afk (autonomous, auto-confirm)
 # current_status values: IN_PROGRESS | AWAITING_HANDOFF | COMPLETE | FAILED
 #   (AWAITING_INPUT is reserved for the async/cloud channel; no local code path sets it yet.)
+#
+# `current_stage` is the stage the pipeline is AT — never the last one that finished.
+# `complete` advances it to the next stage still to be done; `set-status` points it at
+# whatever stage it just touched. Key order in `stages` IS the pipeline order, which is
+# why `set-tasks` splices task_1..N in at their canonical position rather than appending.
 # ==============================================================================
 
 set -eo pipefail
@@ -70,8 +75,16 @@ run_mutation() {
             case "complete": {
                 const [stage] = rest;
                 cp.stages[stage] = "complete";
-                cp.current_stage = stage;
-                cp.current_status = (stage === "closure") ? "COMPLETE" : "IN_PROGRESS";
+                // `current_stage` means "the stage the pipeline is AT", not "the last
+                // stage that finished" — so completing one advances it to the next
+                // stage still to be done, in key order. Leaving it pointing at the
+                // just-completed stage made every reader (and every human opening the
+                // file) mistake a finished stage for the active one.
+                const keys = Object.keys(cp.stages);
+                const next = keys.slice(keys.indexOf(stage) + 1)
+                                 .find(k => cp.stages[k] !== "complete");
+                cp.current_stage = next || stage;
+                cp.current_status = next ? "IN_PROGRESS" : "COMPLETE";
                 break;
             }
             case "set-status": {
@@ -110,13 +123,7 @@ run_mutation() {
                 const [nStr] = rest;
                 const n = Number.parseInt(nStr, 10);
                 cp.stages = cp.stages || {};
-                // Seed task_1..task_n that do not already exist as pending.
-                for (let i = 1; i <= n; i++) {
-                    const key = `task_${i}`;
-                    if (!Object.prototype.hasOwnProperty.call(cp.stages, key)) {
-                        cp.stages[key] = "pending";
-                    }
-                }
+
                 // Prune phantom task_N slots above n that were never started —
                 // migrates checkpoints created before task seeding was bounded.
                 for (const key of Object.keys(cp.stages)) {
@@ -125,6 +132,33 @@ run_mutation() {
                         delete cp.stages[key];
                     }
                 }
+
+                // Rebuild the stages object so task_1..task_n sit in CANONICAL
+                // PIPELINE POSITION (after `branch`, before `code_review`) rather
+                // than appended at the end. Key order is the pipeline order any
+                // reader walks, so appending after `closure` would misrepresent
+                // the sequence. Existing task statuses are preserved.
+                const existing = cp.stages;
+                const isTask = k => /^task_\d+$/.test(k);
+                const tasks = {};
+                for (let i = 1; i <= n; i++) {
+                    const key = `task_${i}`;
+                    tasks[key] = Object.prototype.hasOwnProperty.call(existing, key)
+                        ? existing[key]
+                        : "pending";
+                }
+                const rebuilt = {};
+                let inserted = false;
+                for (const key of Object.keys(existing)) {
+                    if (isTask(key)) continue; // re-emitted from `tasks` below
+                    if (key === "code_review" && !inserted) {
+                        Object.assign(rebuilt, tasks);
+                        inserted = true;
+                    }
+                    rebuilt[key] = existing[key];
+                }
+                if (!inserted) Object.assign(rebuilt, tasks); // no code_review key (legacy)
+                cp.stages = rebuilt;
                 break;
             }
             case "fail": {
