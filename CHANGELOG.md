@@ -7,6 +7,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Agent dispatch now works on GitHub Copilot CLI, and stops wasting a failed tool call on Claude
+  Code.** ARCUS instructed dispatching its 13 pure agents as `arcus:<name>` — a form **no host
+  resolves**. Verified empirically against both surfaces: Claude Code registers plugin agents under
+  the **plugin** name (`arcus-plugin:<name>`), so `arcus:<name>` fails and the model only recovers by
+  guessing again; GitHub Copilot CLI has **no agent registry at all** (it exposes `skill(...)` and
+  `task(...)` only), so a named agent is unresolvable there outright — the origin of the reported
+  `Unknown skill: arcus-plugin:context-pack-builder`.
+
+  Dispatch sites now name agents **bare** and resolve them through a new **Agent Resolution** section
+  in `arcus:model-strategy`: prefer the host's registered subagent type, else spawn a generic
+  subagent pointed at `$ARCUS_HOME/agents/<name>.md`. Deliberately *not* path-only — the registered
+  form is preferred because the host enforces the agent's `tools:`/`disallowed-tools:` frontmatter,
+  which is what keeps the advisory reviewers genuinely read-only. `arcus:<name>` remains valid in
+  ownership **prose** (it is the token `walkAll()` validates); only imperative dispatch changed.
+
+- **Helper scripts self-heal instead of going stale forever.** The resolution rule preferred
+  `.arcus/bin/` unconditionally, and nothing ever invalidated it — so a workspace bootstrapped once
+  kept serving those scripts to every later session, on every host. Compounding it, only Claude Code
+  fires the plugin's `SessionStart` hook: Copilot CLI reads hooks from `.github/hooks/` in a
+  different schema (`sessionStart`, no `CLAUDE_PLUGIN_ROOT`), so the bundled hook never executes
+  there and on a Copilot-only machine `.arcus/bin/` is **never created** — every helper-script call
+  fails. Observed in practice: a repo ran June-vintage `checkpoint.sh` while reporting version 2.2.0.
+
+  New `scripts/locate.sh` finds the newest install (explicit `$ARCUS_HOME` → probe the known install
+  roots, highest semver → last-known `.arcus/env`), runs the bootstrap, and prints the resolved home.
+  Entry points call it as **step 0 of every run, including resumes**. Because a given version's
+  scripts are byte-identical whichever host installed them, "newest wins" needs no host detection.
+  `bootstrap.sh` now also stamps `ARCUS_VERSION` into `.arcus/env`, so a stale staging is diagnosable
+  rather than invisible.
+
+- **`agents.md`: removed the `/arcus:<name>` slash-command claim.** The plugin ships no `commands/`
+  directory, so no slash form has ever worked on any host — invoking one returns `Unknown command`.
+  Skills are invoked by **bare name**, which is now stated instead.
+
+### Added
+
+- **L1-15 (`checkAgentDispatchPortable`)** — static check failing any skill/agent that dispatches a
+  pure agent as `arcus:<name>`, with the host-correct form named in the error. Prose mentions are
+  deliberately not flagged. Brings the planted-violation coverage map to 15 checks.
+
 ## [2.2.1] - 2026-07-27
 
 ### Changed

@@ -33,8 +33,9 @@ When activated, follow the **Execution Pipeline** below.
 - **Subagent Isolation**: Each stage dispatches a fresh subagent with scoped context.
 - **Parallelization**: Stages that share no dependency run in parallel (Stage 2a, 2b, and 2c).
 - **Model Strategy**: Resolve model tier via the `arcus:model-strategy` skill for each subagent.
-- **Dispatch by name**: Stages dispatch the discovery **agents** (`arcus:repo-overview-discovery`,
-  `arcus:flow-discovery`, `arcus:test-pattern-discovery`, `arcus:design-pattern-discovery`) **by name** —
+- **Dispatch by name**: Stages dispatch the discovery **agents** (`repo-overview-discovery`,
+  `flow-discovery`, `test-pattern-discovery`, `design-pattern-discovery`), each resolved per
+  **Agent Resolution** in `arcus:model-strategy` —
   each agent owns its own templates/references under `agent-resources/<agent>/`.
 
 ## Prerequisites
@@ -116,6 +117,14 @@ Your chat response MUST contain ONLY these milestone lines:
 
 **FORBIDDEN in chat**: Narrative, explanations, "Let me...", "Now I'll...", step-by-step commentary.
 
+> **Dispatching an ARCUS agent.** Agents live at `$ARCUS_HOME/agents/<name>.md` and always run as
+> isolated subagents. Use the **first** that your host offers: (1) a **registered subagent type**
+> ending in `<name>` — Claude Code exposes these as `arcus-plugin:<name>`, and the host then enforces
+> the agent's `tools:`/`disallowed-tools:` frontmatter; (2) otherwise a **generic subagent** whose
+> prompt opens *"Read and follow the agent spec at `$ARCUS_HOME/agents/<name>.md`"* — Copilot CLI has
+> no agent registry, so this is the only route there. Never address an agent as `arcus:<name>`; that
+> is a docs token no host resolves. Full rule: `model-strategy/SKILL.md` § Agent Resolution.
+
 ## Execution Pipeline
 
 ### Stage 1: Build Repository Context (Sequential — must complete before Stage 2)
@@ -123,7 +132,7 @@ Your chat response MUST contain ONLY these milestone lines:
 **Purpose**: Produce `.context/repo_scope.md` and `.context/repo_map.md`.
 
 1. Ensure `.context/` directory exists.
-2. Dispatch the `arcus:repo-overview-discovery` agent **by name**:
+2. Dispatch the `repo-overview-discovery` agent (resolve the dispatch target per **Agent Resolution** in `arcus:model-strategy`):
    - **Description**: `"Context: repo-overview-discovery"`
    - **Model**: Resolve complexity `heavy` via the `arcus:model-strategy` skill
 3. **Verify**: Confirm both `.context/repo_scope.md` and `.context/repo_map.md` exist and are non-empty.
@@ -140,9 +149,9 @@ Dispatch **all three** agents below in parallel **by name**, passing each the `r
 
 | # | Agent (dispatch by name) | Description | Model | Verify output | On miss |
 |---|--------------------------|-------------|-------|---------------|---------|
-| 2a Flow | `arcus:flow-discovery` | `"Context: flow-discovery"` | `heavy` | `.context/flows/` has ≥1 `.md` | `[WARN] No flows discovered — repository may lack clear entry surfaces.` |
-| 2b Test | `arcus:test-pattern-discovery` | `"Context: test-pattern-discovery"` | `medium` | `.context/testing-patterns.md` non-empty | `[WARN] Test patterns not generated — no test files detected.` |
-| 2c Design | `arcus:design-pattern-discovery` | `"Context: design-pattern-discovery"` | `heavy` | `.context/design-and-coding-patterns.md` non-empty | `[WARN] Design patterns not generated — no first-party source detected.` |
+| 2a Flow | `flow-discovery` | `"Context: flow-discovery"` | `heavy` | `.context/flows/` has ≥1 `.md` | `[WARN] No flows discovered — repository may lack clear entry surfaces.` |
+| 2b Test | `test-pattern-discovery` | `"Context: test-pattern-discovery"` | `medium` | `.context/testing-patterns.md` non-empty | `[WARN] Test patterns not generated — no test files detected.` |
+| 2c Design | `design-pattern-discovery` | `"Context: design-pattern-discovery"` | `heavy` | `.context/design-and-coding-patterns.md` non-empty | `[WARN] Design patterns not generated — no first-party source detected.` |
 
 ### Stage 2 Completion
 

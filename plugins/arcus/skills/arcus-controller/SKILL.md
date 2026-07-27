@@ -107,13 +107,26 @@ strictly in this order, skipping any whose checkpoint status is already `complet
 
 ## Helper Scripts
 
-Call these via shell for deterministic operations. The session bootstrap hook stages them into the
-active workspace at `.arcus/bin/`. Resolve the script directory in this order and use the **first
-that exists**: `.arcus/bin/` (preferred, staged by the plugin) → `$ARCUS_HOME/scripts/` (read
-`ARCUS_HOME` from `.arcus/env`).
+Call these via shell for deterministic operations. They are staged into the active workspace at
+`.arcus/bin/`.
+
+**Stage 0 of every run, before any other script: re-stage them.** Run
+`bash "$ARCUS_HOME"/scripts/locate.sh` from the repo root — or, if `ARCUS_HOME` is unset, the same
+script from wherever the plugin is installed. It finds the newest install, runs the bootstrap, and
+prints the resolved `ARCUS_HOME`.
+
+Do **not** treat an existing `.arcus/bin/` as good enough. It is a *copy* with no expiry: a repo
+bootstrapped by one host keeps serving that host's older scripts to every later session. Only Claude
+Code fires the plugin's `SessionStart` hook — Copilot CLI reads hooks from `.github/hooks/` in a
+different schema, so on a Copilot-only machine `.arcus/bin/` is never created at all. `locate.sh` is
+idempotent and costs milliseconds; run it unconditionally rather than checking first.
+
+After it has run, `.arcus/bin/` is authoritative and `.arcus/env` carries `ARCUS_HOME` +
+`ARCUS_VERSION`.
 
 | Script | Usage | Purpose |
 |--------|-------|---------|
+| `"$ARCUS_HOME"/scripts/locate.sh` | Prints the resolved `ARCUS_HOME` | **Run first, every run.** Finds the newest install, re-stages `.arcus/bin/`, writes `.arcus/env` |
 | `.arcus/bin/extract_story_id.sh <story.md>` | Outputs `STORY_ID: xxx` | Extract story identifier |
 | `.arcus/bin/scaffold.sh <story.md> [--mode afk]` | Creates folder + `story.md` + inits checkpoint | Workspace scaffold; records the **planned** branch, creates **no** git branch |
 | `.arcus/bin/branch.sh <story-id>` | Creates the git branch from the planned name | Deferred branch realization (called by `implementation-runner`, not by Stage 0) |
@@ -135,10 +148,21 @@ task slots a resume could mistakenly try to run. `await-handoff` sets `current_s
 gate is pending a "yes"/"proceed", distinct from a stage genuinely being incomplete. `fail` sets
 `current_status` to `FAILED` and records `{stage, reason}` under `failure`.
 
+> **Dispatching an ARCUS agent.** Agents live at `$ARCUS_HOME/agents/<name>.md` and always run as
+> isolated subagents. Use the **first** that your host offers: (1) a **registered subagent type**
+> ending in `<name>` — Claude Code exposes these as `arcus-plugin:<name>`, and the host then enforces
+> the agent's `tools:`/`disallowed-tools:` frontmatter; (2) otherwise a **generic subagent** whose
+> prompt opens *"Read and follow the agent spec at `$ARCUS_HOME/agents/<name>.md`"* — Copilot CLI has
+> no agent registry, so this is the only route there. Never address an agent as `arcus:<name>`; that
+> is a docs token no host resolves. Full rule: `model-strategy/SKILL.md` § Agent Resolution.
+
 ## Execution Pipeline
 
 ### Stage 0: Scaffold (deterministic, no gate, no branch)
 
+0. **Stage the helper scripts**: run `bash "$ARCUS_HOME"/scripts/locate.sh` from the repo root
+   (idempotent; see Helper Scripts). Do this before any other script call, on every run — including
+   resumes — so a stale or missing `.arcus/bin/` can never silently serve old logic.
 1. **Extract Story ID**: run `.arcus/bin/extract_story_id.sh <STORY_FILE>` and capture `STORY_ID`.
    If the script is missing, derive the ID from the filename (strip path and `.md`).
 2. **Check checkpoint**: run `.arcus/bin/checkpoint.sh read <STORY_ID>`. If it already exists, jump
@@ -241,7 +265,8 @@ Runs **only after** a final `approved` verdict — the diff is now stable and ap
 shared `.context/` artifact that the approved change set materially drifted.
 
 1. **Run the drift sync** — dispatch a one-shot subagent:
-   - **Prompt**: "Read and follow the `arcus:context-drift-sync` agent. Inputs: `sync_scope=branch`,
+   - **Agent**: `context-drift-sync`, resolved per **Agent Resolution** in `arcus:model-strategy`.
+   - **Prompt**: "Inputs: `sync_scope=branch`,
      `base_ref=`merge-base(HEAD, `<base_branch>`), `apply_mode=auto`, `commit_label=<STORY_ID>`."
    - **Description**: "Context Sync: context-drift-sync"
    - **Model**: resolve complexity `medium` via the `arcus:model-strategy` skill.
@@ -322,6 +347,8 @@ findings and confirms with the user before re-entering. The loop itself is deleg
 
 When a checkpoint already exists:
 
+0. Run `bash "$ARCUS_HOME"/scripts/locate.sh` first — a resume is exactly when a stale `.arcus/bin/`
+   from an earlier session (or an earlier host) is most likely.
 1. Read it with `.arcus/bin/checkpoint.sh read <STORY_ID>`. Read the **persisted `mode`** from the
    checkpoint (`afk` → autonomous, `gated` → interactive) and use it; do **not** re-infer the mode
    from the resume phrase.

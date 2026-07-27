@@ -23,6 +23,14 @@ itself makes no mode-dependent decisions. `arcus:spec-finalizer` records the dec
 confident about in the `## Open Questions` section of the `spec_grounding` it writes; surfacing those
 to a human is the **caller's** job, not kick-off's.
 
+> **Dispatching an ARCUS agent.** Agents live at `$ARCUS_HOME/agents/<name>.md` and always run as
+> isolated subagents. Use the **first** that your host offers: (1) a **registered subagent type**
+> ending in `<name>` — Claude Code exposes these as `arcus-plugin:<name>`, and the host then enforces
+> the agent's `tools:`/`disallowed-tools:` frontmatter; (2) otherwise a **generic subagent** whose
+> prompt opens *"Read and follow the agent spec at `$ARCUS_HOME/agents/<name>.md`"* — Copilot CLI has
+> no agent registry, so this is the only route there. Never address an agent as `arcus:<name>`; that
+> is a docs token no host resolves. Full rule: `model-strategy/SKILL.md` § Agent Resolution.
+
 ## Protocol
 
 Both steps are **generic one-shot subagents** whose *prompt* names the capability to follow. Do
@@ -31,7 +39,8 @@ an agent with no skill surface, and neither is addressable that way. Spawn a sub
 prompt do the routing, exactly as `arcus:arcus-controller` does for every other stage.
 
 1. **Context pack** — dispatch a one-shot subagent:
-   - **Prompt**: "Read and follow the `arcus:context-pack-builder` agent. Story: `<STORY>`. Repo context: `<repo_context>`. Write the context pack to `<context_pack_path>`."
+   - **Agent**: `context-pack-builder`, resolved per **Agent Resolution** in `arcus:model-strategy`.
+   - **Prompt**: "Story: `<STORY>`. Repo context: `<repo_context>`. Write the context pack to `<context_pack_path>`."
    - **Description**: "Brainstorm: context-pack-builder"
    - **Model**: resolve complexity `medium` via the `arcus:model-strategy` skill.
    - It produces a `context_pack` describing the story-relevant slice of the repository.

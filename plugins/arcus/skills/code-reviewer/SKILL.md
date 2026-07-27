@@ -114,21 +114,31 @@ Mechanical churn must not consume a loopback round. Only lint errors with **no**
 - All hard checks pass (or are honestly `skipped: not configured`) → proceed to Step 3. Record the gate
   results (pass / fail / skipped, with the command run) to include in `review.md`.
 
-### Step 3: Fan out to reviewers
+#> **Dispatching an ARCUS agent.** Agents live at `$ARCUS_HOME/agents/<name>.md` and always run as
+> isolated subagents. Use the **first** that your host offers: (1) a **registered subagent type**
+> ending in `<name>` — Claude Code exposes these as `arcus-plugin:<name>`, and the host then enforces
+> the agent's `tools:`/`disallowed-tools:` frontmatter; (2) otherwise a **generic subagent** whose
+> prompt opens *"Read and follow the agent spec at `$ARCUS_HOME/agents/<name>.md`"* — Copilot CLI has
+> no agent registry, so this is the only route there. Never address an agent as `arcus:<name>`; that
+> is a docs token no host resolves. Full rule: `model-strategy/SKILL.md` § Agent Resolution.
+
+## Step 3: Fan out to reviewers
 
 Spawn the specialists as subagents, in parallel where the platform allows. This coordinator runs
 **in the thread that invoked it** (the main chat thread, or the controller that loaded it) and the
 specialists are capabilities (leaves) — so the spawned subagents here are the only level, never
 nested behind another subagent. Each specialist receives only the changed files plus the relevant
-spec section — not the full conversation. Resolve each model via the `arcus:model-strategy` skill.
+spec section — not the full conversation. Resolve each model **and each agent's dispatch target**
+via the `arcus:model-strategy` skill (see its **Agent Resolution** section — an agent is addressed
+by the host's registered subagent type, never as `arcus:<name>`).
 
 | Reviewer | Agent | Complexity | Scope |
 |----------|-------|------------|-------|
-| Spec compliance | `arcus:spec-compliance-reviewer` (holistic mode) | medium | Whole diff vs. plan DoD + grounded spec |
-| Code quality | `arcus:code-quality-reviewer` | medium | Whole diff vs. repo patterns, incl. **test proportionality** (excessive/over-engineered tests, slow integration tests that bloat the build) |
-| Security | `arcus:security-reviewer` | medium | Whole diff |
-| Performance | `arcus:performance-reviewer` | medium | Whole diff |
-| History/Context | `arcus:history-context-reviewer` | medium | Whole diff vs. git blame/log — flags load-bearing complexity removals, silently-reverted fixes, and re-added reverted code |
+| Spec compliance | `spec-compliance-reviewer` (holistic mode) | medium | Whole diff vs. plan DoD + grounded spec |
+| Code quality | `code-quality-reviewer` | medium | Whole diff vs. repo patterns, incl. **test proportionality** (excessive/over-engineered tests, slow integration tests that bloat the build) |
+| Security | `security-reviewer` | medium | Whole diff |
+| Performance | `performance-reviewer` | medium | Whole diff |
+| History/Context | `history-context-reviewer` | medium | Whole diff vs. git blame/log — flags load-bearing complexity removals, silently-reverted fixes, and re-added reverted code |
 
 Each specialist returns findings as a list of `severity | file:line | description` plus a one-line
 summary. Tell each reviewer to read source files as needed to verify before flagging. Reviewers focus
@@ -137,8 +147,8 @@ gate, so reviewers must not re-litigate them.
 
 ### Step 4: Consolidate via the review-consolidator agent
 
-Do **not** judge findings inline. Delegate consolidation to the `arcus:review-consolidator`
-agent, passing it:
+Do **not** judge findings inline. Delegate consolidation to the `review-consolidator` agent
+(resolved per **Agent Resolution** in `arcus:model-strategy`), passing it:
 
 - `specialist_findings` — the collected outputs of the five specialists from Step 3 (each carries
   severity, file:line, description, confidence), plus any deterministic-gate failures from Step 2

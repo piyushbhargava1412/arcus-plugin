@@ -43,7 +43,7 @@ Reads the inputs below, edits `.context/`, commits, and returns the assessment t
 
 ## Locating helper scripts
 
-Resolve `<BIN>` = `.arcus/bin/` if it exists, else `$ARCUS_HOME/scripts/` (read `ARCUS_HOME` from
+Resolve `<BIN>` = `.arcus/bin/` (after `locate.sh` has run), else `$ARCUS_HOME/scripts/` (read `ARCUS_HOME` from
 `.arcus/env`)
 
 ## The context-meta Block

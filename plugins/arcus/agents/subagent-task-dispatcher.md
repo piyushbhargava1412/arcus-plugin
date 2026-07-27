@@ -15,6 +15,14 @@ color: orange
 
 # Subagent Task Dispatcher
 
+> **Dispatching an ARCUS agent.** Agents live at `$ARCUS_HOME/agents/<name>.md` and always run as
+> isolated subagents. Use the **first** that your host offers: (1) a **registered subagent type**
+> ending in `<name>` — Claude Code exposes these as `arcus-plugin:<name>`, and the host then enforces
+> the agent's `tools:`/`disallowed-tools:` frontmatter; (2) otherwise a **generic subagent** whose
+> prompt opens *"Read and follow the agent spec at `$ARCUS_HOME/agents/<name>.md`"* — Copilot CLI has
+> no agent registry, so this is the only route there. Never address an agent as `arcus:<name>`; that
+> is a docs token no host resolves. Full rule: `model-strategy/SKILL.md` § Agent Resolution.
+
 ## Overview
 
 Defines the protocol for the orchestrator to dispatch individual implementation tasks to fresh subagents. Each subagent operates in isolation with only the context it needs — preventing token accumulation and context drift across a multi-task story.
@@ -86,7 +94,7 @@ After verification passes:
 **Skip condition**: if the task `complexity` == `light`, skip this step entirely and proceed directly to Step 7 (Spec Check).
 
 Otherwise, dispatch a fresh subagent:
-- **Prompt**: the `file_set` (files modified by this task), the `test_command` (this task's TDD verify command), the task's DoD (from `plan.md`) as `acceptance_criteria`, and the instruction: "Read and follow the `arcus:simplify-and-verify` agent."
+- **Prompt**: the `file_set` (files modified by this task), the `test_command` (this task's TDD verify command), the task's DoD (from `plan.md`) as `acceptance_criteria`, and the instruction to read and follow the `simplify-and-verify` agent (resolve the dispatch target per **Agent Resolution** in `arcus:model-strategy`).
 - **Description**: `"Refactor: Task N"`
 - **Model**: Resolve complexity `medium` via the `arcus:model-strategy` skill
 
@@ -116,8 +124,8 @@ its binary FAIL conflicts with the holistic stage's "one or two warnings is stil
 
 1. Dispatch a reviewer subagent:
    - **Prompt**: Include the full task requirements (from the plan), the implementer's status report
-     (FILES_MODIFIED, TESTS_PASSING, NOTES), and the instruction: "Read and follow the
-     `arcus:spec-compliance-reviewer` agent. Review Task N (per-task mode)."
+     (FILES_MODIFIED, TESTS_PASSING, NOTES), and the instruction to read and follow the
+     `spec-compliance-reviewer` agent (resolve the dispatch target per **Agent Resolution** in `arcus:model-strategy`) in per-task mode for Task N.
    - **Description**: `"Review: spec-compliance Task N"`
    - **Model**: Resolve complexity `medium` via the `arcus:model-strategy` skill
 2. Read the VERDICT:

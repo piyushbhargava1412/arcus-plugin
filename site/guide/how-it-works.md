@@ -4,7 +4,7 @@ ARCUS uses a combination of plugin hooks, helper scripts, and portable skill ref
 
 ## Bootstrap Process
 
-On the first agent session after installing the plugin, a **SessionStart hook** automatically runs `scripts/bootstrap.sh`. This script:
+Every ARCUS entry point runs `scripts/locate.sh` as its first step, which finds the newest installed copy of the plugin and runs `scripts/bootstrap.sh`. (Claude Code *also* fires the bundled `SessionStart` hook automatically; Copilot CLI reads hooks from `.github/hooks/` in a different schema, so ARCUS never depends on the hook firing.) This:
 
 1. Stages deterministic helper scripts into the workspace at `.arcus/bin/`:
    - Workspace scaffold (`scaffold.sh`) — creates the spec folder, copies the story, and inits the checkpoint with the *planned* branch (no git branch yet)
@@ -17,7 +17,7 @@ On the first agent session after installing the plugin, a **SessionStart hook** 
 
 2. Records the `ARCUS_HOME` environment variable in `.arcus/env` for script discovery
 
-These helper scripts provide consistent, tested operations that ARCUS skills invoke throughout the pipeline. Skills call scripts from `.arcus/bin/`, ensuring they use the bootstrapped versions specific to your session.
+These helper scripts provide consistent, tested operations that ARCUS skills invoke throughout the pipeline. Skills call scripts from `.arcus/bin/` — re-staged at the start of every run, so an upgraded plugin takes effect immediately instead of a months-old copy lingering.
 
 ## Plugin Portability
 

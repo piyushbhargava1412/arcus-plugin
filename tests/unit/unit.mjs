@@ -247,7 +247,7 @@ section('L1-1..L1-3');
 section('L1-4..L1-7');
 {
   try {
-    const { checkAdvisoryReadOnly, checkCapabilityNoState, checkNoInlinedDomain, checkCrossRefs, checkAgentRefQualified }
+    const { checkAdvisoryReadOnly, checkCapabilityNoState, checkNoInlinedDomain, checkCrossRefs, checkAgentRefQualified, checkAgentDispatchPortable }
       = await import('../lib/checks.mjs');
     const { walkSkills, walkAll, parseFrontmatter, ADVISORY_REVIEWERS }
       = await import('../lib/skills.mjs');
@@ -389,9 +389,10 @@ section('L1-4..L1-7');
     assert(crossRefResult.ok === true, `checkCrossRefs passes on code-reviewer (got ${crossRefResult.errors?.join('; ') || 'ok'})`);
 
     // Test L1-7 (TC-12 union distinction): code-reviewer references moved AGENTS
-    // (e.g. arcus:security-reviewer). Those refs must DANGLE against a skills-only
+    // (e.g. arcus:review-consolidator). Those refs must DANGLE against a skills-only
     // roster and RESOLVE against the skills∪agents union — proving walkAll() is the
-    // load-bearing fix, not incidental.
+    // load-bearing fix, not incidental. (The specialist reviewers moved to bare names
+    // under L1-15, so consolidation is now the surviving prose agent-ref here.)
     const skillsOnlyNames = new Set(allSkills.filter(i => i.surface === 'skill').map(i => i.name));
     const skillsOnlyResult = checkCrossRefs({
       name: codeReviewer.name,
@@ -400,8 +401,8 @@ section('L1-4..L1-7');
     });
     assert(skillsOnlyResult.ok === false,
            'checkCrossRefs FAILS for code-reviewer against a skills-only roster (agent refs dangle)');
-    assert(skillsOnlyResult.errors.join(' ').includes('security-reviewer'),
-           'the dangling ref is a moved agent (security-reviewer)');
+    assert(skillsOnlyResult.errors.join(' ').includes('review-consolidator'),
+           'the dangling ref is a moved agent (review-consolidator)');
 
     // Test L1-7: checkCrossRefs FAILS on dangling-ref fixture
     const danglingRefPath = path.join(repoRoot, 'tests/fixtures/dangling-ref/SKILL.md');
@@ -447,6 +448,37 @@ section('L1-4..L1-7');
     assert(unqualifiedResult.ok === false, `checkAgentRefQualified fails on unqualified-agent-ref (got ok=${unqualifiedResult.ok})`);
     assert(unqualifiedResult.errors.join(' ').includes('context-pack-builder'),
            'checkAgentRefQualified identifies the unqualified pure-agent ref');
+
+    // Test L1-15: dispatching a pure agent as `arcus:<name>` resolves on NO host —
+    // Claude registers `arcus-plugin:<name>`, Copilot has no agent registry at all.
+    const purePortability = new Set(['context-pack-builder', 'security-reviewer']);
+
+    const portableDispatch = checkAgentDispatchPortable({
+      name: 'portable',
+      body: 'Dispatch the `context-pack-builder` agent per Agent Resolution in `arcus:model-strategy`.',
+      pureAgentNames: purePortability
+    });
+    assert(portableDispatch.ok === true,
+           `checkAgentDispatchPortable passes on a bare-name dispatch (got ${portableDispatch.errors?.join('; ') || 'ok'})`);
+
+    const prefixedDispatch = checkAgentDispatchPortable({
+      name: 'prefixed',
+      body: 'Dispatch the `arcus:context-pack-builder` agent now.',
+      pureAgentNames: purePortability
+    });
+    assert(prefixedDispatch.ok === false,
+           `checkAgentDispatchPortable fails on a prefixed dispatch (got ok=${prefixedDispatch.ok})`);
+    assert(prefixedDispatch.errors.join(' ').includes('arcus-plugin:context-pack-builder'),
+           'checkAgentDispatchPortable names the host-correct form in its error');
+
+    // Negative control: the same token in ownership PROSE is the documented,
+    // test-resolved convention and must NOT be flagged.
+    const proseMention = checkAgentDispatchPortable({
+      name: 'prose',
+      body: 'Severity calibration is owned by `arcus:security-reviewer`.',
+      pureAgentNames: purePortability
+    });
+    assert(proseMention.ok === true, 'checkAgentDispatchPortable ignores non-dispatch prose mentions');
 
     pass('L1-4..L1-7 checks passed');
   } catch (err) {
@@ -1032,7 +1064,7 @@ section('planted-violation coverage map');
   // and a planted-bad assertion (returns ok:false), EXCEPT L1-6 which is advisory
   // (asserts warnings on bad input, never sets ok:false).
   //
-  // This section programmatically asserts all 14 checks are covered above.
+  // This section programmatically asserts all 15 checks are covered above.
   const coveredChecks = [
     'L1-1',  // checkManifests: good=real manifests, bad=bad-manifest.json
     'L1-2',  // checkFrontmatter: good=spec-finalizer, bad=bad-frontmatter (reserved word)
@@ -1047,20 +1079,21 @@ section('planted-violation coverage map');
     'L1-11', // validateJsonSchema + checkArtifactSections: good=inline+markdown, bad=bad-checkpoint+bad-plan
     'L1-12', // checkCapabilityHasEvalSpec: good=spec present, bad=capability with no spec (injected predicate)
     'L1-13', // checkAgentFrontmatter: good=good-agent.md, bad=bad-agent.md (missing layer+model)
-    'L1-14'  // checkAgentRefQualified: good=kick-off, bad=unqualified-agent-ref fixture
+    'L1-14', // checkAgentRefQualified: good=kick-off, bad=unqualified-agent-ref fixture
+    'L1-15'  // checkAgentDispatchPortable: good=bare-name dispatch, bad=`arcus:`-prefixed dispatch
   ];
 
-  assert(coveredChecks.length === 14,
-         `coverage map lists all 14 L1 checks (got ${coveredChecks.length})`);
+  assert(coveredChecks.length === 15,
+         `coverage map lists all 15 L1 checks (got ${coveredChecks.length})`);
 
-  // Verify the list is exactly L1-1 through L1-14
-  for (let i = 1; i <= 14; i++) {
+  // Verify the list is exactly L1-1 through L1-15
+  for (let i = 1; i <= 15; i++) {
     const checkId = `L1-${i}`;
     assert(coveredChecks.includes(checkId),
            `coverage map includes ${checkId}`);
   }
 
-  pass('planted-violation coverage: all 14 L1 checks have good+planted assertions');
+  pass('planted-violation coverage: all 15 L1 checks have good+planted assertions');
 }
 
 exitWithReport();
