@@ -5,7 +5,7 @@
 
 import { assert, section, exitWithReport } from '../lib/assert.mjs';
 import { walkSkills, walkAgents, walkAll, readJSON, repoRoot, VALID_TIERS, ADVISORY_REVIEWERS } from '../lib/skills.mjs';
-import { checkManifests, checkFrontmatter, checkLineBudget, checkAdvisoryReadOnly, checkCapabilityNoState, checkNoInlinedDomain, checkCrossRefs, checkAgentRefQualified, checkCapabilityHasEvalSpec, checkAgentFrontmatter } from '../lib/checks.mjs';
+import { checkManifests, checkFrontmatter, checkLineBudget, checkAdvisoryReadOnly, checkCapabilityNoState, checkNoInlinedDomain, checkCrossRefs, checkAgentRefQualified, checkAgentDispatchPortable, checkCapabilityHasEvalSpec, checkAgentFrontmatter } from '../lib/checks.mjs';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -398,6 +398,28 @@ section('L1-14: Pure-agent dispatch references carry the "agent" qualifier');
   }
 
   assert(qualifierFailures === 0, `L1-14: all ${items.length} skills+agents qualify pure-agent dispatch refs (${qualifierFailures} failures)`);
+}
+
+section('L1-15: Pure-agent dispatch is host-portable (no `arcus:` prefix)');
+{
+  const items = walkAll();
+  const skillNames = new Set(walkSkills().map(s => s.name));
+  const pureAgentNames = new Set(walkAgents().map(a => a.name).filter(n => !skillNames.has(n)));
+
+  let portabilityFailures = 0;
+  for (const item of items) {
+    const result = checkAgentDispatchPortable({
+      name: item.name,
+      body: item.body,
+      pureAgentNames
+    });
+    if (!result.ok) {
+      portabilityFailures++;
+      console.error(`  ${item.surface} ${item.name}: ${result.errors.join('; ')}`);
+    }
+  }
+
+  assert(portabilityFailures === 0, `L1-15: all ${items.length} skills+agents dispatch pure agents portably (${portabilityFailures} failures)`);
 }
 
 exitWithReport();

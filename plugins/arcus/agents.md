@@ -3,10 +3,10 @@
 This directory holds **agents** — the model-only, isolated-context execution personas of the ARCUS
 pipeline. Agents are the second of the two ARCUS *surfaces*:
 
-| Surface | Lives in | Invocation | Slash command | Examples |
-|---------|----------|-----------|---------------|----------|
-| **Skill** | `plugins/arcus/skills/<name>/SKILL.md` | user **and** model invocable; injected into the main context | `/arcus:<name>` | `arcus-controller`, `kick-off`, `code-reviewer` |
-| **Agent** | `plugins/arcus/agents/<name>.md` (flat file) | model-only; dispatched **by name** from a skill/orchestrator, or auto-delegated via `description` | none (never user-facing) | `security-reviewer`, `subagent-task-dispatcher`, `context-pack-builder` |
+| Surface | Lives in | Invocation | Examples |
+|---------|----------|-----------|----------|
+| **Skill** | `plugins/arcus/skills/<name>/SKILL.md` | user **and** model invocable by **bare name** (`arcus-controller`); injected into the main context | `arcus-controller`, `kick-off`, `code-reviewer` |
+| **Agent** | `plugins/arcus/agents/<name>.md` (flat file) | model-only; dispatched as an isolated subagent via **Agent Resolution** in `arcus:model-strategy` — never user-facing | `security-reviewer`, `subagent-task-dispatcher`, `context-pack-builder` |
 
 > **Two orthogonal axes.** *Surface* (skill vs agent — this directory split) is independent of
 > *role* (`layer:` — `orchestrator` / `coordinator` / `capability` / `substrate`). An orchestrator

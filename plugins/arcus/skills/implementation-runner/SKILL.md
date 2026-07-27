@@ -47,8 +47,10 @@ Read the persisted `mode` from the checkpoint; do not re-infer it.
 
 Call these via shell for all deterministic git/state operations — never reason about branch names,
 commit messages, or checkpoint JSON by hand. Resolve the script directory in this order and use the
-**first that exists**: `.arcus/bin/` (preferred, staged by the plugin) → `$ARCUS_HOME/scripts/`
-(read `ARCUS_HOME` from `.arcus/env`). This is the same resolution rule the `arcus:arcus-controller`
+Run `bash "$ARCUS_HOME"/scripts/locate.sh` from the repo root first — it re-stages `.arcus/bin/`
+from the newest install and writes `ARCUS_HOME`/`ARCUS_VERSION` into `.arcus/env`. Never trust an
+existing `.arcus/bin/`: it is a copy with no expiry, and on hosts that do not fire the plugin's
+SessionStart hook (Copilot CLI) it may not exist at all. This is the same resolution rule the `arcus:arcus-controller`
 uses.
 
 | Script | Usage | Purpose |
@@ -61,11 +63,19 @@ Checkpoint stage keys (ordered): `scaffold` → `context_pack` → `spec_finaliz
 → `test_plan` → **`branch`** → `task_1`..`task_N` → `code_review` → `context_sync` → `closure`.
 Stage status values: `pending | in_progress | awaiting_handoff | complete | needs_rework`.
 
+> **Dispatching an ARCUS agent.** Agents live at `$ARCUS_HOME/agents/<name>.md` and always run as
+> isolated subagents. Use the **first** that your host offers: (1) a **registered subagent type**
+> ending in `<name>` — Claude Code exposes these as `arcus-plugin:<name>`, and the host then enforces
+> the agent's `tools:`/`disallowed-tools:` frontmatter; (2) otherwise a **generic subagent** whose
+> prompt opens *"Read and follow the agent spec at `$ARCUS_HOME/agents/<name>.md`"* — Copilot CLI has
+> no agent registry, so this is the only route there. Never address an agent as `arcus:<name>`; that
+> is a docs token no host resolves. Full rule: `model-strategy/SKILL.md` § Agent Resolution.
+
 ## Protocol
 
 ### Step 1: Resolve the script directory
 
-Resolve `<BIN>` = `.arcus/bin/` if it exists, else `$ARCUS_HOME/scripts/` (read `ARCUS_HOME` from
+Resolve `<BIN>` = `.arcus/bin/` (after `locate.sh` has run), else `$ARCUS_HOME/scripts/` (read `ARCUS_HOME` from
 `.arcus/env`). All script invocations below use this `<BIN>` prefix.
 
 ### Step 2: Resolve inputs
@@ -114,7 +124,7 @@ dispatcher's escalation and reviewer model picks.)
 For each task **in order**, skipping any whose checkpoint status is already `complete`:
 
 1. `<BIN>/checkpoint.sh set-status <STORY_ID> task_<N> in_progress`.
-2. **Read and follow the `arcus:subagent-task-dispatcher` agent** for that task — do **not**
+2. **Dispatch the `subagent-task-dispatcher` agent** for that task (resolve the dispatch target per **Agent Resolution** in `arcus:model-strategy`) — do **not**
    reimplement per-task dispatch. Pass it:
    - `STORY_ID`
    - `TASK_N`

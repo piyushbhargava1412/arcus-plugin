@@ -294,7 +294,7 @@ ls -ld .
 ```
 
 **4. If persists, check session bootstrap:**
-- Session start hook should run `scripts/bootstrap.sh`
+- Every entry point runs `scripts/locate.sh`, which re-stages `.arcus/bin/` (the `SessionStart` hook is a Claude-Code-only convenience, not the mechanism)
 - This stages `.arcus/bin/` scripts
 - Check if plugin is properly installed
 

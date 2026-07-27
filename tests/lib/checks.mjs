@@ -873,6 +873,56 @@ function checkAgentFrontmatter({ name, frontmatter }) {
   return { ok: errors.length === 0, errors };
 }
 
+/**
+ * L1-15: A pure-agent DISPATCH instruction must not use the `arcus:` prefix.
+ *
+ * `arcus:` is a documentation token the test harness resolves (`walkAll()`); it is
+ * NOT a host namespace, and no host resolves it as a dispatch target. Verified
+ * empirically against both surfaces:
+ *   - Claude Code registers plugin agents under the PLUGIN name
+ *     (`arcus-plugin:<name>`); `arcus:<name>` fails and the model only recovers by
+ *     guessing again after a wasted tool call.
+ *   - GitHub Copilot CLI has no agent registry at all — it exposes `skill(...)`
+ *     and `task(...)` only, so a named agent is unresolvable there entirely.
+ *
+ * Dispatch must therefore go through the Agent Resolution rule in
+ * `arcus:model-strategy`: prefer the host's registered subagent type, else spawn a
+ * generic subagent pointed at `$ARCUS_HOME/agents/<name>.md`. Referring to an agent
+ * as `arcus:<name>` in ordinary PROSE (ownership, "dispatched by …") stays fine —
+ * only imperative dispatch is flagged.
+ *
+ * @param {Object} input
+ * @param {string} input.name - Item name
+ * @param {string} input.body - Item body text
+ * @param {Set<string>} input.pureAgentNames - Agent basenames with NO sibling skill dir
+ * @returns {{ ok: boolean, errors: string[] }}
+ */
+function checkAgentDispatchPortable({ name, body, pureAgentNames }) {
+  const errors = [];
+  // An imperative dispatch verb immediately preceding the token (optionally
+  // "the" and an opening backtick) — the same lead-in L1-14 uses.
+  const leadIn = /(?:read\s+and\s+follow|dispatch|invoke)\s+(?:the\s+)?`?$/i;
+  const refPattern = /arcus:([a-z0-9]+(?:-[a-z0-9]+)*)/g;
+  const flagged = new Set();
+
+  for (const match of body.matchAll(refPattern)) {
+    const refName = match[1];
+    if (!pureAgentNames.has(refName)) continue;
+    if (!leadIn.test(body.slice(0, match.index))) continue; // prose, not dispatch
+    flagged.add(refName);
+  }
+
+  for (const refName of flagged) {
+    errors.push(
+      `${name}: dispatches pure agent as \`arcus:${refName}\` — no host resolves that form ` +
+      `(Claude registers \`arcus-plugin:${refName}\`; Copilot has no agent registry). ` +
+      `Use the bare name and resolve via Agent Resolution in arcus:model-strategy.`
+    );
+  }
+
+  return { ok: errors.length === 0, errors };
+}
+
 export {
   validateJsonSchema,
   checkArtifactSections,
@@ -884,6 +934,7 @@ export {
   checkNoInlinedDomain,
   checkCrossRefs,
   checkAgentRefQualified,
+  checkAgentDispatchPortable,
   checkResourcePaths,
   checkHooks,
   checkNoInlineModel,

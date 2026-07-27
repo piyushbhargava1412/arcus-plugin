@@ -145,11 +145,11 @@ layout: page
         <rect x="0" y="40" width="14" height="46" rx="3" fill="#4a3220"/>
         <circle cx="7" cy="18" r="13" fill="#d1372a" stroke="#241a10" stroke-width="2.5"/>
       </g>
-      <text x="200" y="30" font-family="Arial Narrow, Impact" font-weight="800" font-size="15" fill="#f3c14a" transform="rotate(-6 200 30)">/arcus:…</text>
+      <text x="200" y="30" font-family="Arial Narrow, Impact" font-weight="800" font-size="15" fill="#f3c14a" transform="rotate(-6 200 30)">kick-off</text>
     </svg>
   </template>
   <template #talk>
-    <TalkBubble who="Genie">A <em>skill</em> is a teammate you can ring directly — say <code>/arcus:kick-off</code>, or just describe what you want and the right person answers. It lives in <code>plugins/arcus/skills/&lt;name&gt;/SKILL.md</code> and joins the conversation the moment you call it.</TalkBubble>
+    <TalkBubble who="Genie">A <em>skill</em> is a teammate you can ring directly — name them, like <code>kick-off</code>, or just describe what you want and the right person answers. It lives in <code>plugins/arcus/skills/&lt;name&gt;/SKILL.md</code> and joins the conversation the moment you call it.</TalkBubble>
   </template>
 </ComicPanel>
 
@@ -180,7 +180,7 @@ layout: page
     <div class="col">
       <h4>Skill — you can call them</h4>
       <ul>
-        <li>User <strong>and</strong> Lucie can ring them: <code>/arcus:&lt;name&gt;</code></li>
+        <li>User <strong>and</strong> Lucie can ring them, by bare name: <code>kick-off</code></li>
         <li>Joins the main conversation directly</li>
         <li>13 of ARCUS's 29 jobs are called this way</li>
       </ul>
@@ -222,7 +222,7 @@ layout: page
     </svg>
   </template>
   <template #talk>
-    <TalkBubble who="Genie">A <em>hook</em> isn't a teammate anyone calls — it's wired into the building itself and fires on its own event. The moment a session opens, <code>bootstrap.sh</code> runs on <code>SessionStart</code>, before anyone says a word.</TalkBubble>
+    <TalkBubble who="Genie">A <em>hook</em> isn't a teammate anyone calls — it's wired into the building itself and fires on its own event. In Claude Code, <code>bootstrap.sh</code> runs on <code>SessionStart</code> before anyone says a word. Other hosts wire hooks differently, so Lucie never <em>relies</em> on it — she re-stages the toolbox herself at the top of every run.</TalkBubble>
   </template>
 </ComicPanel>
 
@@ -691,7 +691,7 @@ layout: page
 
 | Say this | You get |
 | --- | --- |
-| "agentify this repo" / `/arcus:repo-agentifier` | **Once per repo.** Angelina scans in parallel, writes the notebook, pins up `AGENTS.md` + `CLAUDE.md`. |
+| "agentify this repo" / `repo-agentifier` | **Once per repo.** Angelina scans in parallel, writes the notebook, pins up `AGENTS.md` + `CLAUDE.md`. |
 | `plan <STORY>` or `implement <STORY>` | **Interactive (gated), the default.** Lucie pauses at every handoff gate for your "yes." |
 | `forge <STORY>` / `afk <STORY>` / `run afk on <STORY>` | **Autonomous.** Every stage back-to-back, milestone-only output, no pauses. |
 | `brainstorm <STORY>` / `kick off <STORY>` / `architect <STORY>` | **Brainstorm only** — context pack + finalized spec, no implementation. |

@@ -18,7 +18,7 @@ Orthogonal to the tier (role) axis below, every ARCUS capability lives on one of
 
 | Surface | Lives in | Invocation | Slash command |
 |---------|----------|-----------|---------------|
-| **Skill** | `plugins/arcus/skills/<name>/SKILL.md` | user **and** model invocable; injected into the main context | `/arcus:<name>` |
+| **Skill** | `plugins/arcus/skills/<name>/SKILL.md` | user **and** model invocable by **bare name** (`arcus-controller`); injected into the main context | bare name |
 | **Agent** | `plugins/arcus/agents/<name>.md` (flat file) | model-only; dispatched **by name** from a skill/orchestrator, never user-facing | none |
 
 An item is an **agent** when no human would type a trigger for it, it already runs as an isolated
