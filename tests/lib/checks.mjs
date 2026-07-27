@@ -617,6 +617,8 @@ function checkNoInlineModel({ name, body }) {
  *   - required: array of property names that must be present (objects)
  *   - enum    : array of allowed values
  *   - properties: object map of subschemas (recurses into each present property)
+ *   - patternProperties: object map of regex-pattern -> subschema (recurses into every
+ *     instance key matching the pattern; a key may match more than one pattern)
  * Any other keyword is treated as a pass (ignored). NO external libraries.
  *
  * @param {*} instance - The value to validate.
@@ -666,6 +668,28 @@ function validateJsonSchema(instance, schema, pathPrefix = '') {
         const childResult = validateJsonSchema(instance[key], schema.properties[key], childPath);
         if (!childResult.ok) {
           errors.push(...childResult.errors);
+        }
+      }
+    }
+  }
+
+  // patternProperties (recurse into every instance key matching each pattern)
+  if (schema.patternProperties && typeof schema.patternProperties === 'object' &&
+      instance && typeof instance === 'object' && !Array.isArray(instance)) {
+    for (const pattern of Object.keys(schema.patternProperties)) {
+      let re;
+      try {
+        re = new RegExp(pattern);
+      } catch {
+        continue; // Malformed pattern in the schema itself — ignore, don't crash validation.
+      }
+      for (const key of Object.keys(instance)) {
+        if (re.test(key)) {
+          const childPath = pathPrefix ? `${pathPrefix}.${key}` : key;
+          const childResult = validateJsonSchema(instance[key], schema.patternProperties[pattern], childPath);
+          if (!childResult.ok) {
+            errors.push(...childResult.errors);
+          }
         }
       }
     }

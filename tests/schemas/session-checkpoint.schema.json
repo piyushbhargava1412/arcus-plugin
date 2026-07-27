@@ -10,9 +10,27 @@
     "base_branch": { "type": "string" },
     "workflow": { "type": "string" },
     "schema_version": { "type": "integer" },
-    "current_status": { "type": "string" },
+    "current_status": {
+      "type": "string",
+      "enum": ["IN_PROGRESS", "AWAITING_HANDOFF", "AWAITING_INPUT", "COMPLETE", "FAILED"]
+    },
     "mode": { "type": "string", "enum": ["gated", "afk"] },
     "review_round": { "type": "integer" },
-    "stages": { "type": "object" }
+    "stages": {
+      "type": "object",
+      "patternProperties": {
+        "^.*$": {
+          "type": "string",
+          "enum": ["pending", "in_progress", "awaiting_handoff", "complete", "needs_rework"]
+        }
+      }
+    },
+    "failure": {
+      "type": "object",
+      "properties": {
+        "stage": { "type": "string" },
+        "reason": { "type": "string" }
+      }
+    }
   }
 }

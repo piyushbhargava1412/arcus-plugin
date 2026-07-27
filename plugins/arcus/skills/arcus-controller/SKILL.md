@@ -53,7 +53,8 @@ otherwise ask which story.
 
 The controller owns the session checkpoint (stage keys enumerated in the Canonical Pipeline table)
 and the planned/realized branch name. The next action is a pure function of the checkpoint — read it
-first, never reason from conversation memory. The loopback auto-loop is capped at `review_round` 3
+first, never reason from conversation memory, and always check the top-level `current_status` before
+the per-stage walk (see Resumption Protocol). The loopback auto-loop is capped at `review_round` 3
 (see Loopback Protocol).
 
 ## Output Discipline
@@ -115,14 +116,22 @@ that exists**: `.arcus/bin/` (preferred, staged by the plugin) → `$ARCUS_HOME/
 | `.arcus/bin/scaffold.sh <story.md> [--mode afk]` | Creates folder + `story.md` + inits checkpoint | Workspace scaffold; records the **planned** branch, creates **no** git branch |
 | `.arcus/bin/branch.sh <story-id>` | Creates the git branch from the planned name | Deferred branch realization (called by `implementation-runner`, not by Stage 0) |
 | `.arcus/bin/commit.sh <story-id> <message>` | Stages + commits | Conventional commit |
-| `.arcus/bin/pr.sh <story-id>` | Push + create PR | Closure |
-| `.arcus/bin/checkpoint.sh <action> <story-id> [args]` | Manage state | init / read / complete / set-status / reopen / set-mode / **set-branch** |
+| `.arcus/bin/pr.sh <story-id>` | Push + create PR (or update if one already exists for the branch) | Closure |
+| `.arcus/bin/checkpoint.sh <action> <story-id> [args]` | Manage state | init / read / complete / set-status / reopen / set-mode / set-branch / **set-tasks** / **await-handoff** / **fail** |
 
 Stage keys and their order are the Canonical Pipeline table above. Stage status values:
-`pending | in_progress | awaiting_handoff | complete | needs_rework`.
+`pending | in_progress | awaiting_handoff | complete | needs_rework`. Top-level `current_status`
+values: `IN_PROGRESS | AWAITING_HANDOFF | COMPLETE | FAILED` — this is the single field the
+Resumption Protocol checks first, before ever walking the per-stage statuses.
 
 The `set-branch` action records a bumped/realized branch name onto the checkpoint; `branch.sh`
-calls it itself when a collision forces a name change.
+calls it itself when a collision forces a name change. `set-tasks <N>` seeds `task_1..task_N` as
+`pending` (only creating keys that don't already exist) and prunes any still-`pending` `task_N` keys
+above `N` — call it once, right after the plan is compiled, so the checkpoint never carries phantom
+task slots a resume could mistakenly try to run. `await-handoff` sets `current_status` to
+`AWAITING_HANDOFF` without touching any per-stage status — it is the durable marker that a handoff
+gate is pending a "yes"/"proceed", distinct from a stage genuinely being incomplete. `fail` sets
+`current_status` to `FAILED` and records `{stage, reason}` under `failure`.
 
 ## Execution Pipeline
 
@@ -162,11 +171,15 @@ calls it itself when a collision forces a name change.
    - **interactive**: read and follow `arcus:implementation-planner` **in the main thread** with
      `mode=dialogue` (so it can interview the user), writing the plan to `.arcus/specs/<STORY_ID>/plan.md`.
    - Verify `plan.md` exists, then `.arcus/bin/checkpoint.sh complete <STORY_ID> plan`.
-3. **Output / gate**:
-   - **autonomous**: emit `[Brainstorm] Complete: <N> tasks, <M> decisions` (N = `### Task` headings
-     in `plan.md`; M = resolved decisions in `grounded-spec.md`) and continue without stopping.
-   - **interactive**: emit the `[Handoff] Brainstorm complete → next: Test Plan` gate and **stop**
-     until the user replies "yes"/"proceed".
+3. **Record the task count**: run `.arcus/bin/checkpoint.sh set-tasks <STORY_ID> <N>` (N = `### Task`
+   headings in `plan.md`) so the checkpoint reflects every planned task slot immediately, instead of
+   relying on per-task keys appearing only as `implementation-runner` starts each one.
+4. **Output / gate**:
+   - **autonomous**: emit `[Brainstorm] Complete: <N> tasks, <M> decisions` (M = resolved decisions in
+     `grounded-spec.md`) and continue without stopping.
+   - **interactive**: run `.arcus/bin/checkpoint.sh await-handoff <STORY_ID>`, then emit the
+     `[Handoff] Brainstorm complete → next: Test Plan` gate and **stop** until the user replies
+     "yes"/"proceed".
 
 ### Test Plan (one-shot)
 
@@ -177,8 +190,9 @@ calls it itself when a collision forces a name change.
    - Verify the file exists, then `.arcus/bin/checkpoint.sh complete <STORY_ID> test_plan`.
 2. **Output / gate**:
    - **autonomous**: emit `[TestPlan] Complete: <N> test cases` and continue without stopping.
-   - **interactive**: emit the `[Handoff] Test Plan complete → next: Implementation` gate and **stop**
-     until the user replies "yes"/"proceed".
+   - **interactive**: run `.arcus/bin/checkpoint.sh await-handoff <STORY_ID>`, then emit the
+     `[Handoff] Test Plan complete → next: Implementation` gate and **stop** until the user replies
+     "yes"/"proceed".
 
 ### Implementation (delegated — branch + task loop)
 
@@ -190,8 +204,9 @@ are owned by the canonical loop driver. **Delegate** the whole Implementation st
 2. **Output / gate**:
    - **autonomous**: emit `[Code] Complete: <N> files changed, <M> tests passing` and continue into
      Code Review.
-   - **interactive**: emit the `[Handoff] Implementation complete → next: Code Review` gate and
-     **stop** until the user replies "yes"/"proceed".
+   - **interactive**: run `.arcus/bin/checkpoint.sh await-handoff <STORY_ID>`, then emit the
+     `[Handoff] Implementation complete → next: Code Review` gate and **stop** until the user replies
+     "yes"/"proceed".
 
 ### Code Review (verdict)
 
@@ -207,10 +222,12 @@ are owned by the canonical loop driver. **Delegate** the whole Implementation st
      - **changes_requested**: emit `[Review] changes_requested: …` and run the **Loopback Protocol**
        automatically (bounded by the review-round cap), then re-review.
    - **interactive**:
-     - **approved**: emit the `[Handoff] Code Review complete → next: Context Sync + Closure` gate and
-       **stop** until the user replies "yes"/"proceed", then continue to Context Sync.
-     - **changes_requested**: surface the findings and run the **Loopback Protocol** (bounded by the
-       review-round cap), confirming with the user before re-entering Implementation; then re-review.
+     - **approved**: run `.arcus/bin/checkpoint.sh await-handoff <STORY_ID>`, then emit the
+       `[Handoff] Code Review complete → next: Context Sync + Closure` gate and **stop** until the
+       user replies "yes"/"proceed", then continue to Context Sync.
+     - **changes_requested**: run `.arcus/bin/checkpoint.sh await-handoff <STORY_ID>`, surface the
+       findings, and run the **Loopback Protocol** (bounded by the review-round cap), confirming with
+       the user before re-entering Implementation; then re-review.
 
 ### Context Sync (one-shot, runs only after final approval)
 
@@ -257,21 +274,32 @@ When a checkpoint already exists:
 1. Read it with `.arcus/bin/checkpoint.sh read <STORY_ID>`. Read the **persisted `mode`** from the
    checkpoint (`afk` → autonomous, `gated` → interactive) and use it; do **not** re-infer the mode
    from the resume phrase.
-2. Determine the next action from stage status, walking the Canonical Pipeline order:
+2. **Check `current_status` first — it is the single global signal for what to do next, and it takes
+   precedence over the per-stage walk below:**
+   - `FAILED`: stop. Report the `failure.stage` / `failure.reason` recorded on the checkpoint and wait
+     for explicit user direction — do not silently retry the failed stage.
+   - `COMPLETE`: the story is done. Report that and do nothing further.
+   - `AWAITING_HANDOFF`: the prior phase group finished and is waiting on the user's "yes"/"proceed" —
+     re-emit the `[Handoff] <phase group> complete → next: <next phase group>` gate for the phase
+     group `current_stage` belongs to (per the Canonical Pipeline table) and **stop**. Do **not** walk
+     forward into the next stage until the user confirms. This is the status the plain stage-status
+     walk in step 3 must never be allowed to skip past — `awaiting_handoff`/`AWAITING_HANDOFF` is not
+     a "run it" status and not a "skip it" status; it is "re-ask before doing anything."
+   - `IN_PROGRESS`: proceed to step 3.
+3. Determine the next action from stage status, walking the Canonical Pipeline order:
    - Skip any stage whose status is `complete`.
    - Run the first stage that is `pending`, `in_progress`, or `needs_rework` (a `code_review` marked
      `needs_rework` means re-enter Implementation via `arcus:implementation-runner` on the fix-tasks,
-     then re-review). In **autonomous** mode there are no `awaiting_handoff` gates to honor — if one
-     is present, run that stage immediately. In **interactive** mode, an `awaiting_handoff` status
-     means the prior phase group is gated awaiting the user's "yes"/"proceed" — on resume, treat that
-     as the gate and continue from the next stage once confirmed.
-3. Read the relevant existing artifacts (`context-pack.md`, `grounded-spec.md`, `plan.md`,
+     then re-review).
+4. Read the relevant existing artifacts (`context-pack.md`, `grounded-spec.md`, `plan.md`,
    `test-plan.md`, `review.md`) to restore context before running the resumed stage.
 
 ## Error Handling
 
-- If a helper script fails (non-zero exit): retry once. If it still fails, output
-  `[ERROR] <stage>: <reason>` and stop.
-- If a stage's required output file is missing after its subagent returns: stop with
+- If a helper script fails (non-zero exit): retry once. If it still fails, run
+  `.arcus/bin/checkpoint.sh fail <STORY_ID> <stage> "<reason>"`, output `[ERROR] <stage>: <reason>`,
+  and stop.
+- If a stage's required output file is missing after its subagent returns: run
+  `.arcus/bin/checkpoint.sh fail <STORY_ID> <stage> "produced no output"`, then stop with
   `[ERROR] <stage>: <skill> produced no output`.
 - Do NOT advance into the next stage if the current stage's required artifacts are missing.

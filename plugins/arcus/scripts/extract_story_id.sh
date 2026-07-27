@@ -44,7 +44,10 @@ if [ -n "$inline_id" ]; then
 fi
 
 # 4) Optional: LLM fallback (only if copilot is available). Keep strict output contract.
-if command -v copilot >/dev/null 2>&1; then
+# Disabled under CI / cloud runs (`$CI` or `$ARCUS_ISSUE_NUMBER` set): shelling out to an
+# all-tools-allowed agent with the raw story text — which in cloud is attacker-controlled
+# issue content — is a prompt-injection surface, not just a convenience fallback.
+if [ -z "${CI:-}" ] && [ -z "${ARCUS_ISSUE_NUMBER:-}" ] && command -v copilot >/dev/null 2>&1; then
   # Use a temp file to avoid very long single-line arguments
   tmp=$(mktemp)
   cat "$STORY_FILE" > "$tmp"
