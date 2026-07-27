@@ -1,6 +1,6 @@
 ---
 name: implementation-planner
-description: Act as a Tech Lead to design a technical approach and decompose a user story into atomic implementation tasks. Generates and scores at least two candidate approaches, and in dialogue (gated) mode interviews the user on the design decision before producing the plan. Use when you have a grounded spec (and optionally a context pack) and need to generate the implementation plan. Trigger on "plan the implementation", "generate implementation plan", or "break down the story".
+description: Act as a Tech Lead to design a technical approach and decompose a user story into atomic implementation tasks. Generates and scores at least two candidate approaches, selects one, and records the choice as an Open Question when it is close-run or hard to reverse. Use when you have a grounded spec (and optionally a context pack) and need to generate the implementation plan. Trigger on "plan the implementation", "generate implementation plan", or "break down the story".
 layer: capability
 standalone: true
 ---
@@ -8,22 +8,55 @@ standalone: true
 # Implementation Planner
 
 ## Overview
-Acts as the **Tech Lead** to bridge the gap between requirements and execution. It absorbs the context-specific artifacts and the grounded spec to design a concrete technical approach and a sequence of atomic, testable tasks. It generates **at least two** scored candidate approaches, deliberates on the chosen one (interviewing the user in dialogue mode), and writes a single self-contained plan — the design deliberation plus a machine-parsed atomic task list — as the `implementation_plan` output.
+Acts as the **Tech Lead** to bridge the gap between requirements and execution. It absorbs the context-specific artifacts and the grounded spec to design a concrete technical approach and a sequence of atomic, testable tasks. It generates **at least two** scored candidate approaches, selects one, and writes a single self-contained plan — the design deliberation plus a machine-parsed atomic task list — as the `implementation_plan` output.
 
-## Execution Modes
+The plan is always complete. When the design choice was close-run or hard to reverse, the skill additionally records it in `## Open Questions` for a human to optionally confirm. It never converses and never blocks — surfacing that question is the orchestrator's job.
 
-This skill receives `mode` as an explicit input parameter. It branches on the `mode` value:
+## Execution Model
 
-| Mode | Behaviour |
-|------|-----------|
-| **dialogue** | Generate and score the candidate approaches, then **ask the user** to choose the design approach as an interview question (one option marked **Recommended** with a one-line rationale, plus an explicit custom-answer option), folding their answer in before designing. Record the Q&A in the `## Design Dialogue Answers` section of the `implementation_plan` output. |
-| **autonomous** (afk) | Never block for input. Auto-select the **highest-scoring** candidate approach and record it. Skip the interview and leave the `## Design Dialogue Answers` section empty or omit it. |
+**This skill never talks to the user and never blocks for input.** It has no mode parameter. On
+every run it does exactly two things:
 
-In **both** modes you must still produce the design sections **and** the atomic task list — together the `implementation_plan` output (see Output). In dialogue mode the user's choice is authoritative and overrides the highest-scoring pick. If the `implementation_plan` output already has a populated `## Design Dialogue Answers` section, reuse it and do NOT re-ask the design question.
+1. Produces a **complete, usable** `implementation_plan` — approaches scored, one chosen, design
+   mapped, tasks decomposed with a DoD each.
+2. Emits the design decisions it was **least confident about** into the `## Open Questions` section
+   of that same output.
+
+Whether anyone *answers* those questions is the orchestrator's concern, not yours. An autonomous run
+ignores them; a gated run surfaces them and re-invokes you with an `answers` input. You behave
+identically either way — which is why you can always run as an isolated subagent.
+
+### The answer round-trip
+
+| `answers` input | What you do |
+|-----------------|-------------|
+| absent (first pass) | Run Steps 1–7. Emit `## Open Questions`. |
+| present (resume pass) | Run Step 0 (map the answers), then **skip Step 2** and resume at Step 3 with the user's choice. |
+
+The user's answer is authoritative and overrides the highest-scoring pick.
+
+**Round cap — 2**, counted from the `### Round N` subsections under `## Design Dialogue Answers`.
+Beyond that, take the highest-scoring approach, flag it `⚠️ LOW CONFIDENCE`, and note that it was
+auto-resolved after the cap.
 
 ## Workflow
 
-**Read the `mode` input.** If `mode == dialogue`, follow the dialogue branch (interview the user on the design approach). If `mode == autonomous`, follow the autonomous branch (never block for input; auto-select the highest-scoring approach).
+### Step 0: Fold In Answers (resume pass only — skip when `answers` is absent)
+
+You are being re-invoked with the user's free-form reply to the questions you previously wrote into
+`## Open Questions`. Expect prose, not a fixed syntax.
+
+1. Map each reply fragment to a question `id` from the existing `## Open Questions` block.
+2. Append a `### Round N` subsection to `## Design Dialogue Answers` recording, per question: the
+   `id`, the **verbatim quoted** fragment you matched to it, and the resolved choice. Writing the
+   mapping down is mandatory — it is what makes a wrong match reviewable rather than invisible.
+3. Any question left unmatched is re-asked (if a round remains) or auto-resolved with an explicit
+   `⚠️ LOW CONFIDENCE` note. **Never silently drop a question.**
+
+**Guard — do not re-score.** If `## Open Questions` exists and every `id` in it is answered in
+`## Design Dialogue Answers`, skip Step 2 and go straight to Step 3 using the answered choice. The
+`## Approach Evaluation` table already on the artifact is authoritative — re-deriving it would
+renumber the candidates the user just chose between.
 
 ### Step 1: Input Analysis
 Use the `story`, `context_pack`, and `spec_grounding` inputs (see Inputs). Treat the `spec_grounding` input's `## Resolved Ambiguities`, `## Dialogue Answers`, and `## Implementation Boundary` as authoritative grounded constraints — the design must honor them, not relitigate them.
@@ -42,19 +75,22 @@ Record the scored comparison into the `## Approach Evaluation` section of the pl
 
 ### Step 3: Select the Chosen Approach
 
-**Dialogue mode — design interview — HARD REQUIREMENT:** After scoring, present the approach choice to the user as an INTERVIEW QUESTION. The question MUST list the candidate approaches, mark **EXACTLY ONE** option **Recommended** with a **one-line rationale** for why it is recommended, AND offer an explicit custom-answer option ("or propose your own approach"). This is mandatory in dialogue mode — no exceptions. Example shape:
+**Always select autonomously.** Take the **highest-scoring** candidate from Step 2 (break ties by
+lowest blast radius, then simplest), or — on a resume pass — the option the user chose in Step 0,
+which overrides the score. Record it into `## Chosen Approach & Reasoning` with its rationale.
 
-```
-Q: Which approach should we take for <the design decision>?
-  A — <candidate A> (Recommended) — <one-line rationale for why A is recommended>
-  B — <candidate B>
-  C — <candidate C>
-  Or propose your own approach.
-```
+**Then decide whether the choice is worth confirming.** Surface the design decision as an open
+question (Step 7a) when the top two candidates score **within 2 points** of each other, or when the
+chosen approach is **hard to reverse** (schema migration, public API shape, dependency addition).
+When one approach clearly dominates, do **not** manufacture a question — resolve it silently and
+leave `## Open Questions` empty. An open question is a signal that a human's judgement would
+genuinely change the outcome, not a ceremonial checkpoint.
 
-The user's answer is authoritative and overrides the highest-scoring pick. Record the chosen approach + reasoning into the `## Chosen Approach & Reasoning` section of the plan, and record the question, the options presented (including which was marked Recommended), and the user's answer into its `## Design Dialogue Answers` section.
+**HARD REQUIREMENT — the question carries YOUR own recommendation.** Any entry you write into
+`## Open Questions` MUST mark **exactly one** option `recommended: true` with a **one-line
+rationale**, and the reader must always be free to propose their own approach.
 
-**Autonomous mode:** NO interview — never block for input. Auto-select the **highest-scoring** candidate from Step 2 (break ties by lowest blast radius, then simplest). Record it into `## Chosen Approach & Reasoning` with the score-based rationale. Leave `## Design Dialogue Answers` empty or omit it.
+Note that the plan is **complete either way** — you never leave the design blank pending an answer.
 
 ### Step 4: Design the Approach
 For the chosen approach:
@@ -75,7 +111,39 @@ Record the impacted-file map and design notes into the `## Design / Impacted Fil
 - Ensure the DoD includes specific functional checks and verification metrics (unit/integration tests).
 
 ### Step 7: Write the Plan
-Write a single self-contained plan using `./assets/plan-template.md`, containing both the design sections — `## Approach Evaluation`, `## Chosen Approach & Reasoning`, `## Design / Impacted Files`, and (dialogue mode only) `## Design Dialogue Answers` — and the machine-parsed atomic task list (`### Task N:` headings). This constitutes the `implementation_plan` output, written to the caller-provided output path (standalone default `.arcus/outputs/implementation-planner/<timestamp>.md`); this skill constructs no ARCUS path itself. The task list is consumed by `test-spec-compiler` and the Code stage.
+Write a single self-contained plan using `./assets/plan-template.md`, containing both the design sections — `## Approach Evaluation`, `## Chosen Approach & Reasoning`, `## Design / Impacted Files`, `## Open Questions`, and (resume pass only) `## Design Dialogue Answers` — and the machine-parsed atomic task list (`### Task N:` headings). This constitutes the `implementation_plan` output, written to the caller-provided output path (standalone default `.arcus/outputs/implementation-planner/<timestamp>.md`); this skill constructs no ARCUS path itself. The task list is consumed by `test-spec-compiler` and the Code stage.
+
+### Step 7a: Write `## Open Questions`
+
+Write the Step 3 decision — if it met the confirm-worthy bar — into the `## Open Questions` section
+of the **same output file**, as a fenced `yaml` block. This is the machine-readable carrier the
+orchestrator reads; it lives in the artifact, not in your return message, so it survives a cold
+resume where no conversation history exists.
+
+```yaml
+- id: PL-1
+  gap: Which approach should we take for <the design decision>?
+  reason: low-confidence
+  options:
+    - {key: A, text: <candidate A>, recommended: true, rationale: <one line: why this one>}
+    - {key: B, text: <candidate B>}
+  tentative: A
+```
+
+Ids use the `PL-` prefix so they never collide with `arcus:spec-finalizer`'s `SF-` ids and a single
+user reply can address both. Exactly one option carries `recommended: true`; `tentative` names the
+approach you actually applied. If the choice was clear-cut, write the section with an empty list.
+**Do not add a `status` field** — answered-ness is derived from `## Design Dialogue Answers`.
+
+### Step 7b: Emit the Summary Token (return message)
+
+End your return message with exactly one line:
+
+```
+OPEN_QUESTIONS: <n>
+```
+
+where `<n>` is the number of entries written in Step 7a, or `none` when there are none.
 
 ## Resources
 - **Plan Template**: `./assets/plan-template.md`
@@ -88,9 +156,10 @@ Write a single self-contained plan using `./assets/plan-template.md`, containing
 |-------|----------|------|-------------|
 | `story` | yes | markdown or text | The original user story requirement |
 | `spec_grounding` | yes | markdown | Resolved ambiguities and implementation boundary from spec finalization |
-| `mode` | yes | string | `dialogue` or `autonomous` — see **Execution Modes** |
 | `context_pack` | no | markdown | Story-to-code correlations (flows, patterns, constraints); proceed without it, noting the omission |
+| `answers` | no | text | The user's free-form reply to a previously emitted `## Open Questions` block. When present, run Step 0 and skip Step 2. |
 
 ### Outputs
-- **`implementation_plan`** (markdown) — a single self-contained plan (sections per `./assets/plan-template.md`): scored candidate approaches, chosen approach + rationale, impacted-files map, design dialogue answers (dialogue mode), and the atomic `### Task N:` list (consumed downstream by `test-spec-compiler` and the Code stage). Written to the caller-provided path or, standalone, defaulting to `.arcus/outputs/implementation-planner/<timestamp>.md`.
+- **`implementation_plan`** (markdown) — a single self-contained plan (sections per `./assets/plan-template.md`): scored candidate approaches, chosen approach + rationale, impacted-files map, `## Open Questions`, design dialogue answers (resume pass), and the atomic `### Task N:` list (consumed downstream by `test-spec-compiler` and the Code stage). Written to the caller-provided path or, standalone, defaulting to `.arcus/outputs/implementation-planner/<timestamp>.md`.
+- **Return message** ends with `OPEN_QUESTIONS: <n>` or `OPEN_QUESTIONS: none`.
 

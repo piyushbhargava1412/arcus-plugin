@@ -143,10 +143,13 @@ snapshot.
 
 **What happens:**
 - Analyzes the story for completeness and identifies ambiguous requirements
-- **Interactive mode:** dialogue with recommendations. **Every interview question is presented with
-  exactly one option marked Recommended (with a one-line rationale) plus a custom-answer
-  option** — so you can accept the recommendation fast or steer.
-- **Autonomous mode:** auto-resolves ambiguities one-shot, grounded in repo patterns
+- **Always** auto-resolves every ambiguity one-shot, grounded in repo patterns — the spec is fully
+  resolved on every run, in both modes
+- **Also** records what it was least confident about in an `## Open Questions` block. **Every entry
+  presents exactly one option marked Recommended (with a one-line rationale)** and you can always
+  answer in your own words.
+- **Interactive mode:** the orchestrator shows you that block — **all questions at once** — and folds
+  your reply back in. **Autonomous mode:** the block is recorded but never surfaced.
 - Consolidates all grounded story decisions into a single **`grounded-spec.md`**
 
 **Skills invoked:**
@@ -169,9 +172,9 @@ carefully!
 **What happens:**
 - Acts as a Tech Lead: designs the technical approach and breaks the story into
   atomic tasks with a Definition of Done
-- **Interactive mode:** the `implementation-planner` runs the same recommendation-first
-  interview style — every question carries one **Recommended** option + rationale and a
-  custom-answer option
+- `implementation-planner` follows the same pattern: it always picks an approach, and records the
+  choice as an `## Open Questions` entry **only** when it is close-run or hard to reverse — one
+  **Recommended** option + rationale, and you can propose your own
 - Writes the **design deliberation + machine-parsed task list** to `plan.md`
 
 **Skills invoked:**
@@ -378,7 +381,7 @@ judgment is needed.
 |--------|----------------------|------------------|
 | **Driver** | `arcus-controller` in interactive mode | `arcus-controller` in autonomous mode |
 | **Gates** | Pauses between stages for your "yes"/"proceed" | Auto-confirms; runs back-to-back |
-| **spec_finalizer** | Recommendation-first dialogue (one question at a time) | One-shot auto-resolution |
+| **spec_finalizer** | One-shot auto-resolution; its `## Open Questions` shown to you as one batch | One-shot auto-resolution; `## Open Questions` recorded, not surfaced |
 | **Resume** | Cold resume = the next stage's explicit phrase + the checkpoint | Intended to run uninterrupted |
 | **Output** | Full progress updates | Milestone-only output |
 

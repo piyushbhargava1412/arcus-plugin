@@ -35,6 +35,13 @@ declares a set of behavioural eval cases for that single skill. The harness
 }
 ```
 
+- **`mode`** — scenario metadata, **not** a skill input. No ARCUS capability takes a `mode`
+  parameter any more: `spec-finalizer` and `implementation-planner` always resolve everything
+  themselves and record low-confidence decisions in an `## Open Questions` block, leaving the
+  orchestrator to decide whether a human sees them. Read the field as *"is a human answer in play in
+  this scenario"* — `dialogue` = the case exercises the answer round-trip or the question-emitting
+  path, `autonomous` = nobody answers. The enum is still validated (`VALID_MODES`,
+  `run-evals.mjs`), and the value does not affect execution.
 - **PR-4** — every expectation MUST carry a `tier`. `critical` gates hard (~100%);
   `quality` is averaged against `ARCUS_EVAL_SCORE_THRESHOLD` (default 70). Tiers are
   graded by the live `claude` CLI judge when you run `pnpm test:evals`.

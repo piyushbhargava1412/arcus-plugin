@@ -18,20 +18,27 @@ single stateful `arcus:arcus-controller` orchestrator, which owns the session ch
 stage gates:
 
 - **Interactive (default, user-driven)** — the gated mode. Trigger it with `implement <STORY>` or
-  `plan <STORY>`. The orchestrator pauses at each handoff gate, running the dialogue stages
-  (spec-finalizer, implementation-planner) **in the main thread** so it can interview you. In the
-  same session a `"yes"` advances to the next stage; on a cold resume you type the next stage's
-  explicit phrase and the checkpoint picks up where you left off. (For brainstorming only — context
-  pack + finalized spec, no implementation — use the `kick-off` coordinator via
+  `plan <STORY>`. The orchestrator pauses at each handoff gate, and additionally surfaces any
+  clarification questions the Brainstorm stages raised — **all of them at once, in a single turn**.
+  In the same session a `"yes"` advances to the next stage; on a cold resume you type the next
+  stage's explicit phrase and the checkpoint picks up where you left off. (For brainstorming only —
+  context pack + finalized spec, no implementation — use the `kick-off` coordinator via
   `brainstorm <STORY>` / `kick off <STORY>` / `architect <STORY>`.)
 - **Autonomous (AFK)** — the hands-off mode. Trigger it with the AFK phrases (`afk`, `--afk`,
-  `forge`, `run afk on <STORY>`). The same orchestrator runs every stage back-to-back as one-shot
-  subagents with milestone-only output, auto-confirming every gate. It never stops and never
-  conducts an interview.
+  `forge`, `run afk on <STORY>`). The same orchestrator runs every stage back-to-back with
+  milestone-only output, auto-confirming every gate and never surfacing questions. It never stops.
 
 Both modes share the same checkpoint stage keys, the same helper scripts, and the same
 `implementation-runner` loop driver — they differ only in whether the orchestrator pauses at gates and
-interviews you.
+shows you the open questions.
+
+::: tip The capabilities themselves have no mode
+`spec-finalizer` and `implementation-planner` never talk to you. On **every** run, in **both** modes,
+each produces a fully resolved artifact *and* records the decisions it was least confident about in
+an `## Open Questions` block inside that artifact. Only the orchestrator differs: interactive shows
+you that block, AFK ignores it. That is why both always run as isolated subagents, and why an AFK
+plan is never "less resolved" than a gated one — just less confirmed.
+:::
 
 ---
 
@@ -45,7 +52,7 @@ interviews you.
 | **Best For** | Novel domains, high-risk changes, learning | Familiar codebases, simple features |
 | **Intervention Points** | 4 handoff gates (GATE A-D) | Milestone-only output |
 | **Session Resumability** | Yes, can pause and resume across days | Resume-capable via checkpoint; intended to run uninterrupted |
-| **Spec Finalization** | Interactive dialogue in the main thread (one recommended option per question) | One-shot auto-resolution in a subagent |
+| **Spec Finalization** | Same one-shot subagent — but its `## Open Questions` are shown to you as one batch (each with one recommended option) | Same one-shot subagent; its `## Open Questions` are recorded but never surfaced |
 | **Output Verbosity** | Full progress updates at each gate | Compact, final artifacts only |
 | **When to Use** | Default for safety and learning | When you're confident in the spec |
 | **Typical Duration** | 30-90 min active time (spread over hours/days) | 30-90 min uninterrupted |
@@ -90,7 +97,7 @@ graph TD
 You need to see how ARCUS interprets your patterns
 
 **Story has ambiguities or missing details**  
-Gated mode asks clarifying questions interactively
+Gated mode surfaces the open questions as one batch for you to answer
 
 **Unfamiliar domain or complex requirements**  
 Review each stage to catch misunderstandings early
@@ -124,7 +131,7 @@ ARCUS knows your patterns, you trust its decisions
 Straightforward changes with low risk
 
 **Trust ARCUS to handle ambiguities automatically**  
-Spec finalizer's one-shot mode makes good default choices
+Spec finalizer always auto-resolves; AFK simply never shows you what it flagged
 
 **Experienced ARCUS user**  
 You know what to expect and trust the outputs
@@ -151,7 +158,7 @@ implementation — use `brainstorm story.md` / `kick off story.md` / `architect 
 the `kick-off` coordinator.)
 
 **What happens:**
-- `arcus:arcus-controller` runs Scaffold then Brainstorm in the main thread
+- `arcus:arcus-controller` runs Scaffold then Brainstorm (its capabilities run as subagents)
 - Scaffold flows directly into Brainstorm (no scaffold handoff gate)
 - First explicit handoff is **GATE A** after Brainstorm
 - At each gate you say `yes` (same session → advances to the next stage) or `no` (pause)
@@ -225,7 +232,7 @@ run afk on bug-fix-story.md
 **Recommendation:** **Gated Mode**
 
 **Why:**
-- Ambiguities need resolution (interactive dialogue helps)
+- Ambiguities need resolution (the batched open questions surface them for you to confirm)
 - Review the grounded spec before implementation starts
 - Verify test coverage before code is written
 - High-risk area (authentication)
@@ -250,7 +257,7 @@ plan auth-feature-story.md
 
 **Decision point:** Review your story:
 - Clear acceptance criteria? → AFK candidate
-- Any "TBD" or vague language? → Gated (dialogue will save time)
+- Any "TBD" or vague language? → Gated (answering the open questions up front will save time)
 
 **Command if clear:**
 ```
@@ -286,7 +293,7 @@ No, AFK runs to completion without pauses.
 ### Using AFK with Vague Story
 **Problem:** Spec has ambiguities, AFK auto-resolves incorrectly  
 **Result:** Implementation doesn't match intent, requires rework  
-**Fix:** Use gated dialogue to clarify ambiguities first
+**Fix:** Use gated mode and answer the open questions to clarify ambiguities first
 
 ### Expecting AFK to Pause
 **Problem:** Start AFK mode, realize you need to intervene  

@@ -44,22 +44,35 @@ For fast-tracked decisions, write: **Decision**: [choice] — *Fast-tracked: [1-
 Flag low-confidence decisions so downstream stages (implementation, review) know to handle them carefully.
 
 `zero-option` is an **escalation signal**, not a decision: it means no viable option could be
-generated. Still record the safest placeholder in the grounded spec, but list the item in the
-`NEEDS_INPUT` block so the orchestrator can ask the user. A `zero-option` blocker is treated as a
-hard blocker by the orchestrator regardless of interactive mode.
+generated. Still record the safest placeholder in the grounded spec, and list the item in the
+`## Open Questions` block so the orchestrator can surface it. A `zero-option` item is always a
+candidate for `## Open Questions`, whatever the caller intends to do with it.
 
-## Gated Question Recommendation Rule
+## Open-Question Selection & Phrasing Rules
 
-In **dialogue (gated)** mode, every question put to the user about a `zero-option` /
-`⚠️ LOW CONFIDENCE` item MUST be phrased so that:
+You never converse with the user. You write the `## Open Questions` block; the orchestrator decides
+whether to surface it. Three rules govern what goes in it:
 
-- **Exactly one** option is explicitly marked **Recommended**, and
-- that recommendation carries a **one-line rationale** for why it is recommended (grounded in the
-  selection priority above — pattern consistency, simplicity, reversibility, safety), and
-- the user is always offered an explicit **custom-answer** option ("or provide your own").
+**1. Ask only mutually independent gaps.** If resolving gap X would change or dissolve gap Y,
+surface X and hold Y back for a second round. Because all questions are asked at once, you no longer
+get the protection the old one-at-a-time interview had — where an early answer could dissolve a later
+question before it was asked. Two questions whose answers can contradict each other is a defect, so
+do that filtering yourself.
 
-This makes the LLM's own recommendation visible while keeping the user's answer authoritative.
-Record each chosen answer (recommended or custom) in the `## Dialogue Answers` section of the grounded spec.
+**2. Cap at 7, ranked by blast radius.** Anything past the cap is auto-resolved with the safest
+option, flagged `⚠️ LOW CONFIDENCE`, and noted as capped. Five good questions beat fifteen mediocre
+ones.
+
+**3. Every entry carries your own recommendation.** For each question:
+
+- **Exactly one** option marked `recommended: true`, and
+- that recommendation carries a **one-line rationale** grounded in the selection priority above —
+  pattern consistency, simplicity, reversibility, safety — and
+- the reader is always free to answer in their own words.
+
+This makes your reasoning visible while keeping the user's answer authoritative. When answers come
+back (via the `answers` input), record each one in `## Dialogue Answers` with the user's **verbatim**
+wording next to the id you matched it to.
 
 ## Common Ambiguity Categories
 

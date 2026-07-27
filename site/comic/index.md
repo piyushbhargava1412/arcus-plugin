@@ -371,23 +371,25 @@ layout: page
 <ComicStrip>
 
 <ComicPanel :span="7" tilt="r">
-  <template #caption>The interview — one recommended answer at a time</template>
+  <template #caption>Every open question, handed over in one go</template>
   <template #scene>
-    <svg class="scene" viewBox="0 0 420 130" role="img" aria-label="Angelina offers a card with a recommended option, a rationale, and a blank for a custom answer">
+    <svg class="scene" viewBox="0 0 420 130" role="img" aria-label="Angelina offers a checklist card of several open questions, each with a recommended option, a rationale, and room for a custom answer">
       <path d="M0 108 Q110 96 210 106 T420 104 L420 130 L0 130 Z" fill="#2a160c"/>
       <CastIcon name="angelina" x="20" y="10" width="110" height="110" />
       <g transform="translate(180 12) rotate(-1)">
         <rect width="180" height="100" rx="4" fill="#fffaf0" stroke="#241a10" stroke-width="2.5"/>
-        <text x="12" y="20" font-family="Arial Narrow, Impact" font-weight="800" font-size="10" fill="#241a10">Token expiry window?</text>
-        <rect x="12" y="30" width="156" height="20" rx="3" fill="#d3f2df" stroke="#2e9e5b" stroke-width="1.5"/>
-        <text x="18" y="44" font-family="Comic Sans MS" font-size="8" fill="#1f5c37">✓ Recommended: 30 min</text>
-        <text x="12" y="66" font-family="Comic Sans MS" font-size="8" fill="#6b5642">(matches session-token TTL)</text>
-        <text x="12" y="86" font-family="Comic Sans MS" font-size="8" fill="#6b5642">— or type your own answer —</text>
+        <text x="12" y="18" font-family="Arial Narrow, Impact" font-weight="800" font-size="9" fill="#241a10">3 open questions</text>
+        <text x="12" y="32" font-family="Arial Narrow, Impact" font-weight="800" font-size="8" fill="#241a10">SF-1 Token expiry window?</text>
+        <rect x="12" y="37" width="156" height="15" rx="3" fill="#d3f2df" stroke="#2e9e5b" stroke-width="1.5"/>
+        <text x="18" y="47" font-family="Comic Sans MS" font-size="7" fill="#1f5c37">✓ Recommended: 30 min (= session TTL)</text>
+        <text x="12" y="66" font-family="Arial Narrow, Impact" font-weight="800" font-size="8" fill="#241a10">SF-2 Refresh on idle?</text>
+        <text x="12" y="76" font-family="Comic Sans MS" font-size="7" fill="#6b5642">✓ Recommended: no</text>
+        <text x="12" y="92" font-family="Comic Sans MS" font-size="7" fill="#6b5642">— answer all in one reply, your own words fine —</text>
       </g>
     </svg>
   </template>
   <template #talk>
-    <TalkBubble who="Angelina">In gated mode I ask you directly, right here in the main thread — every question comes with exactly one recommended option, a one-line reason, and room for your own answer. In AFK mode I run one-shot on my own and pick the recommended path for every ambiguity myself.</TalkBubble>
+    <TalkBubble who="Angelina">I never actually stop and chat. I always decide everything myself, then jot the calls I was least sure about into an <b>Open Questions</b> list — each with exactly one recommended option and a one-line reason. In gated mode Lucie hands you that whole list at once, so you answer in a single reply, in your own words if you like. In AFK mode nobody reads it and my picks just stand.</TalkBubble>
   </template>
 </ComicPanel>
 

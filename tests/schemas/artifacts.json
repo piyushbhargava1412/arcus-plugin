@@ -6,7 +6,7 @@
       "Implementation Boundary",
       "Guardrail Check"
     ],
-    "optionalSections": ["Dialogue Answers"]
+    "optionalSections": ["Open Questions", "Dialogue Answers"]
   },
   "plan.md": {
     "requiredSections": [
@@ -15,7 +15,7 @@
       "Design / Impacted Files",
       "Tasks"
     ],
-    "optionalSections": ["Design Dialogue Answers"]
+    "optionalSections": ["Open Questions", "Design Dialogue Answers"]
   },
   "context-pack.md": {
     "requiredSections": [
