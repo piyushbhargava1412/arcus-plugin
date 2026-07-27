@@ -82,8 +82,10 @@ assert_eq "$(jget stages.scaffold)" "complete" "complete sets status to complete
 assert_eq "$(jget current_status)" "IN_PROGRESS" "complete on a non-closure stage keeps current_status IN_PROGRESS"
 
 echo "== set-branch =="
-# current_stage is 'scaffold' here (set by the complete above); set-branch must
-# update branch_name/base_branch only and leave stages/current_stage untouched.
+# set-branch must update branch_name/base_branch only and leave stages/current_stage
+# untouched. Capture current_stage first rather than hardcoding it — `complete` advances
+# it, so any literal here would silently drift with the pipeline.
+STAGE_BEFORE="$(jget current_stage)"
 if bash "$CHECKPOINT" set-branch "$STORY_ID" "arcus/$STORY_ID-2" "dev" >/dev/null 2>&1; then
     pass "set-branch action accepted (exit 0)"
 else
@@ -91,7 +93,7 @@ else
 fi
 assert_eq "$(jget branch_name)" "arcus/$STORY_ID-2" "set-branch updates branch_name"
 assert_eq "$(jget base_branch)" "dev" "set-branch updates base_branch"
-assert_eq "$(jget current_stage)" "scaffold" "set-branch does not clobber current_stage"
+assert_eq "$(jget current_stage)" "$STAGE_BEFORE" "set-branch does not clobber current_stage"
 assert_eq "$(jget stages.scaffold)" "complete" "set-branch does not clobber stages"
 
 echo "== set-status =="
@@ -131,6 +133,51 @@ assert_eq "$(jget stages.task_1)" "complete" "set-tasks never clobbers a non-pen
 assert_eq "$(jget stages.task_2)" "" "set-tasks prunes a still-pending task_N above the new N"
 assert_eq "$(jget stages.task_3)" "" "set-tasks prunes every still-pending task_N above the new N"
 
+echo "== set-tasks splices task_N into canonical pipeline position =="
+# Key order IS the pipeline order. Appending task_N after `closure` (which is what a
+# naive "add missing keys" does now that init no longer pre-seeds them) would misrepresent
+# the sequence to every reader, including `complete`'s next-stage lookup below.
+rm -rf .arcus
+bash "$CHECKPOINT" init "$STORY_ID" "arcus/$STORY_ID-1" "main" >/dev/null
+bash "$CHECKPOINT" set-tasks "$STORY_ID" 3 >/dev/null
+ORDER="$(node -e "console.log(Object.keys(JSON.parse(require('fs').readFileSync('.arcus/specs/$STORY_ID/session-checkpoint.json','utf8')).stages).join(' '))")"
+assert_eq "$ORDER" \
+    "scaffold context_pack spec_finalizer plan test_plan branch task_1 task_2 task_3 code_review context_sync closure" \
+    "task_1..N are spliced between branch and code_review, not appended after closure"
+
+echo "== complete advances current_stage to the next incomplete stage =="
+# current_stage means "where the pipeline IS", never "what just finished".
+bash "$CHECKPOINT" complete "$STORY_ID" scaffold >/dev/null
+assert_eq "$(jget current_stage)" "context_pack" "completing scaffold advances current_stage to context_pack"
+bash "$CHECKPOINT" complete "$STORY_ID" context_pack >/dev/null
+assert_eq "$(jget current_stage)" "spec_finalizer" "completing context_pack advances to spec_finalizer"
+# Completing out of order must skip over stages already complete, not walk back.
+bash "$CHECKPOINT" complete "$STORY_ID" plan >/dev/null
+assert_eq "$(jget current_stage)" "test_plan" "completing plan advances past it to test_plan"
+assert_eq "$(jget stages.spec_finalizer)" "pending" "an out-of-order complete does not touch skipped stages"
+# The terminal stage has no successor: current_stage holds, status flips to COMPLETE.
+for s in spec_finalizer test_plan branch task_1 task_2 task_3 code_review context_sync; do
+    bash "$CHECKPOINT" complete "$STORY_ID" "$s" >/dev/null
+done
+bash "$CHECKPOINT" complete "$STORY_ID" closure >/dev/null
+assert_eq "$(jget current_stage)" "closure" "completing the terminal stage leaves current_stage at closure"
+assert_eq "$(jget current_status)" "COMPLETE" "completing the last remaining stage flips current_status to COMPLETE"
+
+echo "== set-tasks preserves started tasks while re-splicing =="
+rm -rf .arcus
+bash "$CHECKPOINT" init "$STORY_ID" "arcus/$STORY_ID-1" "main" >/dev/null
+bash "$CHECKPOINT" set-tasks "$STORY_ID" 4 >/dev/null
+bash "$CHECKPOINT" set-status "$STORY_ID" task_1 complete >/dev/null
+bash "$CHECKPOINT" set-status "$STORY_ID" task_2 in_progress >/dev/null
+bash "$CHECKPOINT" set-tasks "$STORY_ID" 2 >/dev/null
+assert_eq "$(jget stages.task_1)" "complete" "re-splicing preserves a completed task's status"
+assert_eq "$(jget stages.task_2)" "in_progress" "re-splicing preserves an in-progress task's status"
+assert_eq "$(jget stages.task_3)" "" "re-splicing prunes still-pending tasks above the new N"
+ORDER2="$(node -e "console.log(Object.keys(JSON.parse(require('fs').readFileSync('.arcus/specs/$STORY_ID/session-checkpoint.json','utf8')).stages).join(' '))")"
+assert_eq "$ORDER2" \
+    "scaffold context_pack spec_finalizer plan test_plan branch task_1 task_2 code_review context_sync closure" \
+    "re-splicing keeps canonical order"
+
 echo "== set-tasks rejects a non-numeric N =="
 if bash "$CHECKPOINT" set-tasks "$STORY_ID" abc >/dev/null 2>&1; then
     fail "non-numeric N should be rejected"
@@ -141,10 +188,11 @@ fi
 echo "== await-handoff =="
 bash "$CHECKPOINT" complete "$STORY_ID" test_plan >/dev/null
 assert_eq "$(jget current_status)" "IN_PROGRESS" "sanity: current_status IN_PROGRESS before await-handoff"
+STAGE_BEFORE="$(jget current_stage)"
 bash "$CHECKPOINT" await-handoff "$STORY_ID" >/dev/null
 assert_eq "$(jget current_status)" "AWAITING_HANDOFF" "await-handoff sets current_status without args"
 assert_eq "$(jget stages.test_plan)" "complete" "await-handoff does not touch any per-stage status"
-assert_eq "$(jget current_stage)" "test_plan" "await-handoff does not touch current_stage"
+assert_eq "$(jget current_stage)" "$STAGE_BEFORE" "await-handoff does not touch current_stage"
 
 echo "== fail =="
 bash "$CHECKPOINT" fail "$STORY_ID" test_plan "helper script exited non-zero twice" >/dev/null

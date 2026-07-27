@@ -55,6 +55,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   shipped first under that number, with no error anywhere. This actually happened: the checkpoint
   hardening below merged under an unchanged `2.1.0` and could not reach anyone. Now enforced by CI.
 
+### Fixed (from first-run testing of the above)
+
+- **`current_stage` now means "the stage the pipeline is AT", not "the last stage that finished".**
+  `complete <stage>` set `current_stage` to the stage it had just completed, so every reader — and
+  every human opening the file — saw a finished stage where they expected the active one. It now
+  advances to the next stage still to be done, skipping any already complete, and holds at the
+  terminal stage (where `current_status` becomes `COMPLETE`). The field name is now accurate rather
+  than needing a rename.
+
+- **`set-tasks` spliced `task_1..N` in at their canonical pipeline position.** Regression from
+  removing the pre-seeded task slots: because the keys no longer existed at init, `set-tasks`
+  appended them at the **end** of `stages`, i.e. after `closure`. Key order *is* the pipeline order,
+  so the sequence was misrepresented to every reader (and to `complete`'s next-stage lookup). They
+  are now spliced between `branch` and `code_review`, preserving the status of any task already
+  started.
+
+- **A stage with unanswered open questions is no longer marked `complete`.** The controller ran the
+  Open-Questions Protocol and then marked `spec_finalizer` complete in the same breath — so a
+  checkpoint written while the human was still deciding claimed the stage was done. Any later resume
+  would then skip the stage, silently dropping the questions and shipping the tentative picks
+  unreviewed. `complete` for these stages now happens only after answers are folded in;
+  `awaiting_handoff` is the terminal state until then.
+
+- **Stage completion is recorded per-stage against its own artifact, not batched after the fact.**
+  `context_pack` sat `pending` while `spec_finalizer` was already running, because both completions
+  fired only once `kick-off` returned as a unit. Each stage is now marked as soon as its own artifact
+  exists.
+
+- **The Resumption Protocol reconciles against artifacts before walking the stage list.** A run that
+  dies between writing an artifact and recording it left the stage `pending` with its output already
+  on disk, so the next run redid finished work. Existing artifacts now heal the checkpoint first —
+  except for `spec_finalizer`/`plan` with unanswered `## Open Questions`, where the file existing
+  proves the skill ran, not that the human replied.
+
+- **`kick-off` dispatch shape corrected.** "Dispatch the `arcus:context-pack-builder` **agent**" led
+  the model to invoke it as a named skill (`Unknown skill: arcus-plugin:context-pack-builder`) —
+  `context-pack-builder` is an agent with no skill surface, and neither capability is addressable
+  that way. Both steps now use the explicit **Prompt / Description / Model** one-shot-subagent shape
+  `arcus-controller` already uses successfully for every other stage.
+
 ### Added
 
 - **CI: `version-guard.yml`.** Fails a PR that changes `plugins/arcus/**` without bumping

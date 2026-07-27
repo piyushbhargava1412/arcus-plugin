@@ -161,17 +161,22 @@ gate is pending a "yes"/"proceed", distinct from a stage genuinely being incompl
 1. **Context pack + spec finalize** — read and follow `arcus:kick-off` **in-thread** (it is a
    coordinator), passing the `story` and the available `repo_context`. It returns a `context_pack`
    and a `spec_grounding`, which the controller resolves to the workspace files
-   `.arcus/specs/<STORY_ID>/context-pack.md` and `.arcus/specs/<STORY_ID>/grounded-spec.md`. Verify
-   both exist, then run the **Open-Questions Protocol** against `grounded-spec.md`. Once it returns,
-   `.arcus/bin/checkpoint.sh complete <STORY_ID> context_pack` and
-   `.arcus/bin/checkpoint.sh complete <STORY_ID> spec_finalizer`.
+   `.arcus/specs/<STORY_ID>/context-pack.md` and `.arcus/specs/<STORY_ID>/grounded-spec.md`.
+
+   Then mark the two stages **separately, in order, each against its own evidence** — never as one
+   batch after both have run:
+   - `context-pack.md` exists → `.arcus/bin/checkpoint.sh complete <STORY_ID> context_pack`.
+   - `grounded-spec.md` exists → run the **Open-Questions Protocol** against it. **Only if that
+     protocol returns without halting** may you run
+     `.arcus/bin/checkpoint.sh complete <STORY_ID> spec_finalizer`. If it halted, the stage is
+     `awaiting_handoff` and you are done for this turn — see the prohibition in that protocol.
 2. **Create implementation plan** — dispatch a one-shot subagent (identical in both modes; the skill
    never interviews):
    - **Prompt**: "Read and follow the `arcus:implementation-planner` skill. Story ID: `<STORY_ID>`. Write the plan to `.arcus/specs/<STORY_ID>/plan.md`."
    - **Description**: "Brainstorm: implementation-planner"
    - **Model**: resolve complexity `heavy` via the `arcus:model-strategy` skill.
-   - Verify `plan.md` exists, then run the **Open-Questions Protocol** against `plan.md`, then
-     `.arcus/bin/checkpoint.sh complete <STORY_ID> plan`.
+   - Verify `plan.md` exists, then run the **Open-Questions Protocol** against `plan.md`. **Only if
+     it returns without halting** may you run `.arcus/bin/checkpoint.sh complete <STORY_ID> plan`.
 3. **Record the task count**: run `.arcus/bin/checkpoint.sh set-tasks <STORY_ID> <N>` (N = `### Task`
    headings in `plan.md`) so the checkpoint reflects every planned task slot immediately, instead of
    relying on per-task keys appearing only as `implementation-runner` starts each one.
@@ -283,9 +288,15 @@ Run this immediately after the owning stage produces its artifact, before markin
    ```
 
    Then run `.arcus/bin/checkpoint.sh set-status <STORY_ID> <stage> awaiting_handoff` and **stop**.
+
+   > **Never mark the stage `complete` on this path.** A stage with unanswered questions is
+   > `awaiting_handoff`, not `complete` — marking it complete tells every later resume the human
+   > already answered, so the questions are silently dropped and the tentative picks ship unreviewed.
+   > `complete` for this stage happens in step 4 and nowhere else.
 4. **On the user's reply**, re-dispatch the same skill with its `answers` input set to the user's
    reply verbatim, writing to the same output path. The skill maps answers to ids, records the
-   mapping in `## Dialogue Answers`, and skips re-deriving what it already resolved.
+   mapping in `## Dialogue Answers`, and skips re-deriving what it already resolved. **Now** mark the
+   stage complete: `.arcus/bin/checkpoint.sh complete <STORY_ID> <stage>`.
 5. **Echo the mapping back** so a mis-parse is visible rather than silent:
    `[Questions] Read your answers as: SF-1→B, SF-2→custom("…")`.
 6. **Repeat at most once.** A second `## Open Questions` block (round 2) may only contain gaps the
@@ -332,12 +343,29 @@ When a checkpoint already exists:
      `awaiting_handoff`/`AWAITING_HANDOFF` is not a "run it" status and not a "skip it" status; it is
      "re-ask before doing anything."
    - `IN_PROGRESS`: proceed to step 3.
-3. Determine the next action from stage status, walking the Canonical Pipeline order:
+3. **Reconcile against artifacts before walking.** A run can die between writing an artifact and
+   recording it, leaving a stage `pending` whose output is already on disk — the next run would then
+   redo finished work. For each pair below, if the file exists and the stage is `pending` or
+   `in_progress`, mark it complete first:
+
+   | Artifact | Stage |
+   |---|---|
+   | `context-pack.md` | `context_pack` |
+   | `grounded-spec.md` | `spec_finalizer` |
+   | `plan.md` | `plan` |
+   | `test-plan.md` | `test_plan` |
+   | `review.md` | `code_review` |
+   | `PR_DESCRIPTION.md` | `closure` |
+
+   **Exception:** do **not** reconcile `spec_finalizer` or `plan` if the artifact's
+   `## Open Questions` still has entries unanswered in `## Dialogue Answers` — the file existing
+   means the skill ran, not that the human replied. Leave those `awaiting_handoff`.
+4. Determine the next action from stage status, walking the Canonical Pipeline order:
    - Skip any stage whose status is `complete`.
    - Run the first stage that is `pending`, `in_progress`, or `needs_rework` (a `code_review` marked
      `needs_rework` means re-enter Implementation via `arcus:implementation-runner` on the fix-tasks,
      then re-review).
-4. Read the relevant existing artifacts (`context-pack.md`, `grounded-spec.md`, `plan.md`,
+5. Read the relevant existing artifacts (`context-pack.md`, `grounded-spec.md`, `plan.md`,
    `test-plan.md`, `review.md`) to restore context before running the resumed stage.
 
 ## Error Handling
