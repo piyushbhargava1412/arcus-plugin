@@ -16,11 +16,15 @@ Fold them in exactly as the Open-Questions Protocol specifies:
 3. Only once every open question is answered may that stage be marked `complete`.
 4. Then continue forward through the remaining **Brainstorm** stages.
 
-Stop at the FIRST of these:
-- a stage raises new open questions — record them in its artifact, set the checkpoint status, and STOP;
-- the Brainstorm phase group completes — mark it and STOP.
+Then continue the pipeline as far as it will go, all the way to the pull request.
 
-Do NOT begin Test Plan, Implementation, Code Review or Closure, and do NOT create a git branch.
+Stop at the FIRST of these, and only these:
+
+- **A stage records new open questions.** Write them into that stage's artifact, set the checkpoint status, and STOP. A separate deterministic step publishes them — do not post a comment yourself.
+- **The pipeline reaches `closure`** and the pull request exists.
+- **A stage fails twice.** Record it with `checkpoint.sh fail` and STOP.
+
+Git is already configured with push credentials for `origin`. Creating the story branch, committing per task, and opening the pull request are all expected.
 
 You are running unattended in CI. There is no interactive user and nothing will reply in this session: never wait for input, and never ask a question expecting an answer. A separate deterministic step publishes any questions you record.
 
