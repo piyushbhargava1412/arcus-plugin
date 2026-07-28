@@ -283,15 +283,33 @@ jobs:
           PR_URL="$(gh pr list --repo "${{ github.repository }}" \
                       --search "$STORY_ID in:title" --state all \
                       --json url --jq '.[0].url' 2>/dev/null || true)"
+          REASON="$(node -p "(require('./$CP').failure||{}).reason||''" 2>/dev/null || true)"
+          # A prefilled compare link, when pr.sh could not open the PR itself.
+          MANUAL_URL="$(grep -o 'PR_MANUAL_URL: .*' /tmp/arcus.log 2>/dev/null | tail -1 | sed 's/PR_MANUAL_URL: //')"
           {
             echo "<!-- arcus:v1 kind=status story=$STORY_ID -->"
             case "$STATUS" in
               COMPLETE) echo "### ARCUS finished" ;;
-              FAILED)   echo "### ARCUS stopped: \`$STAGE\` failed" ;;
+              FAILED)   echo "### ARCUS stopped at \`$STAGE\`" ;;
               *)        echo "### ARCUS paused at \`$STAGE\`" ;;
             esac
             echo ""
             [ -n "$PR_URL" ] && echo "Pull request: $PR_URL" && echo ""
+            if [ -n "$MANUAL_URL" ]; then
+              echo "**The branch is pushed and the work is done — this repository just does not allow Actions to open pull requests.**"
+              echo ""
+              echo "👉 **[Open the pull request]($MANUAL_URL)** — one click, title prefilled."
+              echo ""
+              echo "The description is ready at \`.arcus/specs/$STORY_ID/PR_DESCRIPTION.md\` on the \`${{ inputs.state_branch }}\` branch."
+              echo ""
+              echo "To let ARCUS do this itself: **Settings → Actions → General → Workflow permissions → _Allow GitHub Actions to create and approve pull requests_**."
+              echo ""
+            elif [ -n "$REASON" ]; then
+              echo "\`\`\`"
+              echo "$REASON"
+              echo "\`\`\`"
+              echo ""
+            fi
             echo "<sub>status \`$STATUS\` · stage \`$STAGE\` · [run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})</sub>"
           } > /tmp/status.md
           gh issue comment "${{ inputs.issue_number }}" --repo "${{ github.repository }}" --body-file /tmp/status.md
