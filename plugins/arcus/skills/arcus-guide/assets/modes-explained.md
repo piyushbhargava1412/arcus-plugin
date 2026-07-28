@@ -15,14 +15,14 @@ Choosing between Interactive and Autonomous modes
 | **Intervention Points** | A handoff after each stage | Milestone-only output |
 | **Session Resumability** | Yes — cold resume = the next stage's explicit phrase + the checkpoint | Resume-capable via checkpoint; intended to run uninterrupted |
 | **Spec Finalization** | Recommendation-first dialogue (one question at a time, each with a Recommended option) | One-shot auto-resolution |
-| **Output Verbosity** | Full progress updates at each gate | Compact, milestone output only |
+| **Output Verbosity** | Milestone output | Milestone output |
 | **When to Use** | Default for safety and learning | When you're confident in the spec |
 | **Typical Duration** | 30-90 min active time (spread over hours/days) | 30-90 min uninterrupted |
 | **Mistakes Caught** | Early (at each handoff before proceeding) | Late (after full implementation) |
 | **Context Switching** | Friendly (pause anytime, resume later) | Hostile (must complete in one session) |
 
 > Both modes use the same **`arcus-controller`** orchestrator. Interactive mode pauses at
-> handoff gates for review; autonomous mode runs all stages unattended.
+> the Brainstorm open questions; autonomous mode runs all stages unattended.
 
 ---
 

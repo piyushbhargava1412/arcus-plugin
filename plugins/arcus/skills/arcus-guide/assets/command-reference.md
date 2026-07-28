@@ -37,14 +37,14 @@ Begin the SDLC pipeline
 | `afk <STORY>.md` | Autonomous trigger | Same as above |
 
 > **Interactive vs Autonomous:** Both modes use the **`arcus-controller`** orchestrator.
-> Interactive mode (default) pauses at handoff gates for review.
+> Interactive mode (default) stops once, for the Brainstorm open questions, then runs to the PR.
 > Autonomous mode (`afk`, `forge`, `run afk on`) runs all stages unattended.
 
 ---
 
 ## ⏭️ Interactive Mode Resume Phrases
 
-In interactive mode, the orchestrator pauses at handoff gates. To cold-resume a later
+In interactive mode, the orchestrator stops only for open questions. To cold-resume a later
 stage in a fresh session, use that stage's explicit phrase.
 
 | Command | Resumes / runs | When to use |
@@ -65,15 +65,15 @@ Use the resume phrases your last handoff printed.
 
 ## ↔️ Control Flow Commands
 
-Navigate handoff gates
+Answer open questions
 
 | Command | What it does | When to use |
 |---------|-------------|-------------|
-| `yes` | Proceed to next stage | At any handoff gate when ready to continue |
+| your answers | Resolve the open questions | When ARCUS surfaces a batch of questions during Brainstorm |
 | `proceed` | Alias for yes | Same as above |
 | `continue` | Alias for yes | Same as above |
 | `go` | Alias for yes | Same as above |
-| `no` | Pause pipeline | At handoff gate when you need time to review |
+| `resume <STORY>` | Continue from the checkpoint | After stopping, or in a new session |
 | `pause` | Alias for no | Same as above |
 | `stop` | Alias for no | Same as above |
 | `hold` | Alias for no | Same as above |
@@ -178,7 +178,7 @@ troubleshooting                 # Common issues
 - **Flexible phrasing:** Natural variations work (e.g., "build story.md" = "implement story.md")
 - **Tab completion:** Most tools support tab completion for file paths
 - **Paths:** Use relative or absolute paths for story files
-- **Resume phrases:** ARCUS tells you exact resume commands at each gate
+- **Resume phrases:** ARCUS tells you the exact resume command whenever it stops
 
 ---
 

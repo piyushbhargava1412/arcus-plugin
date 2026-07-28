@@ -28,8 +28,8 @@ headings, dispatching each task to a fresh subagent. On completion it hands off 
 Review** and stops.
 
 > **Constraint — this skill MUST NOT declare `context: fork` or an `agent:` block.** It is an
-> **interactive, stateful loop driver** that mutates checkpoint state, creates a git branch, and
-> emits a handoff gate in the main thread. It is *not* a one-shot isolated worker. (The per-task
+> **stateful loop driver** that mutates checkpoint state, creates a git branch, and reports
+> milestones in the main thread. It is *not* a one-shot isolated worker. (The per-task
 > isolation happens *inside* the loop, via the dispatcher's subagents — not by forking this skill.)
 
 ## Execution Modes
@@ -166,15 +166,12 @@ trailing handoff block below.
   directly.
 - **Cold resume** (new session): the user types `"review <STORY_ID>"`, which re-activates Code Review
   by description-matching.
-- **In afk mode**: skip the gate — do not stop; the controller continues to Code Review.
-
-Emit exactly this shape:
+Emit the milestone and return to the caller — **do not stop for confirmation**:
 
 ```
-[Handoff] Implementation complete → next: Code Review
-Summary: <N tasks complete, M files changed>
+[Code] Complete: <N> tasks, <M> files changed
 Artifacts: <relative paths>
-Proceed? Reply "yes" to run Code Review, or "no" to pause.
-Resume later with: "review <STORY_ID>"
 ```
+
+Standalone (no controller), tell the user what to run next: `review <STORY_ID>`.
 

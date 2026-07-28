@@ -385,7 +385,7 @@ yes
 
 **Symptoms:** Autonomous mode running, realized spec has issues, need to pause
 
-**Root Cause:** Autonomous mode has no handoff gates (by design)
+**Root Cause:** Autonomous mode never surfaces open questions (by design)
 
 **Solutions:**
 
@@ -548,7 +548,7 @@ If you're still stuck:
 **Avoid common issues:**
 - ✅ Write clear, unambiguous stories
 - ✅ Use interactive mode for first 2-3 stories per repo
-- ✅ Review artifacts at each gate before proceeding
+- ✅ Answer the open questions carefully — the last chance to steer before code is written
 - ✅ Keep `.context/` fresh (refresh after major changes)
 - ✅ Don't manually edit checkpoint unless necessary
 - ✅ Commit `.context/` to git for team sharing

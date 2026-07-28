@@ -145,7 +145,7 @@ Start high-level, go deeper on request:
 **You:**
 1. Read `.arcus/session-checkpoint.json`
 2. Parse current stage and status
-3. Display: "📍 You're at Stage 2 (Test Plan), status: in_progress. Last action: test-spec-compiler is designing the test matrix. Next: You'll see GATE B when it completes."
+3. Display: "📍 You're at Stage 2 (Test Plan), status: in_progress. Last action: test-spec-compiler is designing the test matrix. Next: it continues straight into Implementation when it completes."
 
 **User:** "show me commands"
 **You:**

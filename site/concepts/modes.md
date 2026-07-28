@@ -18,19 +18,25 @@ single stateful `arcus:arcus-controller` orchestrator, which owns the session ch
 stage gates:
 
 - **Interactive (default, user-driven)** — the gated mode. Trigger it with `implement <STORY>` or
-  `plan <STORY>`. The orchestrator pauses at each handoff gate, and additionally surfaces any
-  clarification questions the Brainstorm stages raised — **all of them at once, in a single turn**.
+  `plan <STORY>`. It surfaces any clarification questions the Brainstorm stages raised — **all of
+  them at once, in a single turn** — and then runs to the pull request without stopping again.
   In the same session a `"yes"` advances to the next stage; on a cold resume you type the next
   stage's explicit phrase and the checkpoint picks up where you left off. (For brainstorming only —
   context pack + finalized spec, no implementation — use the `kick-off` coordinator via
   `brainstorm <STORY>` / `kick off <STORY>` / `architect <STORY>`.)
 - **Autonomous (AFK)** — the hands-off mode. Trigger it with the AFK phrases (`afk`, `--afk`,
-  `forge`, `run afk on <STORY>`). The same orchestrator runs every stage back-to-back with
-  milestone-only output, auto-confirming every gate and never surfacing questions. It never stops.
+  `forge`, `run afk on <STORY>`). Identical pipeline, except the open questions are recorded and
+  never surfaced. It never stops.
 
-Both modes share the same checkpoint stage keys, the same helper scripts, and the same
-`implementation-runner` loop driver — they differ only in whether the orchestrator pauses at gates and
-shows you the open questions.
+**There are no phase-group handoff gates in either mode.** Both run straight through to the pull
+request. The gates that used to sit after Test Plan, Implementation, Code Review and Closure were
+removed: each followed mechanically from a decision you had already approved, so they bought no real
+review and trained people to type "yes" without reading. The genuine decision points are the spec,
+the approach, and the finished diff — the first two are the open questions, the third is the PR.
+
+So the two modes differ in exactly one thing: **whether Brainstorm stops to ask you its open
+questions.** If a story raises none, an interactive run never stops either — which is correct, because
+there was nothing to decide.
 
 ::: tip The capabilities themselves have no mode
 `spec-finalizer` and `implementation-planner` never talk to you. On **every** run, in **both** modes,
@@ -46,17 +52,17 @@ plan is never "less resolved" than a gated one — just less confirmed.
 
 | Aspect | Interactive (Default) | Autonomous (AFK) |
 |--------|---------------------|----------------------|
-| **Driver** | `arcus:arcus-controller` orchestrator, pausing at gates | `arcus:arcus-controller` orchestrator, running uninterrupted |
-| **Control** | Pauses at each handoff gate | Runs all stages back-to-back |
-| **User Role** | Review artifacts, say "yes" to proceed | Hands-off until PR ready |
+| **Driver** | `arcus:arcus-controller` orchestrator | `arcus:arcus-controller` orchestrator |
+| **Control** | Stops once, for open questions during Brainstorm | Never stops |
+| **User Role** | Answer the open questions, then review the PR | Hands-off until PR ready |
 | **Best For** | Novel domains, high-risk changes, learning | Familiar codebases, simple features |
-| **Intervention Points** | 4 handoff gates (GATE A-D) | Milestone-only output |
+| **Intervention Points** | One batch of open questions (if any), then the PR | The PR |
 | **Session Resumability** | Yes, can pause and resume across days | Resume-capable via checkpoint; intended to run uninterrupted |
 | **Spec Finalization** | Same one-shot subagent — but its `## Open Questions` are shown to you as one batch (each with one recommended option) | Same one-shot subagent; its `## Open Questions` are recorded but never surfaced |
-| **Output Verbosity** | Full progress updates at each gate | Compact, final artifacts only |
+| **Output Verbosity** | Milestone lines | Milestone lines |
 | **When to Use** | Default for safety and learning | When you're confident in the spec |
 | **Typical Duration** | 30-90 min active time (spread over hours/days) | 30-90 min uninterrupted |
-| **Mistakes Caught** | Early (at each gate before proceeding) | Late (after full implementation) |
+| **Mistakes Caught** | At the questions (before any code) or at the PR | At the PR |
 | **Context Switching** | Friendly (pause anytime, resume later) | Hostile (must complete in one session) |
 
 ---
@@ -159,11 +165,11 @@ the `kick-off` coordinator.)
 
 **What happens:**
 - `arcus:arcus-controller` runs Scaffold then Brainstorm (its capabilities run as subagents)
-- Scaffold flows directly into Brainstorm (no scaffold handoff gate)
-- First explicit handoff is **GATE A** after Brainstorm
-- At each gate you say `yes` (same session → advances to the next stage) or `no` (pause)
-- On a cold resume, type the next stage's phrase — `generate test plan for <STORY>`,
-  `implement <STORY>`, `review <STORY>`, `close <STORY>`
+- If `spec-finalizer` or `implementation-planner` recorded open questions, they are surfaced **as one
+  batch** and the run stops. Answer them in your own words, all in one go
+- Everything after that — test plan, branch, tasks, review, context sync, PR — runs without stopping
+- If no questions were raised, it runs end to end without stopping at all
+- On a cold resume, `resume <STORY>` picks up from the checkpoint
 
 ### Autonomous (Opt-In)
 

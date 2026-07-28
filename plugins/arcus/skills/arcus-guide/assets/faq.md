@@ -82,7 +82,7 @@ architect path/to/story.md
 ### Q: What's the difference between interactive and autonomous mode?
 
 **A:** Both modes use the **`arcus-controller`** orchestrator:
-- **Interactive:** The default. Pauses at handoff gates for review. Triggered by `implement <story>` or `plan <story>`.
+- **Interactive:** The default. Stops once for the Brainstorm open questions, then runs to the PR. Triggered by `implement <story>` or `plan <story>`.
 - **Autonomous:** Runs all stages unattended, back-to-back. Triggered by AFK phrases (`afk`, `forge`, `run afk on <story>`).
 
 ---
@@ -125,7 +125,7 @@ create pull request for <story>      # Closure stage
 
 ### Q: Can I pause and resume later?
 
-**A:** **Yes**, in interactive mode only. At any handoff gate:
+**A:** **Yes**, in interactive mode only. When ARCUS surfaces its open questions:
 - Say `"no"` to pause
 - Return hours or days later
 - Say `"where am I?"` to check status
@@ -143,7 +143,7 @@ Your progress is saved in `.arcus/session-checkpoint.json`.
 
 | Aspect | Interactive (Default) | Autonomous (afk) |
 |--------|--------------------|------------------|
-| Control | Pauses at each gate | Runs end-to-end |
+| Control | Stops once, for open questions | Runs end-to-end |
 | User role | Review and approve | Hands-off |
 | Best for | Learning, high-risk | Simple, familiar |
 | Resumable | Yes | No |
@@ -208,7 +208,7 @@ Time varies based on story complexity, codebase size, and number of tasks.
 
 ---
 
-### Q: What happens at a handoff gate?
+### Q: What happens when ARCUS asks me questions?
 
 **A:** ARCUS pauses and asks: "Ready to proceed to next stage?"
 - Say `"yes"` (or "proceed", "continue", "go") to continue

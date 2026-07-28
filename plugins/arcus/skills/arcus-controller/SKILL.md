@@ -4,9 +4,8 @@ description: >
   The single orchestrator that drives a story from spec to pull
   request, in either INTERACTIVE (gated, default) or AUTONOMOUS (afk) mode. It is state-driven:
   it reads the session checkpoint and runs every remaining stage in the same canonical order.
-  In autonomous mode it runs stages back-to-back with no gates, auto-deciding and emitting
-  milestone-only output. In interactive mode it emits a handoff gate after each major phase group,
-  waiting for the user before continuing.
+  Both modes run every stage back-to-back to the pull request; they differ only in whether the
+  Brainstorm stages stop to ask the user their open questions. Output is milestone-only.
   Activates on "implement <STORY>" (default) and "plan <STORY>" → interactive; "forge <STORY>",
   "afk <STORY>", or "run afk on <STORY>" → autonomous; "resume <STORY>" → continue from the first
   incomplete stage in whatever mode the checkpoint persists.
@@ -20,13 +19,13 @@ argument-hint: <STORY>
 This skill is the **single orchestrator** that drives a story from spec to pull request. It runs the
 **same canonical stage sequence** in both modes; only the *invocation style* and the *gating* differ:
 
-- **interactive** (gated, default): the controller emits a **handoff gate** after each major phase
-  group (Brainstorm, Test Plan, Implementation, Code Review, Closure), waiting for the user's
-  "yes"/"proceed" before continuing. It additionally surfaces any open questions **as one batch** at
-  the two Brainstorm stages that raise them. Every question carries a single Recommended option +
-  rationale + custom-answer.
-- **autonomous** (afk): stages run **back-to-back with no handoff gates**, auto-deciding at each step,
-  emitting **milestone-only** output.
+- **interactive** (gated, default): during Brainstorm, any open questions a stage raises are
+  surfaced **as one batch** and the pipeline stops for the answers. Every question carries a single
+  Recommended option + rationale + custom-answer. Once they are answered, it runs to the pull
+  request without stopping again.
+- **autonomous** (afk): open questions are recorded but never surfaced, so nothing ever stops.
+
+Neither mode has phase-group handoff gates — see **Output Discipline**.
 
 Execution is identical in both modes: the controller **spawns capabilities** and **runs
 coordinators/orchestrators in-thread** (each stage states its own execution in the Execution
@@ -61,29 +60,30 @@ the per-stage walk (see Resumption Protocol). The loopback auto-loop is capped a
 
 ## Output Discipline
 
-In **autonomous** mode, emit milestone lines only — no conversational filler ("Let me…", "Now I'll…",
-"Perfect!"):
+Emit milestone lines only — no conversational filler ("Let me…", "Now I'll…", "Perfect!"). The
+stream is the same in both modes; only the Brainstorm interaction differs.
 
 ```
-[AFK] Story: <STORY_ID>
+[Story] <STORY_ID> (<mode>)
 [Brainstorm] Complete: <N> tasks, <M> decisions
 [TestPlan] Complete: <N> test cases
 [Code] Complete: <N> files changed, <M> tests passing
 [Review] <verdict>: <C> critical, <W> warning, <S> suggestion
+[Context] <K artifacts updated, J skipped — or "no material drift">
 [Complete] PR deployed: <link>
 ```
 
-In **interactive** mode, emit the same milestone line when a phase group completes, then a **handoff
-gate** and stop until the user replies "yes"/"proceed":
+**There are no phase-group handoff gates.** Once Brainstorm is settled the pipeline runs straight
+through to the pull request in both modes. The gates after Test Plan, Implementation, Code Review and
+Closure were removed deliberately: each derived mechanically from a decision the human had already
+approved, so they bought no real review and trained people to type "yes" without reading — which is
+worse than no gate, because it manufactures confidence. The genuine decision points are the spec, the
+approach, and the finished diff; the first two are the Open-Questions Protocol, and the third is the
+PR.
 
-```
-[Handoff] <Phase group> complete → next: <next phase group>
-Summary: <key counts / decisions>
-Proceed? Reply "yes" to continue, or "no" to pause.
-```
-
-The handoff gate is emitted after each major phase group: **Brainstorm**, **Test Plan**,
-**Implementation**, **Code Review**, **Closure**.
+The **only** place the pipeline stops for a human is the Open-Questions Protocol during Brainstorm,
+and only in interactive mode. If a story raises no open questions, interactive runs end-to-end
+without stopping — which is correct: there was nothing to decide.
 
 ## Canonical Pipeline (checkpoint keys → phase groups)
 
@@ -204,12 +204,9 @@ gate is pending a "yes"/"proceed", distinct from a stage genuinely being incompl
 3. **Record the task count**: run `.arcus/bin/checkpoint.sh set-tasks <STORY_ID> <N>` (N = `### Task`
    headings in `plan.md`) so the checkpoint reflects every planned task slot immediately, instead of
    relying on per-task keys appearing only as `implementation-runner` starts each one.
-4. **Output / gate**:
-   - **autonomous**: emit `[Brainstorm] Complete: <N> tasks, <M> decisions` (M = resolved decisions in
-     `grounded-spec.md`) and continue without stopping.
-   - **interactive**: run `.arcus/bin/checkpoint.sh await-handoff <STORY_ID>`, then emit the
-     `[Handoff] Brainstorm complete → next: Test Plan` gate and **stop** until the user replies
-     "yes"/"proceed".
+4. **Output**: emit `[Brainstorm] Complete: <N> tasks, <M> decisions` (M = resolved decisions in
+   `grounded-spec.md`) and continue into Test Plan. There is no gate here: the human's input for this
+   phase was the Open-Questions Protocol above, and it has already happened.
 
 ### Test Plan (one-shot)
 
@@ -218,11 +215,7 @@ gate is pending a "yes"/"proceed", distinct from a stage genuinely being incompl
    - **Description**: "TestPlan: test-spec-compiler"
    - **Model**: resolve complexity `medium` via the `arcus:model-strategy` skill.
    - Verify the file exists, then `.arcus/bin/checkpoint.sh complete <STORY_ID> test_plan`.
-2. **Output / gate**:
-   - **autonomous**: emit `[TestPlan] Complete: <N> test cases` and continue without stopping.
-   - **interactive**: run `.arcus/bin/checkpoint.sh await-handoff <STORY_ID>`, then emit the
-     `[Handoff] Test Plan complete → next: Implementation` gate and **stop** until the user replies
-     "yes"/"proceed".
+2. **Output**: emit `[TestPlan] Complete: <N> test cases` and continue into Implementation.
 
 ### Implementation (delegated — branch + task loop)
 
@@ -231,12 +224,8 @@ are owned by the canonical loop driver. **Delegate** the whole Implementation st
 
 1. **Read and follow the `arcus:implementation-runner` skill** **in-thread**, passing `STORY_ID` and
    the persisted `mode` (`afk` for autonomous, `gated` for interactive).
-2. **Output / gate**:
-   - **autonomous**: emit `[Code] Complete: <N> files changed, <M> tests passing` and continue into
-     Code Review.
-   - **interactive**: run `.arcus/bin/checkpoint.sh await-handoff <STORY_ID>`, then emit the
-     `[Handoff] Implementation complete → next: Code Review` gate and **stop** until the user replies
-     "yes"/"proceed".
+2. **Output**: emit `[Code] Complete: <N> files changed, <M> tests passing` and continue into
+   Code Review.
 
 ### Code Review (verdict)
 
@@ -246,18 +235,12 @@ are owned by the canonical loop driver. **Delegate** the whole Implementation st
    `VERDICT: approved | changes_requested`.
    - Verify `review.md` exists. Capture the verdict and counts (`critical`, `warning`, `suggestion`),
      then `.arcus/bin/checkpoint.sh complete <STORY_ID> code_review`.
-2. **Decide on the verdict**:
-   - **autonomous** (no gate, auto-decide):
-     - **approved**: emit `[Review] approved: …` and continue to Context Sync.
-     - **changes_requested**: emit `[Review] changes_requested: …` and run the **Loopback Protocol**
-       automatically (bounded by the review-round cap), then re-review.
-   - **interactive**:
-     - **approved**: run `.arcus/bin/checkpoint.sh await-handoff <STORY_ID>`, then emit the
-       `[Handoff] Code Review complete → next: Context Sync + Closure` gate and **stop** until the
-       user replies "yes"/"proceed", then continue to Context Sync.
-     - **changes_requested**: run `.arcus/bin/checkpoint.sh await-handoff <STORY_ID>`, surface the
-       findings, and run the **Loopback Protocol** (bounded by the review-round cap), confirming with
-       the user before re-entering Implementation; then re-review.
+2. **Decide on the verdict** (identical in both modes — no gate):
+   - **approved**: emit `[Review] approved: …` and continue to Context Sync.
+   - **changes_requested**: emit `[Review] changes_requested: …` and run the **Loopback Protocol**
+     automatically, bounded by the review-round cap, then re-review. The loopback no longer asks
+     first: the findings are the reviewer's, the fix-tasks are mechanical, and a human who disagrees
+     reviews the result at the PR.
 
 ### Context Sync (one-shot, runs only after final approval)
 
@@ -272,7 +255,7 @@ shared `.context/` artifact that the approved change set materially drifted.
    - **Model**: resolve complexity `medium` via the `arcus:model-strategy` skill.
    - Then `.arcus/bin/checkpoint.sh complete <STORY_ID> context_sync`.
 2. **Output**: `[Context] <K artifacts updated, J skipped — or "no material drift">`. Continue to
-   Closure (in interactive mode, this follows the Code Review handoff gate already confirmed above).
+   Closure.
 
 ### Closure (one-shot + script, terminal)
 
@@ -357,18 +340,16 @@ When a checkpoint already exists:
    - `FAILED`: stop. Report the `failure.stage` / `failure.reason` recorded on the checkpoint and wait
      for explicit user direction — do not silently retry the failed stage.
    - `COMPLETE`: the story is done. Report that and do nothing further.
-   - `AWAITING_HANDOFF`: something is waiting on the user. Distinguish the two cases by reading the
-     `current_stage`'s artifact:
+   - `AWAITING_HANDOFF`: a stage is waiting on the user. Read the `current_stage`'s artifact:
      - Its `## Open Questions` has entries **not** yet answered in `## Dialogue Answers` → the stage
-       is mid-**Open-Questions Protocol**. Re-emit the `[Questions]` block and **stop**.
-     - Otherwise → a phase group is gated. Re-emit the
-       `[Handoff] <phase group> complete → next: <next phase group>` gate for the phase group
-       `current_stage` belongs to (per the Canonical Pipeline table) and **stop**.
-
-     In both cases, do **not** walk forward into the next stage until the user replies. This is the
-     status the plain stage-status walk in step 3 must never be allowed to skip past —
-     `awaiting_handoff`/`AWAITING_HANDOFF` is not a "run it" status and not a "skip it" status; it is
-     "re-ask before doing anything."
+       is mid-**Open-Questions Protocol**. In interactive mode re-emit the `[Questions]` block and
+       **stop**; in autonomous mode the questions are informational, so clear the status and carry on.
+       Do **not** walk forward past an unanswered question in interactive mode: this is the one status
+       the stage walk in step 4 must never be allowed to skip.
+     - Nothing unanswered → the story is parked at a **phase-group gate that no longer exists**
+       (written by a version of ARCUS that gated after every phase group). Clear the status and
+       continue from the next incomplete stage. No confirmation is needed — the human input for
+       Brainstorm already happened, and nothing downstream of it was ever a real decision point.
    - `IN_PROGRESS`: proceed to step 3.
 3. **Reconcile against artifacts before walking.** A run can die between writing an artifact and
    recording it, leaving a stage `pending` whose output is already on disk — the next run would then

@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **The phase-group handoff gates are gone. Both modes now run straight through to the pull request.**
+  Interactive mode stops in exactly one place: the Brainstorm open questions. Answer them and the
+  pipeline runs test plan → branch → tasks → review → context sync → PR without stopping again. If a
+  story raises no questions, an interactive run never stops at all — which is correct, because there
+  was nothing to decide.
+
+  The gates after Test Plan, Implementation, Code Review and Closure each followed **mechanically
+  from a decision the human had already approved**, so they bought no real review and trained people
+  to type "yes" without reading — worse than no gate, because it manufactures confidence. The genuine
+  decision points are the spec, the approach, and the finished diff: the first two are the
+  Open-Questions Protocol, the third is the PR.
+
+  Consequences worth knowing:
+  - The two modes now differ in **one** thing — whether Brainstorm surfaces its open questions or
+    merely records them.
+  - The Code Review loopback runs **automatically in both modes**; it no longer asks first. The
+    findings are the reviewer's, the fix-tasks are mechanical, and a human who disagrees reviews the
+    result at the PR.
+  - **The tradeoff, stated plainly:** a subtly wrong plan now costs a full implementation before you
+    see anything. The Brainstorm questions are the mitigation, so the approved plan carries more
+    weight than it used to.
+  - `awaiting_handoff` keeps its meaning (a stage waiting on a human) but now has exactly one cause.
+    A story parked at an old phase gate is **migrated on resume**: with nothing unanswered, the
+    status is cleared and the pipeline continues.
+  - `implementation-runner` and `code-reviewer` emit milestones instead of handoff blocks; the
+    controller still acts on `code-reviewer`'s `VERDICT:` line.
+
+  Locally this loses nothing that stopping the session does not already give you, which is why
+  gate-at-every-stage was dropped outright rather than kept as an opt-in mode.
+
 ### Added
 
 - **ARCUS cloud, phase 2: replying on the issue resumes the pipeline.** A comment on a labelled issue

@@ -221,24 +221,14 @@ that lives only in the afk `arcus:arcus-controller`.
 
 A developer can run the whole review standalone by supplying the `change_set` (the changes on their branch vs <base>) and optionally the story artifacts (plan, grounded-spec, test-plan, context-pack). The reviewer runs the full gate (deterministic tooling checks) followed by the specialist fan-out (security, performance, code-quality, spec-compliance, history-context) and consolidates the findings into a single severity-tagged report with a verdict (approved or changes_requested).
 
-Emit the block matching the verdict.
-
-On `approved`:
+Emit the milestone matching the verdict and return — **do not stop for confirmation**. The
+controller acts on the `VERDICT:` line: `approved` continues to Context Sync, `changes_requested`
+runs the Loopback Protocol automatically (bounded by the review-round cap).
 
 ```
-[Handoff] Code Review complete (approved) → next: Context Sync
-Summary: critical 0, warning <W>, suggestion <S>
+[Review] <approved|changes_requested>: critical <C>, warning <W>, suggestion <S>
 Artifacts: <STORY_DIR>/review.md
-Proceed? Reply "yes" to run Context Sync, or "no" to pause.
-Resume later with: "resume <STORY_ID>"
 ```
 
-On `changes_requested`:
-
-```
-[Handoff] Code Review complete (changes_requested) → next: Implementation (loopback)
-Summary: critical <C>, warning <W>, suggestion <S>
-Artifacts: <STORY_DIR>/review.md
-Proceed? Reply "fix" to loop findings back into Implementation, or "no" to pause.
-Resume later with: "fix <STORY_ID>"
-```
+Standalone (no controller), tell the user what to run next: `resume <STORY_ID>` after an approval,
+`fix <STORY_ID>` to loop findings back into Implementation.

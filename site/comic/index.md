@@ -428,7 +428,7 @@ layout: page
     </svg>
   </template>
   <template #talk>
-    <TalkBubble who="Lucie"><strong>Interactive</strong> is my default. I stop at all 4 handoff gates and wait — same session, say "yes"; cold resume, type the stage's own phrase. Best for a new codebase, a risky change, or a story with any TBD in it.</TalkBubble>
+    <TalkBubble who="Lucie"><strong>Interactive</strong> is my default. I stop <em>once</em> — when Angelina has questions she is not sure about — hand you the whole list, and then run all the way to the pull request. If she has no questions, I do not stop at all. Best for a new codebase, a risky change, or a story with any TBD in it.</TalkBubble>
   </template>
 </ComicPanel>
 
@@ -692,7 +692,7 @@ layout: page
 | Say this | You get |
 | --- | --- |
 | "agentify this repo" / `repo-agentifier` | **Once per repo.** Angelina scans in parallel, writes the notebook, pins up `AGENTS.md` + `CLAUDE.md`. |
-| `plan <STORY>` or `implement <STORY>` | **Interactive (gated), the default.** Lucie pauses at every handoff gate for your "yes." |
+| `plan <STORY>` or `implement <STORY>` | **Interactive (gated), the default.** Lucie stops once for the open questions, then runs to the PR. |
 | `forge <STORY>` / `afk <STORY>` / `run afk on <STORY>` | **Autonomous.** Every stage back-to-back, milestone-only output, no pauses. |
 | `brainstorm <STORY>` / `kick off <STORY>` / `architect <STORY>` | **Brainstorm only** — context pack + finalized spec, no implementation. |
 | `generate test plan for <STORY>` | Cold-resume into **Quinn's Test Plan** at Gate A. |
