@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **State is checkpointed to `arcus-state` while a run is in flight, not only at the end.** A single
+  push at job end meant a timeout, cancel or OOM discarded every artifact, and the next run redid
+  finished work — per-task commits survive on the story branch, but the checkpoint recording *what*
+  finished did not. With the timeout now at 90 minutes and Implementation running unattended, that is
+  an hour of work on one interruption. A background pusher checkpoints every 45s when the workspace
+  has changed, hashing the directory so an idle tick costs nothing, and is stopped before the final
+  push so it cannot race over the shared `.arcus/.state-wt` worktree. Long runs are now observable
+  from the branch as they go.
+
+- **`version-guard` covers the reusable workflow.** `arcus-pipeline.yml` is consumed by target repos
+  via `uses: …@v2`, and that tag only moves when `plugin.json` does — so a workflow-only change was
+  invisible to every caller until some unrelated bump happened to ship it. The guard now requires a
+  version bump when the workflow changes too.
+
 ### Added
 
 - **The cloud pipeline runs a labelled issue all the way to a pull request.** It stops only when a

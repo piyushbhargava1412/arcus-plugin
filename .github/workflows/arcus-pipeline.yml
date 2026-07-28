@@ -173,8 +173,11 @@ jobs:
         if: steps.decide.outputs.mode != 'skip'
         env:
           GITHUB_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ github.token }}
           ARCUS_ISSUE_NUMBER: ${{ inputs.issue_number }}
           MODE: ${{ steps.decide.outputs.mode }}
+          STATE_BRANCH: ${{ inputs.state_branch }}
+          RUN_ID: ${{ github.run_id }}
         run: |
           set -euo pipefail
           STORY_ID="ISSUE-${{ inputs.issue_number }}"
@@ -182,9 +185,33 @@ jobs:
             fresh) PROMPT_FILE="fresh-prompt.md" ;;
             *)     PROMPT_FILE="resume-prompt.md" ;;
           esac
-          # The prompt lives in the plugin so it is reviewable and versioned with
-          # the skills it drives. Untrusted issue text is referenced BY PATH and
-          # framed as data, never inlined here.
+
+          # Checkpoint the workspace to arcus-state WHILE the agent works. A
+          # single push at job end means a timeout, cancel or OOM discards every
+          # artifact, and the next run redoes finished work: per-task commits
+          # survive on the story branch, but the checkpoint that records what
+          # finished does not. Pushing as it goes also makes a long run
+          # observable rather than silent.
+          rm -f /tmp/pusher.stop
+          (
+            last=""
+            while [ ! -f /tmp/pusher.stop ]; do
+              sleep 45
+              [ -f /tmp/pusher.stop ] && break
+              now="$(ls -lR ".arcus/specs/$STORY_ID" 2>/dev/null | shasum | cut -d' ' -f1)"
+              [ "$now" = "$last" ] && continue
+              if bash .arcus/bin/state_sync.sh push "$STORY_ID" --branch "$STATE_BRANCH" \
+                   --message "chore(arcus-state): $STORY_ID in progress (run $RUN_ID)" >/dev/null 2>&1; then
+                last="$now"
+                echo "[state] checkpointed $STORY_ID"
+              fi
+            done
+          ) &
+          PUSHER_PID=$!
+          # Stop the pusher before this step returns, so it can never race the
+          # final push over the shared .arcus/.state-wt worktree.
+          trap 'touch /tmp/pusher.stop; wait "$PUSHER_PID" 2>/dev/null || true' EXIT
+
           PROMPT="$(sed "s|{{STORY_ID}}|${STORY_ID}|g" \
             "$ARCUS_HOME/agent-resources/cloud/$PROMPT_FILE")"
           copilot --plugin-dir "$ARCUS_HOME" \
@@ -202,7 +229,7 @@ jobs:
           set -euo pipefail
           bash .arcus/bin/state_sync.sh push "ISSUE-${{ inputs.issue_number }}" \
             --branch "${{ inputs.state_branch }}" \
-            --message "chore(arcus-state): ISSUE-${{ inputs.issue_number }} brainstorm (run ${{ github.run_id }})" || true
+            --message "chore(arcus-state): ISSUE-${{ inputs.issue_number }} (run ${{ github.run_id }})" || true
 
       - name: Post open questions to the issue
         if: always() && steps.decide.outputs.mode != 'skip' 
