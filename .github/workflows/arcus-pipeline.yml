@@ -12,8 +12,8 @@ name: ARCUS pipeline
 # job — so the 6-hour job cap would apply to the whole pipeline with no way to
 # segment it later.
 #
-# PHASE 1 SCOPE: labelled issue -> Brainstorm -> post batched questions -> halt.
-# No implementation, no PR, no resume. Those are phases 2 and 3.
+# A labelled issue runs to a pull request. It stops only when a stage records
+# open questions; answering them on the issue resumes it.
 
 on:
   workflow_call:
@@ -37,10 +37,10 @@ on:
         default: "arcus-state"
 
 jobs:
-  brainstorm:
-    name: "ARCUS: issue #${{ inputs.issue_number }} → Brainstorm"
+  pipeline:
+    name: "ARCUS: issue #${{ inputs.issue_number }}"
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 90
 
     # Per-issue, so two stories can run in parallel. NEVER cancel-in-progress:
     # cancelling mid-stage leaves a stage `in_progress` with a half-written
@@ -179,7 +179,7 @@ jobs:
           set -euo pipefail
           STORY_ID="ISSUE-${{ inputs.issue_number }}"
           case "$MODE" in
-            fresh) PROMPT_FILE="brainstorm-prompt.md" ;;
+            fresh) PROMPT_FILE="fresh-prompt.md" ;;
             *)     PROMPT_FILE="resume-prompt.md" ;;
           esac
           # The prompt lives in the plugin so it is reviewable and versioned with
@@ -212,6 +212,37 @@ jobs:
           set -euo pipefail
           bash .arcus/bin/questions_comment.sh "ISSUE-${{ inputs.issue_number }}" \
             "${{ inputs.issue_number }}" --repo "${{ github.repository }}" | tee /tmp/questions.out
+
+      - name: Report the outcome on the issue
+        if: always() && steps.decide.outputs.mode != 'skip'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          STORY_ID="ISSUE-${{ inputs.issue_number }}"
+          CP=".arcus/specs/$STORY_ID/session-checkpoint.json"
+          # Questions already got their own comment; do not double-post.
+          if grep -q "QUESTIONS: [1-9]" /tmp/questions.out 2>/dev/null; then
+            echo "Questions were posted — no status comment needed."; exit 0
+          fi
+          [ -f "$CP" ] || exit 0
+          STATUS="$(node -p "require('./$CP').current_status" 2>/dev/null || echo UNKNOWN)"
+          STAGE="$(node -p "require('./$CP').current_stage" 2>/dev/null || echo unknown)"
+          PR_URL="$(gh pr list --repo "${{ github.repository }}" \
+                      --search "$STORY_ID in:title" --state all \
+                      --json url --jq '.[0].url' 2>/dev/null || true)"
+          {
+            echo "<!-- arcus:v1 kind=status story=$STORY_ID -->"
+            case "$STATUS" in
+              COMPLETE) echo "### ARCUS finished" ;;
+              FAILED)   echo "### ARCUS stopped: \`$STAGE\` failed" ;;
+              *)        echo "### ARCUS paused at \`$STAGE\`" ;;
+            esac
+            echo ""
+            [ -n "$PR_URL" ] && echo "Pull request: $PR_URL" && echo ""
+            echo "<sub>status \`$STATUS\` · stage \`$STAGE\` · [run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})</sub>"
+          } > /tmp/status.md
+          gh issue comment "${{ inputs.issue_number }}" --repo "${{ github.repository }}" --body-file /tmp/status.md
 
       - name: Summary
         if: always()

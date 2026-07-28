@@ -1,6 +1,6 @@
 {
   "name": "arcus-opencode",
-  "version": "2.6.2",
+  "version": "2.7.0",
   "description": "ARCUS (Spec → Code → Pull Request pipeline) as an OpenCode plugin. Bundles the ARCUS skills, agents, and helper scripts and stages them into the target repository at session start.",
   "type": "module",
   "license": "MIT",

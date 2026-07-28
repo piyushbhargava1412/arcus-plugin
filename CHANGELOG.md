@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **The cloud pipeline runs a labelled issue all the way to a pull request.** It stops only when a
+  stage records open questions; answering them on the issue resumes it, and it continues through
+  test plan, branch, tasks, review, context sync and closure without further input.
+
+  `brainstorm-prompt.md` is renamed `fresh-prompt.md` and both CI prompts now name the three stopping
+  conditions explicitly — open questions recorded, `closure` reached, or a stage failed twice — rather
+  than capping the pipeline at a phase group. Job timeout 45 → 90 minutes.
+
+  A **status comment** is posted when a run ends without questions, carrying the checkpoint status,
+  the stage, and the PR link. Without it the only signal was the Actions tab.
+
+  Known limitation: the PR is created with `GITHUB_TOKEN`, which by design does not trigger further
+  workflows — so it arrives with **no CI checks**. Closing and reopening it (as yourself) runs them.
+  The optional `ARCUS_APP_ID`/`ARCUS_APP_PRIVATE_KEY` seam remains the way to get checks
+  automatically.
+
 ### Changed
 
 - **Skills and docs describe the current design, not its history.** Several passages explained what
