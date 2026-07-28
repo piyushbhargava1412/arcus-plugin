@@ -9,6 +9,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **ARCUS cloud, phase 2: replying on the issue resumes the pipeline.** A comment on a labelled issue
+  now folds the reply back into the stage that was waiting, records the mapping, and continues.
+
+  **No slash command.** The plan originally specified an explicit `/arcus continue`, but the first
+  real cloud run showed the obvious behaviour is to just answer the questions — so any comment from
+  a write-access user is treated as the answer. `issue_ingest.sh` exits `3` when there is nothing new,
+  and the workflow gates on that **before installing Copilot**, so a "thanks!" or a side discussion
+  costs nothing.
+
+  **The workflow is now state-driven**, exactly like `arcus-controller`: it pulls state first and lets
+  `current_status` decide between fresh / resume / skip. A label, a comment and a manual dispatch all
+  take the same path — no event-kind branching to keep in sync.
+
+  New `issue_ingest.sh` collects comments **since a cursor**, not just the one that triggered the run.
+  That matters because GitHub keeps only one pending run per concurrency group: three comments during
+  a long run collapse into a single queued run, so the event payload is not the only unprocessed
+  comment. It skips bot comments and anything carrying the `arcus:v1` marker — ingesting our own
+  question comment would have the pipeline answer itself. Edits are ignored (first read wins);
+  honouring them would let a write-access user retroactively change an answer already acted on.
+
+  `checkpoint.sh` gains `set-cursor` and `set-issue`. The cursor advances **at ingest**, not after the
+  agent run: `inbox.md` is pushed with the state either way, so the replies are durable, and a failing
+  run cannot re-ingest the same comments forever.
+
+### Added
+
 - **ARCUS cloud, phase 1: a labelled GitHub issue runs Brainstorm and posts its open questions back
   as an issue comment.** New reusable workflow `.github/workflows/arcus-pipeline.yml`
   (`on: workflow_call`); a target repo vendors a ~25-line caller. Scope is deliberately narrow —

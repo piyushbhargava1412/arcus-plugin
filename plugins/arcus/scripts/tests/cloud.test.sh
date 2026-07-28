@@ -158,6 +158,50 @@ mkdir -p "$TMP/empty/.arcus/specs/ISSUE-1" && cd "$TMP/empty"
 OUT="$(bash "$QUESTIONS" ISSUE-1 1 --dry-run 2>&1)"
 assert_eq "$OUT" "QUESTIONS: none" "a story with no artifacts asks nothing"
 
+# --------------------------------------------------------------- issue_ingest
+echo "== issue_ingest: cursor, bot-skip, and no-op on re-delivery =="
+INGEST="$SCRIPT_DIR/../issue_ingest.sh"
+IW="$TMP/ingest"
+mkdir -p "$IW/bin" "$IW/.arcus/specs/ISSUE-24" && cd "$IW"
+cp "$INGEST" "$SCRIPT_DIR/../checkpoint.sh" bin/
+
+# Stub gh so the suite stays offline. Two comments: ours (a Bot, carrying the
+# arcus marker) and a human reply.
+cat > bin/gh <<'STUB'
+#!/usr/bin/env bash
+cat <<'JSON'
+[{"id":100,"user":{"login":"github-actions","type":"Bot"},"created_at":"2026-07-28T03:00:51Z","body":"<!-- arcus:v1 kind=question story=ISSUE-24 -->\n### ARCUS needs 3 answers"},
+ {"id":200,"user":{"login":"maintainer","type":"User"},"created_at":"2026-07-28T03:04:10Z","body":"SF1 - A\nSF2 - A"}]
+JSON
+STUB
+chmod +x bin/gh
+export PATH="$IW/bin:$PATH"
+
+cat > .arcus/specs/ISSUE-24/session-checkpoint.json <<'JSON'
+{"story_id":"ISSUE-24","current_status":"AWAITING_HANDOFF","current_stage":"spec_finalizer","stages":{"spec_finalizer":"awaiting_handoff"}}
+JSON
+
+OUT="$(bash bin/issue_ingest.sh ISSUE-24 24 2>&1)"; RC=$?
+assert_eq "$RC" "0" "ingest exits 0 when there are new comments"
+assert_contains "$OUT" "cursor -> 200" "the cursor advances to the newest comment id"
+
+INBOX_BODY="$(cat .arcus/specs/ISSUE-24/inbox.md)"
+assert_contains "$INBOX_BODY" "SF1 - A" "the human reply is captured"
+assert_contains "$INBOX_BODY" "UNTRUSTED USER INPUT" "the inbox frames its contents as data, not instructions"
+# Ingesting our own question comment would make the pipeline answer itself.
+assert_not_contains "$INBOX_BODY" "ARCUS needs 3 answers" "our own bot comment is skipped"
+
+assert_eq "$(node -p "require('./.arcus/specs/ISSUE-24/session-checkpoint.json').last_processed_comment_id")" \
+          "200" "the cursor is persisted on the checkpoint"
+
+# A re-delivered webhook, or a second run racing the first, must not re-answer
+# questions that were already answered.
+set +e
+OUT="$(bash bin/issue_ingest.sh ISSUE-24 24 2>&1)"; RC=$?
+set -e
+assert_eq "$RC" "3" "a second ingest with nothing new exits 3 (caller stops before paying for an agent run)"
+assert_contains "$OUT" "INGESTED: none" "the no-op is reported explicitly"
+
 echo
 echo "RESULTS: $PASS passed, $FAIL failed"
 [ "$FAIL" -eq 0 ]

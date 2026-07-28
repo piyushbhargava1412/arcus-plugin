@@ -86,9 +86,6 @@ jobs:
           node-version: 22
 
       # --- Runtime ----------------------------------------------------------
-      - name: Install Copilot CLI
-        run: npm install -g @github/copilot
-
       - name: Install ARCUS
         run: |
           set -euo pipefail
@@ -114,26 +111,82 @@ jobs:
           git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
           bash .arcus/bin/state_sync.sh pull "ISSUE-${{ inputs.issue_number }}" --branch "${{ inputs.state_branch }}"
 
-      - name: Materialize the issue into a story
+      # The workflow is STATE-DRIVEN, exactly like arcus-controller: the trigger
+      # only says "run ARCUS on issue N", and the checkpoint decides what that
+      # means. No event-kind branching, so a label, a comment and a manual
+      # dispatch all take the same path.
+      - name: Decide what this run should do
+        id: decide
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          bash .arcus/bin/issue_story.sh "${{ inputs.issue_number }}" --repo "${{ github.repository }}"
+          STORY_ID="ISSUE-${{ inputs.issue_number }}"
+          CP=".arcus/specs/$STORY_ID/session-checkpoint.json"
+
+          if [ ! -f "$CP" ]; then
+            echo "mode=fresh" >> "$GITHUB_OUTPUT"
+            echo "No checkpoint — starting Brainstorm from scratch."
+            exit 0
+          fi
+
+          STATUS="$(node -p "require('./$CP').current_status || 'IN_PROGRESS'")"
+          echo "checkpoint status: $STATUS"
+
+          case "$STATUS" in
+            COMPLETE|FAILED)
+              echo "mode=skip" >> "$GITHUB_OUTPUT"
+              echo "Story is $STATUS — nothing to do." ;;
+            AWAITING_HANDOFF)
+              # Only meaningful if a human actually said something new. Ingest
+              # exits 3 when there is nothing, so we stop before paying for an
+              # agent run on a "thanks!" comment.
+              set +e
+              bash .arcus/bin/issue_ingest.sh "$STORY_ID" "${{ inputs.issue_number }}" --repo "${{ github.repository }}"
+              rc=$?
+              set -e
+              if [ "$rc" = "3" ]; then
+                echo "mode=skip" >> "$GITHUB_OUTPUT"
+                echo "Awaiting a reply, but no new comments — stopping."
+              elif [ "$rc" != "0" ]; then
+                echo "::error::issue_ingest.sh failed (exit $rc)"; exit "$rc"
+              else
+                echo "mode=resume" >> "$GITHUB_OUTPUT"
+              fi ;;
+            *)
+              echo "mode=resume-plain" >> "$GITHUB_OUTPUT"
+              echo "In progress — continuing from the checkpoint." ;;
+          esac
+
+      - name: Install Copilot CLI
+        if: steps.decide.outputs.mode != 'skip'
+        run: npm install -g @github/copilot
+
+      - name: Materialize the issue into a story
+        if: steps.decide.outputs.mode == 'fresh'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash .arcus/bin/issue_story.sh "${{ inputs.issue_number }}" --repo "${{ github.repository }}"
 
       # --- Run --------------------------------------------------------------
-      - name: Run ARCUS through Brainstorm
+      - name: Run ARCUS
+        if: steps.decide.outputs.mode != 'skip'
         env:
           GITHUB_TOKEN: ${{ github.token }}
           ARCUS_ISSUE_NUMBER: ${{ inputs.issue_number }}
+          MODE: ${{ steps.decide.outputs.mode }}
         run: |
           set -euo pipefail
           STORY_ID="ISSUE-${{ inputs.issue_number }}"
+          case "$MODE" in
+            fresh) PROMPT_FILE="brainstorm-prompt.md" ;;
+            *)     PROMPT_FILE="resume-prompt.md" ;;
+          esac
           # The prompt lives in the plugin so it is reviewable and versioned with
-          # the skills it drives. The story body is untrusted issue text: it is
-          # referenced BY PATH and framed as data, never inlined here.
+          # the skills it drives. Untrusted issue text is referenced BY PATH and
+          # framed as data, never inlined here.
           PROMPT="$(sed "s|{{STORY_ID}}|${STORY_ID}|g" \
-            "$ARCUS_HOME/agent-resources/cloud/brainstorm-prompt.md")"
+            "$ARCUS_HOME/agent-resources/cloud/$PROMPT_FILE")"
           copilot --plugin-dir "$ARCUS_HOME" \
             --allow-all-tools --allow-all-paths \
             -p "$PROMPT" 2>&1 | tee /tmp/arcus.log
@@ -142,7 +195,7 @@ jobs:
       # `always()`: a run that dies mid-stage must still persist what it has, or
       # the next run redoes finished work.
       - name: Push state
-        if: always()
+        if: always() && steps.decide.outputs.mode != 'skip' 
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -152,7 +205,7 @@ jobs:
             --message "chore(arcus-state): ISSUE-${{ inputs.issue_number }} brainstorm (run ${{ github.run_id }})" || true
 
       - name: Post open questions to the issue
-        if: always()
+        if: always() && steps.decide.outputs.mode != 'skip' 
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
