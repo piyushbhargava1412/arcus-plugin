@@ -118,6 +118,17 @@ assert_eq "$(jget current_status)" "AWAITING_HANDOFF" "set-status awaiting_hando
 bash "$CHECKPOINT" set-status "$STORY_ID" plan complete >/dev/null
 assert_eq "$(jget current_status)" "IN_PROGRESS" "advancing past the gate flips current_status back to IN_PROGRESS"
 
+echo "== set-status complete advances current_stage, same as complete =="
+# Two paths reach the same state, so they must leave the same current_stage.
+# When they diverged, a task loop that used set-status left current_stage naming
+# an already-finished task.
+bash "$CHECKPOINT" set-status "$STORY_ID" plan complete >/dev/null
+STAGE_VIA_SET_STATUS="$(jget current_stage)"
+bash "$CHECKPOINT" set-status "$STORY_ID" plan pending >/dev/null
+bash "$CHECKPOINT" complete "$STORY_ID" plan >/dev/null
+assert_eq "$STAGE_VIA_SET_STATUS" "$(jget current_stage)" \
+    "set-status <stage> complete leaves the same current_stage as complete <stage>"
+
 echo "== set-tasks seeds and prunes task_N slots =="
 bash "$CHECKPOINT" set-tasks "$STORY_ID" 3 >/dev/null
 assert_eq "$(jget stages.task_1)" "pending" "set-tasks seeds task_1"

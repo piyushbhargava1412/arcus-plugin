@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **`implementation-runner` still halted before Code Review.** Removing the phase-group gates was a
+  two-part job — delete the emission *and* delete the instruction that causes the stop — and the
+  first pass only did the first half here: an Execution Modes table still read *"Run the loop, then
+  **STOP** at the Handoff gate"*. Caught by a real run that implemented every task and then parked.
+  A new static check now fails the build on the removed gate vocabulary (`[Handoff]`,
+  `Proceed? Reply`, `STOP at the Handoff`), so a leftover cannot silently reintroduce a gate.
+
+- **`set-status <stage> complete` now advances `current_stage` like `complete <stage>` does.** Two
+  paths reached the same state and disagreed: `complete` moved to the next unfinished stage while
+  `set-status` left `current_stage` naming the stage just finished — the exact confusion `complete`
+  was changed to avoid. Observed live as `current_stage: task_3` with every task complete.
+
 ### Changed
 
 - **The phase-group handoff gates are gone. Both modes now run straight through to the pull request.**

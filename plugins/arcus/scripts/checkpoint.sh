@@ -92,13 +92,19 @@ run_mutation() {
             case "set-status": {
                 const [stage, status] = rest;
                 cp.stages[stage] = status;
-                cp.current_stage = stage;
-                if (status === "awaiting_handoff") {
-                    cp.current_status = "AWAITING_HANDOFF";
-                } else if (stage === "closure" && status === "complete") {
-                    cp.current_status = "COMPLETE";
+                if (status === "complete") {
+                    // Same state as `complete <stage>`, so it must leave the same
+                    // current_stage. Otherwise the two paths disagree and
+                    // current_stage ends up naming a finished stage — which is
+                    // exactly the confusion `complete` was fixed to avoid.
+                    const keys = Object.keys(cp.stages);
+                    const next = keys.slice(keys.indexOf(stage) + 1)
+                                     .find(k => cp.stages[k] !== "complete");
+                    cp.current_stage = next || stage;
+                    cp.current_status = next ? "IN_PROGRESS" : "COMPLETE";
                 } else {
-                    cp.current_status = "IN_PROGRESS";
+                    cp.current_stage = stage;
+                    cp.current_status = (status === "awaiting_handoff") ? "AWAITING_HANDOFF" : "IN_PROGRESS";
                 }
                 break;
             }

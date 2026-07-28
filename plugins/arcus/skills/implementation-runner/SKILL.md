@@ -34,12 +34,14 @@ Review** and stops.
 
 ## Execution Modes
 
-The caller decides the mode; this skill behaves identically either way except for the gate:
+This skill behaves **identically in both modes** — it runs the loop and returns. It never stops for
+confirmation: the phase-group gates were removed, and the only place the pipeline waits for a human
+is the Brainstorm open questions, long before this skill is reached.
 
 | Mode | Caller | Behaviour at completion |
 |------|--------|-------------------------|
-| **gated** (default) | User entry phrase `"implement <STORY>"` | Run the loop, then **STOP** at the Handoff gate (see Handoff Protocol). |
-| **afk** | The afk arcus-controller delegates here | Run the loop, then continue without stopping — the controller owns the gate. |
+| **gated** (default) | User entry phrase `"implement <STORY>"` | Run the loop, emit the milestone, return. Standalone, tell the user `review <STORY_ID>` is next. |
+| **afk** | The afk arcus-controller delegates here | Identical — the controller continues into Code Review. |
 
 Read the persisted `mode` from the checkpoint; do not re-infer it.
 
@@ -134,15 +136,16 @@ For each task **in order**, skipping any whose checkpoint status is already `com
    The dispatcher owns per-task TDD (RED → GREEN), the refactor gate (skipped on `light` complexity), the spec-compliance check, and
    the commit via `commit.sh`. This loop does not commit directly.
 3. On a `DONE` outcome: `<BIN>/checkpoint.sh complete <STORY_ID> task_<N>`, then proceed to the next task.
-4. On a `BLOCKED` outcome the dispatcher could not resolve: stop the loop and surface it (in gated
-   mode, hand back to the user; in afk mode, the controller handles it).
+4. On a `BLOCKED` outcome the dispatcher could not resolve: stop the loop and surface it. This is a
+   genuine failure, not a gate — record it with `<BIN>/checkpoint.sh fail <STORY_ID> task_<N>
+   "<reason>"` so a resume reports it instead of silently retrying.
 
 When all tasks are `complete`, go to the Handoff Protocol.
 
 ### Loopback Protocol (Code Review → Implementation)
 
-When this skill is **re-entered after a `changes_requested` review** (the user replied `"fix"` at the
-review gate, or afk auto-loops):
+When this skill is **re-entered after a `changes_requested` review** (the controller loops back
+automatically in both modes, or the user typed `"fix <STORY_ID>"` standalone):
 
 1. `<BIN>/checkpoint.sh reopen <STORY_ID> code_review` — sets `code_review` to `needs_rework` and bumps
    `review_round`.
@@ -158,13 +161,12 @@ review gate, or afk auto-loops):
 ### Handoff Protocol
 
 This skill names **only its immediate successor** — Code Review. It does **not** enumerate the full
-pipeline; that lives in the afk `arcus:arcus-controller`. On completion (all tasks complete), emit the
-trailing handoff block below.
+pipeline; that lives in `arcus:arcus-controller`. On completion (all tasks complete), emit the
+milestone below and return. **Do not stop and wait.**
 
 - **Successor**: Code Review — skill `arcus:code-reviewer`, resume phrase `"review <STORY_ID>"`.
-- **Same-session continuation**: on a `"yes"` / `"proceed"`, load and follow `arcus:code-reviewer`
-  directly.
-- **Cold resume** (new session): the user types `"review <STORY_ID>"`, which re-activates Code Review
+- **Driven by the controller**: it continues straight into Code Review — no confirmation.
+- **Standalone / cold resume**: the user types `"review <STORY_ID>"`, which re-activates Code Review
   by description-matching.
 Emit the milestone and return to the caller — **do not stop for confirmation**:
 
