@@ -22,8 +22,7 @@ const tiers = [
 
 // The Bash-native suites under plugins/arcus/scripts/tests/ cover the helper
 // scripts — checkpoint state transitions, mutate_json injection safety, the
-// arcus-state orphan branch, open-question suppression. They were previously
-// runnable only by hand, so none of it was gated by CI. Discovered rather than
+// arcus-state orphan branch, open-question suppression. Discovered rather than
 // listed, so a new *.test.sh is picked up without editing this file.
 const scriptTestDir = join(__dirname, '..', 'plugins', 'arcus', 'scripts', 'tests');
 const shellTiers = existsSync(scriptTestDir)

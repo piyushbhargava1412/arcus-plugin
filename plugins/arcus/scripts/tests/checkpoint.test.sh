@@ -145,9 +145,9 @@ assert_eq "$(jget stages.task_2)" "" "set-tasks prunes a still-pending task_N ab
 assert_eq "$(jget stages.task_3)" "" "set-tasks prunes every still-pending task_N above the new N"
 
 echo "== set-tasks splices task_N into canonical pipeline position =="
-# Key order IS the pipeline order. Appending task_N after `closure` (which is what a
-# naive "add missing keys" does now that init no longer pre-seeds them) would misrepresent
-# the sequence to every reader, including `complete`'s next-stage lookup below.
+# Key order IS the pipeline order. Task keys are created on demand, so a naive
+# "append what is missing" would land them after `closure` and misrepresent the
+# sequence to every reader, including `complete`'s next-stage lookup below.
 rm -rf .arcus
 bash "$CHECKPOINT" init "$STORY_ID" "arcus/$STORY_ID-1" "main" >/dev/null
 bash "$CHECKPOINT" set-tasks "$STORY_ID" 3 >/dev/null

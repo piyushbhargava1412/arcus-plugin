@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Skills and docs describe the current design, not its history.** Several passages explained what
+  ARCUS *used to* do and why it changed — "the gates were removed", "no longer asks first", "parked
+  at a gate that no longer exists". Skills are prompts: archaeology spends tokens on something the
+  model cannot act on, and naming a removed concept keeps it in context where it can be
+  reintroduced. It also reads as a puzzle to anyone who never saw the old behaviour. Rewritten to
+  state what is, dropping ~35 lines. The changelog is where the history belongs.
+
 ### Fixed
 
 - **`implementation-runner` still halted before Code Review.** Removing the phase-group gates was a

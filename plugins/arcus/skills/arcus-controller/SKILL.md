@@ -25,7 +25,7 @@ This skill is the **single orchestrator** that drives a story from spec to pull 
   request without stopping again.
 - **autonomous** (afk): open questions are recorded but never surfaced, so nothing ever stops.
 
-Neither mode has phase-group handoff gates — see **Output Discipline**.
+See **Output Discipline** for where the pipeline stops.
 
 Execution is identical in both modes: the controller **spawns capabilities** and **runs
 coordinators/orchestrators in-thread** (each stage states its own execution in the Execution
@@ -73,17 +73,13 @@ stream is the same in both modes; only the Brainstorm interaction differs.
 [Complete] PR deployed: <link>
 ```
 
-**There are no phase-group handoff gates.** Once Brainstorm is settled the pipeline runs straight
-through to the pull request in both modes. The gates after Test Plan, Implementation, Code Review and
-Closure were removed deliberately: each derived mechanically from a decision the human had already
-approved, so they bought no real review and trained people to type "yes" without reading — which is
-worse than no gate, because it manufactures confidence. The genuine decision points are the spec, the
-approach, and the finished diff; the first two are the Open-Questions Protocol, and the third is the
-PR.
-
 The **only** place the pipeline stops for a human is the Open-Questions Protocol during Brainstorm,
-and only in interactive mode. If a story raises no open questions, interactive runs end-to-end
-without stopping — which is correct: there was nothing to decide.
+and only in interactive mode. Everything after it — test plan, branch, tasks, review, context sync,
+closure — runs straight through to the pull request. If a story raises no open questions, an
+interactive run never stops at all: there is nothing to decide.
+
+The decision points that matter are the spec, the approach, and the finished diff. The first two are
+the open questions; the third is the PR.
 
 ## Canonical Pipeline (checkpoint keys → phase groups)
 
@@ -238,9 +234,9 @@ are owned by the canonical loop driver. **Delegate** the whole Implementation st
 2. **Decide on the verdict** (identical in both modes — no gate):
    - **approved**: emit `[Review] approved: …` and continue to Context Sync.
    - **changes_requested**: emit `[Review] changes_requested: …` and run the **Loopback Protocol**
-     automatically, bounded by the review-round cap, then re-review. The loopback no longer asks
-     first: the findings are the reviewer's, the fix-tasks are mechanical, and a human who disagrees
-     reviews the result at the PR.
+     automatically, bounded by the review-round cap, then re-review. No confirmation: the findings
+     are the reviewer's, the fix-tasks are mechanical, and a human who disagrees reviews the result
+     at the PR.
 
 ### Context Sync (one-shot, runs only after final approval)
 
@@ -346,10 +342,8 @@ When a checkpoint already exists:
        **stop**; in autonomous mode the questions are informational, so clear the status and carry on.
        Do **not** walk forward past an unanswered question in interactive mode: this is the one status
        the stage walk in step 4 must never be allowed to skip.
-     - Nothing unanswered → the story is parked at a **phase-group gate that no longer exists**
-       (written by a version of ARCUS that gated after every phase group). Clear the status and
-       continue from the next incomplete stage. No confirmation is needed — the human input for
-       Brainstorm already happened, and nothing downstream of it was ever a real decision point.
+     - Nothing unanswered → clear the status and continue from the next incomplete stage. The
+       human input for this story already happened; there is nothing further to confirm.
    - `IN_PROGRESS`: proceed to step 3.
 3. **Reconcile against artifacts before walking.** A run can die between writing an artifact and
    recording it, leaving a stage `pending` whose output is already on disk — the next run would then

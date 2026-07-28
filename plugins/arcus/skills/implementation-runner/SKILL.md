@@ -35,8 +35,8 @@ Review** and stops.
 ## Execution Modes
 
 This skill behaves **identically in both modes** — it runs the loop and returns. It never stops for
-confirmation: the phase-group gates were removed, and the only place the pipeline waits for a human
-is the Brainstorm open questions, long before this skill is reached.
+confirmation: the only place the pipeline waits for a human is the Brainstorm open questions, long
+before this skill is reached.
 
 | Mode | Caller | Behaviour at completion |
 |------|--------|-------------------------|

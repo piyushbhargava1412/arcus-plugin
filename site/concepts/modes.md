@@ -28,15 +28,12 @@ stage gates:
   `forge`, `run afk on <STORY>`). Identical pipeline, except the open questions are recorded and
   never surfaced. It never stops.
 
-**There are no phase-group handoff gates in either mode.** Both run straight through to the pull
-request. The gates that used to sit after Test Plan, Implementation, Code Review and Closure were
-removed: each followed mechanically from a decision you had already approved, so they bought no real
-review and trained people to type "yes" without reading. The genuine decision points are the spec,
+Both modes run straight through to the pull request. The decision points that matter are the spec,
 the approach, and the finished diff — the first two are the open questions, the third is the PR.
 
 So the two modes differ in exactly one thing: **whether Brainstorm stops to ask you its open
-questions.** If a story raises none, an interactive run never stops either — which is correct, because
-there was nothing to decide.
+questions.** If a story raises none, an interactive run never stops either: there was nothing to
+decide.
 
 ::: tip The capabilities themselves have no mode
 `spec-finalizer` and `implementation-planner` never talk to you. On **every** run, in **both** modes,

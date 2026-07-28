@@ -402,12 +402,10 @@ section('L1-14: Pure-agent dispatch references carry the "agent" qualifier');
 
 section('Gate vocabulary: no skill instructs a stop outside the Open-Questions Protocol');
 {
-  // The phase-group handoff gates were removed: both modes now run straight to
-  // the PR, stopping only for Brainstorm open questions. Removing them was a
-  // two-part job — delete the emission AND delete the instruction that causes
-  // the stop — and the first pass missed the second half in
-  // implementation-runner, which kept halting before Code Review. This guards
-  // the vocabulary so a leftover cannot silently reintroduce a gate.
+  // Both modes run straight to the PR, stopping only for Brainstorm open
+  // questions. A stop is created by TWO things — an emission and an instruction
+  // — so deleting one without the other leaves a skill that still halts. This
+  // guards the vocabulary of both.
   const banned = [
     /\[Handoff\]/,
     /STOP\s+at\s+the\s+Handoff/i,

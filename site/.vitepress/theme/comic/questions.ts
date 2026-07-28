@@ -105,7 +105,7 @@ export const QUIZ: QuizQuestion[] = [
     a: 1, w: 'She always decides everything herself first, then hands over the whole list in one go — so you answer in a single reply, and the spec is never left half-written waiting on you.' },
   { d: 'medium', q: 'In gated mode, how many times does Lucie stop and wait for you?',
     o: ['Once after every stage', 'Four times — one per phase group', 'At most once: when a Brainstorm stage has open questions. If there are none, not at all', 'Never — gated only changes the logging'],
-    a: 2, w: 'The old per-phase gates were removed: each followed mechanically from a decision you had already approved, so they bought no real review and trained people to say "yes" without reading. The genuine decision points are the questions and the pull request.' },
+    a: 2, w: 'Everything after Brainstorm follows mechanically from a decision you already approved, so there is nothing left to confirm. The decision points that matter are the questions and the pull request.' },
   { d: 'medium', q: 'In AFK mode, what happens to Angelina’s Open Questions list?',
     o: ['She skips writing it entirely', 'She still writes it — nobody reads it, and her own picks simply stand', 'She emails it to you', 'AFK mode refuses to run if she has any'],
     a: 1, w: 'The list is written identically in both modes. Only the orchestrator differs: gated shows it to you, AFK ignores it — which is why an AFK spec is never less resolved, just less confirmed.' },
