@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The story branch is pushed while a run is in flight, not only at `closure`.** Nothing reached the
+  remote until the very end: `branch.sh` creates the branch locally, `commit.sh` commits to it
+  locally, and `pr.sh` performs the *first* push. So a timeout or cancel during Implementation threw
+  away every generated commit — an hour of code, not just bookkeeping — and there was nowhere to look
+  at the work while it ran. The background pusher now pushes the branch each tick (and a final
+  `always()` step catches a failed run). It uses `GITHUB_TOKEN`, which triggers no workflows, so an
+  in-progress branch cannot spam the target repo's CI.
+
 - **State is checkpointed to `arcus-state` while a run is in flight, not only at the end.** A single
   push at job end meant a timeout, cancel or OOM discarded every artifact, and the next run redid
   finished work — per-task commits survive on the story branch, but the checkpoint recording *what*

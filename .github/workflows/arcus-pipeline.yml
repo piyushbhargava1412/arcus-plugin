@@ -186,18 +186,33 @@ jobs:
             *)     PROMPT_FILE="resume-prompt.md" ;;
           esac
 
-          # Checkpoint the workspace to arcus-state WHILE the agent works. A
-          # single push at job end means a timeout, cancel or OOM discards every
-          # artifact, and the next run redoes finished work: per-task commits
-          # survive on the story branch, but the checkpoint that records what
-          # finished does not. Pushing as it goes also makes a long run
-          # observable rather than silent.
+          # Checkpoint BOTH the workspace and the story branch WHILE the agent
+          # works. Nothing reaches the remote until closure otherwise: the
+          # branch is created locally by branch.sh, committed to per task by
+          # commit.sh, and pushed for the first time by pr.sh. So a timeout,
+          # cancel or OOM discards the artifacts AND every commit — an hour of
+          # generated code, not just bookkeeping. Pushing as it goes also makes
+          # a long run observable instead of silent.
+          #
+          # The story-branch push uses GITHUB_TOKEN, which by design triggers no
+          # workflows, so an in-progress branch cannot spam the target repo's CI.
           rm -f /tmp/pusher.stop
           (
             last=""
             while [ ! -f /tmp/pusher.stop ]; do
               sleep 45
               [ -f /tmp/pusher.stop ] && break
+
+              # Story branch: exists only once the `branch` stage has run.
+              cur="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo '')"
+              case "$cur" in
+                arcus/*)
+                  if git push --quiet --force-with-lease origin "$cur" 2>/dev/null; then
+                    echo "[wip] pushed $cur"
+                  fi ;;
+              esac
+
+              # Workspace artifacts. Hash first so an idle tick costs nothing.
               now="$(ls -lR ".arcus/specs/$STORY_ID" 2>/dev/null | shasum | cut -d' ' -f1)"
               [ "$now" = "$last" ] && continue
               if bash .arcus/bin/state_sync.sh push "$STORY_ID" --branch "$STATE_BRANCH" \
@@ -221,6 +236,16 @@ jobs:
       # --- Persist + report --------------------------------------------------
       # `always()`: a run that dies mid-stage must still persist what it has, or
       # the next run redoes finished work.
+      - name: Push the story branch
+        if: always() && steps.decide.outputs.mode != 'skip'
+        run: |
+          set -euo pipefail
+          cur="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo '')"
+          case "$cur" in
+            arcus/*) git push --force-with-lease origin "$cur" && echo "pushed $cur" ;;
+            *) echo "No story branch to push (branch stage has not run)." ;;
+          esac
+
       - name: Push state
         if: always() && steps.decide.outputs.mode != 'skip' 
         env:
