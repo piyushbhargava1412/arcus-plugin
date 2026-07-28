@@ -35,29 +35,30 @@ scaffold → context_pack → spec_finalizer → plan → test_plan → branch �
 The ten stages group into **six human-facing phases**:
 
 1. **Brainstorm** — Scaffold the workspace, build the context pack, finalize the spec, and produce
-   the implementation plan (`scaffold`, `context_pack`, `spec_finalizer`, `plan`; GATE A)
-2. **Test Plan** — Design the verification matrix (`test_plan`; GATE B)
-3. **Implementation** — Create the branch, then implement & verify each task (`branch`, `task_1..N`; GATE C)
-4. **Code Review** — Two-tier holistic gate over the whole branch diff (`code_review`; GATE D)
+   the implementation plan (`scaffold`, `context_pack`, `spec_finalizer`, `plan`) — **the only place
+   the pipeline stops for you**, and only if a stage raises open questions
+2. **Test Plan** — Design the verification matrix (`test_plan`)
+3. **Implementation** — Create the branch, then implement & verify each task (`branch`, `task_1..N`)
+4. **Code Review** — Two-tier holistic gate over the whole branch diff (`code_review`)
 5. **Context Sync** — Reconcile the shared `.context/` artifacts that the approved diff materially drifted (`context_sync`; automatic continuation)
 6. **Closure** — Create the pull request (`closure`)
 
 ```mermaid
 flowchart LR
   S1["Brainstorm<br/><code>scaffold · context_pack · spec_finalizer · plan</code>"]
-  S1 -->|"GATE A"| S2["Test Plan<br/><code>test_plan</code>"]
-  S2 -->|"GATE B"| S3["Implementation<br/><code>branch · task_1..N</code>"]
-  S3 -->|"GATE C"| S4["Code Review<br/><code>code_review</code>"]
-  S4 -->|"GATE D: approved"| S5["Context Sync<br/><code>context_sync</code>"]
+  S1 --> S2["Test Plan<br/><code>test_plan</code>"]
+  S2 --> S3["Implementation<br/><code>branch · task_1..N</code>"]
+  S3 --> S4["Code Review<br/><code>code_review</code>"]
+  S4 -->|"approved"| S5["Context Sync<br/><code>context_sync</code>"]
   S5 --> S6["Closure<br/><code>closure</code>"]
   S4 -. "changes_requested (max 3 rounds)" .-> S3
 ```
 
-Stages produce specific artifacts. In the **gated** experience the pipeline pauses at each handoff
+Stages produce specific artifacts. In the **gated** experience the pipeline pauses only for open questions during Brainstorm; otherwise it runs through. The rows below note each stage's handoff
 gate, where the orchestrator presents the just-finished stage's output; you reply "yes" (same
 session) or use the stage's explicit resume phrase (cold resume). Within Brainstorm the
 `scaffold`, `context_pack`, `spec_finalizer`, and `plan` stages run back-to-back — the
-`kick-off` coordinator runs context-pack-builder → spec-finalizer — before the first gate (GATE A).
+`kick-off` coordinator runs context-pack-builder → spec-finalizer — before any questions are surfaced.
 The Code Review stage can loop back to Implementation up to 3 times if changes are requested.
 
 > **Skills vs agents.** The participants below live on one of two surfaces (see
@@ -82,7 +83,7 @@ Gates are explicit pause points where you review outputs before the pipeline mov
 
 Context Sync → Closure is an **automatic continuation** (no user decision gate — like Test Plan auto-running): once the `.context/` reconciliation is decided, the pipeline proceeds straight to Closure.
 
-In **interactive** mode (the gated default), ARCUS pauses at each gate and waits for your
+In **interactive** mode (the gated default), ARCUS stops only for the Brainstorm open questions and waits for your
 confirmation. In **autonomous** (AFK) mode, the `arcus-controller` auto-confirms every gate and runs
 end-to-end.
 
@@ -126,7 +127,7 @@ end-to-end.
     </td>
   </tr>
   <tr>
-    <td colspan="3"><strong>Handoff:</strong> No handoff gate. Scaffold flows directly into Brainstorm.</td>
+    <td colspan="3">Scaffold flows directly into Brainstorm.</td>
   </tr>
   </tbody>
 </table>
@@ -177,7 +178,7 @@ end-to-end.
     </td>
   </tr>
   <tr>
-    <td colspan="3"><strong>Handoff Gate A:</strong> "Planning complete → next: Test Plan." Resume phrase: <code>generate test plan for &lt;STORY-ID&gt;</code>.</td>
+    <td colspan="3"><strong>The one stop:</strong> if <code>spec-finalizer</code> or <code>implementation-planner</code> recorded open questions, interactive mode surfaces them <strong>as one batch</strong> and waits. Answer them and the pipeline runs to the PR without stopping again. No questions raised → no stop. AFK never surfaces them. Resume phrase: <code>resume &lt;STORY-ID&gt;</code>.</td>
   </tr>
   </tbody>
 </table>
@@ -231,7 +232,7 @@ end-to-end.
     </td>
   </tr>
   <tr>
-    <td colspan="3"><strong>Handoff Gate B:</strong> "Test plan complete → next: Implementation." Resume phrase: <code>implement &lt;STORY-ID&gt;</code>.</td>
+    <td colspan="3">Continues straight into Implementation. Resume phrase: <code>implement &lt;STORY-ID&gt;</code>.</td>
   </tr>
   </tbody>
 </table>
@@ -292,7 +293,7 @@ end-to-end.
     </td>
   </tr>
   <tr>
-    <td colspan="3"><strong>Handoff Gate C:</strong> "Implementation complete → next: Code Review." Resume phrase: <code>review &lt;STORY-ID&gt;</code>.</td>
+    <td colspan="3">Continues straight into Code Review. Resume phrase: <code>review &lt;STORY-ID&gt;</code>.</td>
   </tr>
   </tbody>
 </table>
@@ -371,7 +372,7 @@ end-to-end.
     </td>
   </tr>
   <tr>
-    <td colspan="3"><strong>Handoff Gate D:</strong> If approved: "Review passed → next: Context Sync" (resume phrase <code>sync context for &lt;STORY-ID&gt;</code>) | If changes_requested: "Issues found, fix and re-review? (Auto-loops up to 3 rounds)"</td>
+    <td colspan="3">Acts on the verdict without asking: <code>approved</code> → Context Sync; <code>changes_requested</code> → the Loopback Protocol runs automatically, up to 3 rounds. Resume phrase: <code>resume &lt;STORY-ID&gt;</code>.</td>
   </tr>
   </tbody>
 </table>
@@ -420,7 +421,7 @@ end-to-end.
     </td>
   </tr>
   <tr>
-    <td colspan="3"><strong>Handoff:</strong> No user decision gate — Context Sync auto-continues to Closure once the reconciliation is decided.</td>
+    <td colspan="3">Auto-continues to Closure once the reconciliation is decided.</td>
   </tr>
   </tbody>
 </table>
@@ -476,7 +477,7 @@ For the full picture of how the shared `.context/` artifacts are built, scoped, 
     </td>
   </tr>
   <tr>
-    <td colspan="3"><strong>Handoff Gate:</strong> Terminal stage — closes the gated chain. PR created or ready for manual creation.</td>
+    <td colspan="3">Terminal stage. PR created, or ready for manual creation.</td>
   </tr>
   </tbody>
 </table>

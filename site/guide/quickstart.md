@@ -58,10 +58,9 @@ implement path/to/story.md
 ```
 
 **Default behavior:** ARCUS runs in **interactive** mode (gated) — the `arcus:arcus-controller`
-orchestrator drives the pipeline, pausing at each handoff gate for your review. At each
-gate you respond "yes" to advance to the next stage, or "no" to pause; on a cold resume you type the
-next stage's explicit phrase (e.g. `generate test plan for <STORY>`, `implement <STORY>`,
-`review <STORY>`, `sync context for <STORY>`, `close <STORY>`). To brainstorm only (context pack +
+orchestrator drives the pipeline and stops **once** — when a Brainstorm stage has open questions.
+Answer them in your own words and it runs all the way to the pull request; if it has none, it never
+stops. On a cold resume, `resume <STORY>` continues from the checkpoint. To brainstorm only (context pack +
 finalized spec, no implementation), use `brainstorm <STORY>` / `kick off <STORY>` (the `kick-off`
 coordinator).
 
@@ -105,12 +104,12 @@ For more details on choosing between the two modes, see [Mode Concepts](/concept
 - [ ] Run `generate context` to build `.context/` snapshot
 - [ ] Write your first story in `story.md`
 - [ ] Run `plan story.md` to start the interactive (gated) pipeline
-- [ ] Review artifacts at each gate and respond "yes" to proceed
+- [ ] Answer the open questions if ARCUS raises any
 - [ ] Verify the opened pull request
 
 **Pro Tips:**
 - Your first story should use gated mode to learn the workflow
 - Keep stories focused and atomic (one feature or fix per story)
-- Review artifacts at each gate before proceeding
+- Answer the open questions carefully — the last chance to steer before code is written
 - You can pause anytime and resume later (gated mode only)
 - Check status anytime with: "where am I?"

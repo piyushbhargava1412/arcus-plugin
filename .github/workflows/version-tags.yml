@@ -1,0 +1,71 @@
+name: version tags
+
+# Maintains the git tags that let a target repo pin the reusable workflow:
+#
+#   uses: piyushbhargava1412/arcus-plugin/.github/workflows/arcus-pipeline.yml@v2
+#
+# Two tags per release:
+#   v<x.y.z>  immutable  — pin exactly; never moved once created
+#   v<major>  floating   — moved to each release, so `@v2` tracks 2.x
+#
+# Deliberately separate from release-opencode-plugin.yml: that workflow skips
+# everything once its own `arcus-opencode-v*` release exists, which would also
+# skip tagging. Tag maintenance must not inherit that early-exit.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "plugins/arcus/.claude-plugin/plugin.json"
+  workflow_dispatch: {}
+
+permissions: {}
+
+jobs:
+  tag:
+    name: Tag v<x.y.z> and move v<major>
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # push tags
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 22
+
+      - name: Create/move version tags
+        run: |
+          set -euo pipefail
+          VERSION="$(node -p "require('./plugins/arcus/.claude-plugin/plugin.json').version")"
+          MAJOR="${VERSION%%.*}"
+          echo "version: $VERSION  major: v$MAJOR"
+
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # Exact tag: immutable. Re-tagging a shipped version would silently
+          # change what an existing pin resolves to.
+          if git rev-parse -q --verify "refs/tags/v$VERSION" >/dev/null; then
+            echo "v$VERSION already exists — leaving it alone."
+          else
+            git tag -a "v$VERSION" -m "arcus-plugin v$VERSION"
+            git push origin "v$VERSION"
+            echo "created v$VERSION"
+          fi
+
+          # Floating major: intended to move, so force is correct here and only here.
+          git tag -f "v$MAJOR" -m "arcus-plugin v$MAJOR (tracks $VERSION)"
+          git push --force origin "v$MAJOR"
+          echo "moved v$MAJOR -> $VERSION"
+
+          {
+            echo "### Version tags"
+            echo ""
+            echo "- \`v$VERSION\` (immutable)"
+            echo "- \`v$MAJOR\` → now tracks \`$VERSION\`"
+            echo ""
+            echo "Callers pin \`@v$MAJOR\`."
+          } >> "$GITHUB_STEP_SUMMARY"

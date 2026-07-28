@@ -33,9 +33,10 @@ orchestrator runs the pipeline in **two modes**:
 ### Interactive mode (default) — `arcus-controller`
 
 The **default, user-driven** mode. You enter with `implement <STORY>` or `plan <STORY>`; the
-`arcus-controller` orchestrator runs the pipeline gated, pausing at each handoff gate. You can:
+`arcus-controller` orchestrator runs the pipeline gated: it stops once, for the Brainstorm open
+questions, then runs to the pull request. You can:
 
-- Review and approve at each gate with "yes" to proceed
+- Answer the open questions in your own words, all in one go
 - Invoke stages individually — `generate test plan for <STORY>`, `implement <STORY>`,
   `review <STORY>`, `close <STORY>`
 - Brainstorm only (context pack + finalized spec, no implementation) via the `kick-off` coordinator —
@@ -57,7 +58,7 @@ ARCUS is designed for development teams and individual engineers who want to:
 
 - Maintain spec-driven development discipline without manual overhead
 - Get AI assistance across the full SDLC, not just code generation
-- Keep humans in control through explicit handoff gates
+- Keep humans on the two decisions that matter: the open questions, and the pull request
 - Produce consistently reviewed, tested, and documented changes
 - Scale from small bug fixes to complex feature implementations
 

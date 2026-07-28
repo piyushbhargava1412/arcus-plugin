@@ -72,7 +72,7 @@ ARCUS is built as a **three-tier capability library** — a modular architecture
 - `repo-agentifier` — Build repository context artifacts
 
 ### Orchestrator (Stateful Pipeline Driver)
-**Owns checkpoint, branch, and handoff gate state.** Drives the full lifecycle from story to PR, managing the session and stage transitions.
+**Owns checkpoint and branch state.** Drives the full lifecycle from story to PR, managing the session and stage transitions.
 
 **Examples:**
 - `arcus-controller` — The single orchestrator for **both interactive and autonomous modes**
@@ -87,11 +87,11 @@ This three-tier design keeps ARCUS **composable** — capabilities can be reused
 
 ARCUS ships **two ways to run the same pipeline** via the **`arcus-controller`** orchestrator:
 
-- **Interactive (default)** — The `arcus-controller` pauses at handoff gates for review. You stay in control, reviewing each stage's output and saying "yes"/"proceed" to advance. Trigger with `implement <STORY>` or `plan <STORY>`.
+- **Interactive (default)** — The `arcus-controller` surfaces the Brainstorm open questions as one batch and waits for your answers, then runs to the PR without stopping again. Trigger with `implement <STORY>` or `plan <STORY>`.
 
 - **Autonomous (afk)** — The `arcus-controller` runs all stages unattended, back-to-back with milestone-only output. Activates on AFK phrases: `afk`, `forge`, `run afk on <STORY>`.
 
-Both modes use the same orchestrator (`arcus-controller`), the same stages, and the same capabilities — the only difference is whether handoff gates pause for user review.
+Both modes use the same orchestrator (`arcus-controller`), the same stages, and the same capabilities — the only difference is whether the Brainstorm open questions are surfaced to you or merely recorded.
 
 See **"interactive or autonomous?"** for guidance on choosing.
 
@@ -386,7 +386,7 @@ judgment is needed.
 | **Output** | Full progress updates | Milestone-only output |
 
 > Both modes use the same **`arcus-controller`** orchestrator — the only difference is whether
-> handoff gates pause for user review.
+> the Brainstorm open questions are surfaced to you.
 
 ---
 

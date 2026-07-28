@@ -169,6 +169,6 @@ afk path/to/story.md
 **💡 Pro Tips:**
 - Your first story should use **interactive mode** to learn the workflow
 - Keep stories focused and atomic (one feature or fix per story)
-- Review artifacts at each gate before proceeding
+- Answer the open questions carefully — they are your one chance to steer before code is written
 - You can pause anytime and resume later (interactive mode only)
 - Check status anytime with: **"where am I?"**

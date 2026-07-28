@@ -300,7 +300,7 @@ could mistakenly try to run.
 **Top-level `current_status`** — the single global signal the orchestrator reads *first* on resume,
 before walking the per-stage map:
 - `IN_PROGRESS` — Normal execution; resume by running the first non-complete stage
-- `AWAITING_HANDOFF` — A handoff gate is pending the user's "yes"/"proceed"; re-ask, do not advance
+- `AWAITING_HANDOFF` — A Brainstorm stage is waiting on answers to its open questions; re-ask, do not advance
 - `COMPLETE` — `closure` finished; the story is done
 - `FAILED` — A stage failed twice; `failure.stage` / `failure.reason` record which and why
 

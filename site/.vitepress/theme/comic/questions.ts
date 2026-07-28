@@ -73,7 +73,7 @@ export const QUIZ: QuizQuestion[] = [
     a: 2, w: 'critical blocks merge, warning is a concrete but survivable issue, and suggestion is a non-blocking minor nit.' },
   { d: 'easy', q: 'Which teammate holds the whole roadmap — every ticket, every checkpoint, start to finish?',
     o: ['Diana', 'Genie', 'Lucie', 'Quinn'],
-    a: 2, w: 'Lucie is the only one who carries the checkpoint, the branch, and every gate across the entire story.' },
+    a: 2, w: 'Lucie is the only one who carries the checkpoint and the branch across the entire story.' },
 
   // ---------- medium ----------
   { d: 'medium', q: 'What are the three categories Quinn designs test cases across?',
@@ -103,6 +103,9 @@ export const QUIZ: QuizQuestion[] = [
   { d: 'medium', q: 'How does Angelina hand you the calls she was least sure about?',
     o: ['One question at a time, waiting for each answer before asking the next', 'All of them at once as an Open Questions list — each with exactly one Recommended option and a one-line reason', 'She blocks the whole pipeline until someone replies', 'She leaves those decisions blank for you to fill in'],
     a: 1, w: 'She always decides everything herself first, then hands over the whole list in one go — so you answer in a single reply, and the spec is never left half-written waiting on you.' },
+  { d: 'medium', q: 'In gated mode, how many times does Lucie stop and wait for you?',
+    o: ['Once after every stage', 'Four times — one per phase group', 'At most once: when a Brainstorm stage has open questions. If there are none, not at all', 'Never — gated only changes the logging'],
+    a: 2, w: 'Everything after Brainstorm follows mechanically from a decision you already approved, so there is nothing left to confirm. The decision points that matter are the questions and the pull request.' },
   { d: 'medium', q: 'In AFK mode, what happens to Angelina’s Open Questions list?',
     o: ['She skips writing it entirely', 'She still writes it — nobody reads it, and her own picks simply stand', 'She emails it to you', 'AFK mode refuses to run if she has any'],
     a: 1, w: 'The list is written identically in both modes. Only the orchestrator differs: gated shows it to you, AFK ignores it — which is why an AFK spec is never less resolved, just less confirmed.' },
@@ -136,7 +139,7 @@ export const QUIZ: QuizQuestion[] = [
     o: ['"Fast and forgiving — ship first, ask questions later"', '"Brutal in the hunt, fair in the verdict"', '"Optimistic by default, pessimistic on request"', '"Silent unless a critical issue is found"'],
     a: 1, w: 'Code Review is documented with a zero-trust persona — thorough while investigating, but calibrated and fair in the actual verdict.' },
   { d: 'hard', q: 'Can Lucie change speed mid-story — swap gated for AFK partway through a run?',
-    o: ['Yes, at any handoff gate', 'Yes, but only once', 'No — mode is set at the very start and persists through every stage', 'Only Diana can trigger the switch'],
+    o: ['Yes, whenever she stops for questions', 'Yes, but only once', 'No — mode is set at the very start and persists through every stage', 'Only Diana can trigger the switch'],
     a: 2, w: 'Both speeds are the same Lucie underneath, but the mode choice is locked in from the start; you cannot switch mid-run.' },
   { d: 'hard', q: 'How many of ARCUS’s roughly 29 jobs are teammates you can call directly, versus ones only looped in by name?',
     o: ['All 29 are callable directly', 'None are callable directly', '13 are directly callable (skills); 16 are only looped in by name (agents)', '20 are directly callable; 9 are looped in by name'],

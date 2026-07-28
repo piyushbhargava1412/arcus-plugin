@@ -118,6 +118,17 @@ assert_eq "$(jget current_status)" "AWAITING_HANDOFF" "set-status awaiting_hando
 bash "$CHECKPOINT" set-status "$STORY_ID" plan complete >/dev/null
 assert_eq "$(jget current_status)" "IN_PROGRESS" "advancing past the gate flips current_status back to IN_PROGRESS"
 
+echo "== set-status complete advances current_stage, same as complete =="
+# Two paths reach the same state, so they must leave the same current_stage.
+# When they diverged, a task loop that used set-status left current_stage naming
+# an already-finished task.
+bash "$CHECKPOINT" set-status "$STORY_ID" plan complete >/dev/null
+STAGE_VIA_SET_STATUS="$(jget current_stage)"
+bash "$CHECKPOINT" set-status "$STORY_ID" plan pending >/dev/null
+bash "$CHECKPOINT" complete "$STORY_ID" plan >/dev/null
+assert_eq "$STAGE_VIA_SET_STATUS" "$(jget current_stage)" \
+    "set-status <stage> complete leaves the same current_stage as complete <stage>"
+
 echo "== set-tasks seeds and prunes task_N slots =="
 bash "$CHECKPOINT" set-tasks "$STORY_ID" 3 >/dev/null
 assert_eq "$(jget stages.task_1)" "pending" "set-tasks seeds task_1"
@@ -134,9 +145,9 @@ assert_eq "$(jget stages.task_2)" "" "set-tasks prunes a still-pending task_N ab
 assert_eq "$(jget stages.task_3)" "" "set-tasks prunes every still-pending task_N above the new N"
 
 echo "== set-tasks splices task_N into canonical pipeline position =="
-# Key order IS the pipeline order. Appending task_N after `closure` (which is what a
-# naive "add missing keys" does now that init no longer pre-seeds them) would misrepresent
-# the sequence to every reader, including `complete`'s next-stage lookup below.
+# Key order IS the pipeline order. Task keys are created on demand, so a naive
+# "append what is missing" would land them after `closure` and misrepresent the
+# sequence to every reader, including `complete`'s next-stage lookup below.
 rm -rf .arcus
 bash "$CHECKPOINT" init "$STORY_ID" "arcus/$STORY_ID-1" "main" >/dev/null
 bash "$CHECKPOINT" set-tasks "$STORY_ID" 3 >/dev/null

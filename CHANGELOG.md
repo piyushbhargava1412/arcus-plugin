@@ -7,6 +7,132 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Skills and docs describe the current design, not its history.** Several passages explained what
+  ARCUS *used to* do and why it changed — "the gates were removed", "no longer asks first", "parked
+  at a gate that no longer exists". Skills are prompts: archaeology spends tokens on something the
+  model cannot act on, and naming a removed concept keeps it in context where it can be
+  reintroduced. It also reads as a puzzle to anyone who never saw the old behaviour. Rewritten to
+  state what is, dropping ~35 lines. The changelog is where the history belongs.
+
+### Fixed
+
+- **`implementation-runner` still halted before Code Review.** Removing the phase-group gates was a
+  two-part job — delete the emission *and* delete the instruction that causes the stop — and the
+  first pass only did the first half here: an Execution Modes table still read *"Run the loop, then
+  **STOP** at the Handoff gate"*. Caught by a real run that implemented every task and then parked.
+  A new static check now fails the build on the removed gate vocabulary (`[Handoff]`,
+  `Proceed? Reply`, `STOP at the Handoff`), so a leftover cannot silently reintroduce a gate.
+
+- **`set-status <stage> complete` now advances `current_stage` like `complete <stage>` does.** Two
+  paths reached the same state and disagreed: `complete` moved to the next unfinished stage while
+  `set-status` left `current_stage` naming the stage just finished — the exact confusion `complete`
+  was changed to avoid. Observed live as `current_stage: task_3` with every task complete.
+
+### Changed
+
+- **The phase-group handoff gates are gone. Both modes now run straight through to the pull request.**
+  Interactive mode stops in exactly one place: the Brainstorm open questions. Answer them and the
+  pipeline runs test plan → branch → tasks → review → context sync → PR without stopping again. If a
+  story raises no questions, an interactive run never stops at all — which is correct, because there
+  was nothing to decide.
+
+  The gates after Test Plan, Implementation, Code Review and Closure each followed **mechanically
+  from a decision the human had already approved**, so they bought no real review and trained people
+  to type "yes" without reading — worse than no gate, because it manufactures confidence. The genuine
+  decision points are the spec, the approach, and the finished diff: the first two are the
+  Open-Questions Protocol, the third is the PR.
+
+  Consequences worth knowing:
+  - The two modes now differ in **one** thing — whether Brainstorm surfaces its open questions or
+    merely records them.
+  - The Code Review loopback runs **automatically in both modes**; it no longer asks first. The
+    findings are the reviewer's, the fix-tasks are mechanical, and a human who disagrees reviews the
+    result at the PR.
+  - **The tradeoff, stated plainly:** a subtly wrong plan now costs a full implementation before you
+    see anything. The Brainstorm questions are the mitigation, so the approved plan carries more
+    weight than it used to.
+  - `awaiting_handoff` keeps its meaning (a stage waiting on a human) but now has exactly one cause.
+    A story parked at an old phase gate is **migrated on resume**: with nothing unanswered, the
+    status is cleared and the pipeline continues.
+  - `implementation-runner` and `code-reviewer` emit milestones instead of handoff blocks; the
+    controller still acts on `code-reviewer`'s `VERDICT:` line.
+
+  Locally this loses nothing that stopping the session does not already give you, which is why
+  gate-at-every-stage was dropped outright rather than kept as an opt-in mode.
+
+### Added
+
+- **ARCUS cloud, phase 2: replying on the issue resumes the pipeline.** A comment on a labelled issue
+  now folds the reply back into the stage that was waiting, records the mapping, and continues.
+
+  **No slash command.** The plan originally specified an explicit `/arcus continue`, but the first
+  real cloud run showed the obvious behaviour is to just answer the questions — so any comment from
+  a write-access user is treated as the answer. `issue_ingest.sh` exits `3` when there is nothing new,
+  and the workflow gates on that **before installing Copilot**, so a "thanks!" or a side discussion
+  costs nothing.
+
+  **The workflow is now state-driven**, exactly like `arcus-controller`: it pulls state first and lets
+  `current_status` decide between fresh / resume / skip. A label, a comment and a manual dispatch all
+  take the same path — no event-kind branching to keep in sync.
+
+  New `issue_ingest.sh` collects comments **since a cursor**, not just the one that triggered the run.
+  That matters because GitHub keeps only one pending run per concurrency group: three comments during
+  a long run collapse into a single queued run, so the event payload is not the only unprocessed
+  comment. It skips bot comments and anything carrying the `arcus:v1` marker — ingesting our own
+  question comment would have the pipeline answer itself. Edits are ignored (first read wins);
+  honouring them would let a write-access user retroactively change an answer already acted on.
+
+  `checkpoint.sh` gains `set-cursor` and `set-issue`. The cursor advances **at ingest**, not after the
+  agent run: `inbox.md` is pushed with the state either way, so the replies are durable, and a failing
+  run cannot re-ingest the same comments forever.
+
+### Added
+
+- **ARCUS cloud, phase 1: a labelled GitHub issue runs Brainstorm and posts its open questions back
+  as an issue comment.** New reusable workflow `.github/workflows/arcus-pipeline.yml`
+  (`on: workflow_call`); a target repo vendors a ~25-line caller. Scope is deliberately narrow —
+  scaffold → context_pack → spec_finalizer → plan, then halt. No implementation, no PR, no resume.
+
+  It needed **no new skill and no `channel` field**, because the Brainstorm capabilities already
+  write their `## Open Questions` as a machine-readable YAML block at a fixed path. The workflow
+  reads that file directly. This is the PR-2 decision to put questions in the artifact rather than
+  the return message paying off exactly as argued: *a return-message block cannot survive the cold
+  resumes the cloud surface requires.* Transport is therefore fully deterministic — no scraping of
+  model prose.
+
+  Three new helper scripts, staged by `bootstrap.sh` like every other:
+  - `issue_story.sh` — materializes an issue into `story.md`. **The story id is `ISSUE-<n>`, derived
+    from the issue number and never the title**: that value becomes a filesystem path, a git branch
+    name, and a `node` argument, so a title-derived id would be a path-traversal and argument-
+    injection surface fed by untrusted text. Title and body are rendered via `node`, never through a
+    shell.
+  - `state_sync.sh` — `pull`/`push` a story workspace to the `arcus-state` **orphan** branch, since
+    `.arcus/` is gitignored and runners are ephemeral. Deliberately not the story branch: artifacts
+    keep changing after the PR opens, which would push commits onto a branch under review.
+    **Never force-pushes** — a non-fast-forward means a concurrent run holds newer state, so it
+    aborts rather than clobbering.
+  - `questions_comment.sh` — renders unanswered questions as an issue comment. A question is
+    unanswered iff its id is absent from `## Dialogue Answers`, keeping one source of truth for
+    answered-ness.
+
+  Security posture: the trust boundary is **authorship, not repo visibility** — both the issue author
+  and the triggering actor must hold `write`/`admin`, checked against the collaborators API rather
+  than the derivable `author_association`. Plus a fork guard, a per-issue `concurrency` group with
+  `cancel-in-progress: false` (cancelling mid-stage would leave a half-written artifact
+  indistinguishable from a crash), and the issue body reaching the model only by path, framed as data.
+
+- **`version-tags.yml`** — publishes an immutable `v<x.y.z>` tag and moves a floating `v<major>`, so
+  callers can pin `uses: …/arcus-pipeline.yml@v2`. Kept separate from `release-opencode-plugin.yml`,
+  which early-exits once its own release exists and would otherwise skip tagging too.
+
+- **The Bash test suites now run in CI.** `plugins/arcus/scripts/tests/*.test.sh` were runnable only
+  by hand, so 64 checkpoint assertions — including the `mutate_json` injection proof — had never
+  been gated by a build. `run-tests.mjs` now discovers and runs them as additional tiers, joined by
+  22 new assertions for the cloud scripts (orphan-branch lifecycle, fresh-runner restore,
+  answered-question suppression, path-traversal rejection).
+
 ### Fixed
 
 - **Agent dispatch now works on GitHub Copilot CLI, and stops wasting a failed tool call on Claude

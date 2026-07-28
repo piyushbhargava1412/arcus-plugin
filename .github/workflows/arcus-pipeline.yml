@@ -1,0 +1,236 @@
+name: ARCUS pipeline
+
+# Reusable workflow. A target repo vendors a ~25-line caller that invokes this:
+#
+#   jobs:
+#     arcus:
+#       uses: piyushbhargava1412/arcus-plugin/.github/workflows/arcus-pipeline.yml@v2
+#       permissions: { contents: write, issues: write, pull-requests: write, copilot-requests: write }
+#
+# It must be a REUSABLE WORKFLOW, not a composite action: a composite action
+# cannot set `concurrency` or `permissions`, and runs inside the caller's single
+# job — so the 6-hour job cap would apply to the whole pipeline with no way to
+# segment it later.
+#
+# PHASE 1 SCOPE: labelled issue -> Brainstorm -> post batched questions -> halt.
+# No implementation, no PR, no resume. Those are phases 2 and 3.
+
+on:
+  workflow_call:
+    inputs:
+      issue_number:
+        description: "Issue to run the pipeline for"
+        required: true
+        type: number
+      plugin_ref:
+        description: "arcus-plugin ref to install (tag, branch or SHA)"
+        required: false
+        type: string
+        default: "main"
+      plugin_repo:
+        required: false
+        type: string
+        default: "piyushbhargava1412/arcus-plugin"
+      state_branch:
+        required: false
+        type: string
+        default: "arcus-state"
+
+jobs:
+  brainstorm:
+    name: "ARCUS: issue #${{ inputs.issue_number }} → Brainstorm"
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    # Per-issue, so two stories can run in parallel. NEVER cancel-in-progress:
+    # cancelling mid-stage leaves a stage `in_progress` with a half-written
+    # artifact and no way to tell that from a crash.
+    concurrency:
+      group: arcus-${{ github.repository }}-${{ inputs.issue_number }}
+      cancel-in-progress: false
+
+    steps:
+      # --- Trust boundary --------------------------------------------------
+      # The gate is AUTHORSHIP, not repo visibility. Both the issue author and
+      # whoever triggered the run must have write access, so a drive-by issue
+      # body cannot be processed even if a maintainer mislabels it. Accepting
+      # stories from arbitrary authors is deliberately out of scope.
+      - name: Verify author and actor both have write access
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          REPO="${{ github.repository }}"
+          AUTHOR="$(gh api "repos/$REPO/issues/${{ inputs.issue_number }}" --jq .user.login)"
+          for who in "$AUTHOR" "${{ github.actor }}"; do
+            PERM="$(gh api "repos/$REPO/collaborators/$who/permission" --jq .permission 2>/dev/null || echo none)"
+            case "$PERM" in
+              admin|write) echo "$who: $PERM — ok" ;;
+              *) echo "::error::$who has '$PERM' permission; ARCUS only runs on issues authored AND triggered by users with write access."; exit 1 ;;
+            esac
+          done
+
+      - name: Refuse to run on a fork
+        if: github.event.repository.fork == true
+        run: |
+          echo "::error::ARCUS does not run on forks."
+          exit 1
+
+      - uses: actions/checkout@v4
+        with:
+          # Credentials are injected only into the specific steps that push.
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # --- Runtime ----------------------------------------------------------
+      - name: Install ARCUS
+        run: |
+          set -euo pipefail
+          git clone --depth 1 --branch "${{ inputs.plugin_ref }}" \
+            "https://github.com/${{ inputs.plugin_repo }}.git" /tmp/arcus
+          echo "ARCUS_HOME=/tmp/arcus/plugins/arcus" >> "$GITHUB_ENV"
+          node -p "'arcus '+require('/tmp/arcus/plugins/arcus/.claude-plugin/plugin.json').version"
+
+      - name: Stage helper scripts
+        run: |
+          # locate.sh short-circuits on an explicit ARCUS_HOME, so no probing and
+          # no dependency on a host hook (Copilot never fires the bundled one).
+          bash "$ARCUS_HOME/scripts/locate.sh"
+
+      # --- State ------------------------------------------------------------
+      - name: Pull existing state
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git config user.name "arcus[bot]"
+          git config user.email "arcus@users.noreply.github.com"
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
+          bash .arcus/bin/state_sync.sh pull "ISSUE-${{ inputs.issue_number }}" --branch "${{ inputs.state_branch }}"
+
+      # The workflow is STATE-DRIVEN, exactly like arcus-controller: the trigger
+      # only says "run ARCUS on issue N", and the checkpoint decides what that
+      # means. No event-kind branching, so a label, a comment and a manual
+      # dispatch all take the same path.
+      - name: Decide what this run should do
+        id: decide
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          STORY_ID="ISSUE-${{ inputs.issue_number }}"
+          CP=".arcus/specs/$STORY_ID/session-checkpoint.json"
+
+          if [ ! -f "$CP" ]; then
+            echo "mode=fresh" >> "$GITHUB_OUTPUT"
+            echo "No checkpoint — starting Brainstorm from scratch."
+            exit 0
+          fi
+
+          STATUS="$(node -p "require('./$CP').current_status || 'IN_PROGRESS'")"
+          echo "checkpoint status: $STATUS"
+
+          case "$STATUS" in
+            COMPLETE|FAILED)
+              echo "mode=skip" >> "$GITHUB_OUTPUT"
+              echo "Story is $STATUS — nothing to do." ;;
+            AWAITING_HANDOFF)
+              # Only meaningful if a human actually said something new. Ingest
+              # exits 3 when there is nothing, so we stop before paying for an
+              # agent run on a "thanks!" comment.
+              set +e
+              bash .arcus/bin/issue_ingest.sh "$STORY_ID" "${{ inputs.issue_number }}" --repo "${{ github.repository }}"
+              rc=$?
+              set -e
+              if [ "$rc" = "3" ]; then
+                echo "mode=skip" >> "$GITHUB_OUTPUT"
+                echo "Awaiting a reply, but no new comments — stopping."
+              elif [ "$rc" != "0" ]; then
+                echo "::error::issue_ingest.sh failed (exit $rc)"; exit "$rc"
+              else
+                echo "mode=resume" >> "$GITHUB_OUTPUT"
+              fi ;;
+            *)
+              echo "mode=resume-plain" >> "$GITHUB_OUTPUT"
+              echo "In progress — continuing from the checkpoint." ;;
+          esac
+
+      - name: Install Copilot CLI
+        if: steps.decide.outputs.mode != 'skip'
+        run: npm install -g @github/copilot
+
+      - name: Materialize the issue into a story
+        if: steps.decide.outputs.mode == 'fresh'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash .arcus/bin/issue_story.sh "${{ inputs.issue_number }}" --repo "${{ github.repository }}"
+
+      # --- Run --------------------------------------------------------------
+      - name: Run ARCUS
+        if: steps.decide.outputs.mode != 'skip'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          ARCUS_ISSUE_NUMBER: ${{ inputs.issue_number }}
+          MODE: ${{ steps.decide.outputs.mode }}
+        run: |
+          set -euo pipefail
+          STORY_ID="ISSUE-${{ inputs.issue_number }}"
+          case "$MODE" in
+            fresh) PROMPT_FILE="brainstorm-prompt.md" ;;
+            *)     PROMPT_FILE="resume-prompt.md" ;;
+          esac
+          # The prompt lives in the plugin so it is reviewable and versioned with
+          # the skills it drives. Untrusted issue text is referenced BY PATH and
+          # framed as data, never inlined here.
+          PROMPT="$(sed "s|{{STORY_ID}}|${STORY_ID}|g" \
+            "$ARCUS_HOME/agent-resources/cloud/$PROMPT_FILE")"
+          copilot --plugin-dir "$ARCUS_HOME" \
+            --allow-all-tools --allow-all-paths \
+            -p "$PROMPT" 2>&1 | tee /tmp/arcus.log
+
+      # --- Persist + report --------------------------------------------------
+      # `always()`: a run that dies mid-stage must still persist what it has, or
+      # the next run redoes finished work.
+      - name: Push state
+        if: always() && steps.decide.outputs.mode != 'skip' 
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          bash .arcus/bin/state_sync.sh push "ISSUE-${{ inputs.issue_number }}" \
+            --branch "${{ inputs.state_branch }}" \
+            --message "chore(arcus-state): ISSUE-${{ inputs.issue_number }} brainstorm (run ${{ github.run_id }})" || true
+
+      - name: Post open questions to the issue
+        if: always() && steps.decide.outputs.mode != 'skip' 
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          bash .arcus/bin/questions_comment.sh "ISSUE-${{ inputs.issue_number }}" \
+            "${{ inputs.issue_number }}" --repo "${{ github.repository }}" | tee /tmp/questions.out
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "### ARCUS — issue #${{ inputs.issue_number }}"
+            echo ""
+            CP=".arcus/specs/ISSUE-${{ inputs.issue_number }}/session-checkpoint.json"
+            if [ -f "$CP" ]; then
+              echo "| field | value |"
+              echo "|---|---|"
+              echo "| status | \`$(node -p "require('./$CP').current_status" 2>/dev/null || echo '?')\` |"
+              echo "| stage | \`$(node -p "require('./$CP').current_stage" 2>/dev/null || echo '?')\` |"
+              echo ""
+              echo "<details><summary>checkpoint</summary>"
+              echo ""; echo '```json'; cat "$CP"; echo '```'; echo "</details>"
+            else
+              echo "_No checkpoint was written._"
+            fi
+            echo ""
+            echo "$(cat /tmp/questions.out 2>/dev/null || echo 'QUESTIONS: (not reached)')"
+          } >> "$GITHUB_STEP_SUMMARY"

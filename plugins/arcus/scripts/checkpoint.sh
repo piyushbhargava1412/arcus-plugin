@@ -14,6 +14,8 @@
 #   scripts/checkpoint.sh set-mode   <STORY_ID> <gated|afk>
 #   scripts/checkpoint.sh set-branch <STORY_ID> <branch> <base>
 #   scripts/checkpoint.sh set-tasks  <STORY_ID> <N>             # seed/prune task_1..task_N slots
+#   scripts/checkpoint.sh set-cursor <STORY_ID> <COMMENT_ID>    # highest ingested comment id
+#   scripts/checkpoint.sh set-issue  <STORY_ID> <ISSUE_NUMBER>
 #   scripts/checkpoint.sh await-handoff <STORY_ID>              # -> current_status AWAITING_HANDOFF
 #   scripts/checkpoint.sh fail       <STORY_ID> <stage> <reason>
 #
@@ -34,7 +36,7 @@ ACTION="$1"
 STORY_ID="$2"
 
 if [ -z "$ACTION" ] || [ -z "$STORY_ID" ]; then
-    echo "[ERROR] Usage: checkpoint.sh <init|read|complete|set-status|reopen|set-mode|set-branch|set-tasks|await-handoff|fail> <STORY_ID> [args]" >&2
+    echo "[ERROR] Usage: checkpoint.sh <init|read|complete|set-status|reopen|set-mode|set-branch|set-tasks|set-cursor|set-issue|await-handoff|fail> <STORY_ID> [args]" >&2
     exit 1
 fi
 
@@ -90,13 +92,19 @@ run_mutation() {
             case "set-status": {
                 const [stage, status] = rest;
                 cp.stages[stage] = status;
-                cp.current_stage = stage;
-                if (status === "awaiting_handoff") {
-                    cp.current_status = "AWAITING_HANDOFF";
-                } else if (stage === "closure" && status === "complete") {
-                    cp.current_status = "COMPLETE";
+                if (status === "complete") {
+                    // Same state as `complete <stage>`, so it must leave the same
+                    // current_stage. Otherwise the two paths disagree and
+                    // current_stage ends up naming a finished stage — which is
+                    // exactly the confusion `complete` was fixed to avoid.
+                    const keys = Object.keys(cp.stages);
+                    const next = keys.slice(keys.indexOf(stage) + 1)
+                                     .find(k => cp.stages[k] !== "complete");
+                    cp.current_stage = next || stage;
+                    cp.current_status = next ? "IN_PROGRESS" : "COMPLETE";
                 } else {
-                    cp.current_status = "IN_PROGRESS";
+                    cp.current_stage = stage;
+                    cp.current_status = (status === "awaiting_handoff") ? "AWAITING_HANDOFF" : "IN_PROGRESS";
                 }
                 break;
             }
@@ -165,6 +173,20 @@ run_mutation() {
                 const [stage, reason] = rest;
                 cp.current_status = "FAILED";
                 cp.failure = { stage, reason: reason || "" };
+                break;
+            }
+            case "set-cursor": {
+                // Highest issue-comment id already folded into this story. Makes a
+                // re-delivered webhook, or a second run racing the first, a no-op
+                // instead of re-answering questions that were already answered.
+                const [cursor] = rest;
+                cp.last_processed_comment_id = Number.parseInt(cursor, 10) || 0;
+                cp.last_processed_at = new Date().toISOString();
+                break;
+            }
+            case "set-issue": {
+                const [num] = rest;
+                cp.issue_number = Number.parseInt(num, 10) || 0;
                 break;
             }
             case "await-handoff": {
@@ -300,6 +322,26 @@ EOF
         echo "TASKS_SET: $N"
         ;;
 
+    set-cursor)
+        CURSOR="$3"
+        if [ -z "$CURSOR" ] || ! printf '%s' "$CURSOR" | grep -qE '^[0-9]+$'; then
+            echo "[ERROR] Usage: checkpoint.sh set-cursor <STORY_ID> <COMMENT_ID>" >&2
+            exit 1
+        fi
+        run_mutation set-cursor "$CURSOR"
+        echo "CURSOR_SET: $CURSOR"
+        ;;
+
+    set-issue)
+        NUM="$3"
+        if [ -z "$NUM" ] || ! printf '%s' "$NUM" | grep -qE '^[0-9]+$'; then
+            echo "[ERROR] Usage: checkpoint.sh set-issue <STORY_ID> <ISSUE_NUMBER>" >&2
+            exit 1
+        fi
+        run_mutation set-issue "$NUM"
+        echo "ISSUE_SET: $NUM"
+        ;;
+
     await-handoff)
         run_mutation await-handoff
         echo "AWAITING_HANDOFF"
@@ -317,7 +359,7 @@ EOF
         ;;
 
     *)
-        echo "[ERROR] Unknown action: $ACTION. Use init|read|complete|set-status|reopen|set-mode|set-branch|set-tasks|await-handoff|fail." >&2
+        echo "[ERROR] Unknown action: $ACTION. Use init|read|complete|set-status|reopen|set-mode|set-branch|set-tasks|set-cursor|set-issue|await-handoff|fail." >&2
         exit 1
         ;;
 esac

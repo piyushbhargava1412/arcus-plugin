@@ -400,6 +400,30 @@ section('L1-14: Pure-agent dispatch references carry the "agent" qualifier');
   assert(qualifierFailures === 0, `L1-14: all ${items.length} skills+agents qualify pure-agent dispatch refs (${qualifierFailures} failures)`);
 }
 
+section('Gate vocabulary: no skill instructs a stop outside the Open-Questions Protocol');
+{
+  // Both modes run straight to the PR, stopping only for Brainstorm open
+  // questions. A stop is created by TWO things — an emission and an instruction
+  // — so deleting one without the other leaves a skill that still halts. This
+  // guards the vocabulary of both.
+  const banned = [
+    /\[Handoff\]/,
+    /STOP\s+at\s+the\s+Handoff/i,
+    /Proceed\?\s*Reply/i,
+    /stop\s+until\s+the\s+user\s+replies/i
+  ];
+  let gateLeftovers = 0;
+  for (const item of walkAll()) {
+    for (const re of banned) {
+      if (re.test(item.body)) {
+        gateLeftovers++;
+        console.error(`  ${item.surface} ${item.name}: reintroduces gate vocabulary (${re})`);
+      }
+    }
+  }
+  assert(gateLeftovers === 0, `no skill/agent carries removed handoff-gate vocabulary (${gateLeftovers} found)`);
+}
+
 section('L1-15: Pure-agent dispatch is host-portable (no `arcus:` prefix)');
 {
   const items = walkAll();
