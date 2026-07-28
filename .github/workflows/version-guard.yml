@@ -11,6 +11,7 @@ on:
   pull_request:
     paths:
       - "plugins/arcus/**"
+      - ".github/workflows/arcus-pipeline.yml"
 
 permissions: {}
 
@@ -35,7 +36,11 @@ jobs:
           MANIFEST="plugins/arcus/.claude-plugin/plugin.json"
 
           # Ignore PRs that only touch the manifest itself, or only delete files.
-          CHANGED=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA" -- 'plugins/arcus/**' \
+          # arcus-pipeline.yml is consumed by target repos via `uses: ...@v2`, and the
+          # tag only moves when the version does — so a workflow-only change is
+          # invisible to every caller until the version is bumped.
+          CHANGED=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA" \
+                      -- 'plugins/arcus/**' '.github/workflows/arcus-pipeline.yml' \
                     | grep -v "^${MANIFEST}$" || true)
           if [ -z "$CHANGED" ]; then
             echo "No plugin content changed outside the manifest — nothing to enforce."

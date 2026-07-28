@@ -173,8 +173,11 @@ jobs:
         if: steps.decide.outputs.mode != 'skip'
         env:
           GITHUB_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ github.token }}
           ARCUS_ISSUE_NUMBER: ${{ inputs.issue_number }}
           MODE: ${{ steps.decide.outputs.mode }}
+          STATE_BRANCH: ${{ inputs.state_branch }}
+          RUN_ID: ${{ github.run_id }}
         run: |
           set -euo pipefail
           STORY_ID="ISSUE-${{ inputs.issue_number }}"
@@ -182,9 +185,48 @@ jobs:
             fresh) PROMPT_FILE="fresh-prompt.md" ;;
             *)     PROMPT_FILE="resume-prompt.md" ;;
           esac
-          # The prompt lives in the plugin so it is reviewable and versioned with
-          # the skills it drives. Untrusted issue text is referenced BY PATH and
-          # framed as data, never inlined here.
+
+          # Checkpoint BOTH the workspace and the story branch WHILE the agent
+          # works. Nothing reaches the remote until closure otherwise: the
+          # branch is created locally by branch.sh, committed to per task by
+          # commit.sh, and pushed for the first time by pr.sh. So a timeout,
+          # cancel or OOM discards the artifacts AND every commit — an hour of
+          # generated code, not just bookkeeping. Pushing as it goes also makes
+          # a long run observable instead of silent.
+          #
+          # The story-branch push uses GITHUB_TOKEN, which by design triggers no
+          # workflows, so an in-progress branch cannot spam the target repo's CI.
+          rm -f /tmp/pusher.stop
+          (
+            last=""
+            while [ ! -f /tmp/pusher.stop ]; do
+              sleep 45
+              [ -f /tmp/pusher.stop ] && break
+
+              # Story branch: exists only once the `branch` stage has run.
+              cur="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo '')"
+              case "$cur" in
+                arcus/*)
+                  if git push --quiet --force-with-lease origin "$cur" 2>/dev/null; then
+                    echo "[wip] pushed $cur"
+                  fi ;;
+              esac
+
+              # Workspace artifacts. Hash first so an idle tick costs nothing.
+              now="$(ls -lR ".arcus/specs/$STORY_ID" 2>/dev/null | shasum | cut -d' ' -f1)"
+              [ "$now" = "$last" ] && continue
+              if bash .arcus/bin/state_sync.sh push "$STORY_ID" --branch "$STATE_BRANCH" \
+                   --message "chore(arcus-state): $STORY_ID in progress (run $RUN_ID)" >/dev/null 2>&1; then
+                last="$now"
+                echo "[state] checkpointed $STORY_ID"
+              fi
+            done
+          ) &
+          PUSHER_PID=$!
+          # Stop the pusher before this step returns, so it can never race the
+          # final push over the shared .arcus/.state-wt worktree.
+          trap 'touch /tmp/pusher.stop; wait "$PUSHER_PID" 2>/dev/null || true' EXIT
+
           PROMPT="$(sed "s|{{STORY_ID}}|${STORY_ID}|g" \
             "$ARCUS_HOME/agent-resources/cloud/$PROMPT_FILE")"
           copilot --plugin-dir "$ARCUS_HOME" \
@@ -194,6 +236,16 @@ jobs:
       # --- Persist + report --------------------------------------------------
       # `always()`: a run that dies mid-stage must still persist what it has, or
       # the next run redoes finished work.
+      - name: Push the story branch
+        if: always() && steps.decide.outputs.mode != 'skip'
+        run: |
+          set -euo pipefail
+          cur="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo '')"
+          case "$cur" in
+            arcus/*) git push --force-with-lease origin "$cur" && echo "pushed $cur" ;;
+            *) echo "No story branch to push (branch stage has not run)." ;;
+          esac
+
       - name: Push state
         if: always() && steps.decide.outputs.mode != 'skip' 
         env:
@@ -202,7 +254,7 @@ jobs:
           set -euo pipefail
           bash .arcus/bin/state_sync.sh push "ISSUE-${{ inputs.issue_number }}" \
             --branch "${{ inputs.state_branch }}" \
-            --message "chore(arcus-state): ISSUE-${{ inputs.issue_number }} brainstorm (run ${{ github.run_id }})" || true
+            --message "chore(arcus-state): ISSUE-${{ inputs.issue_number }} (run ${{ github.run_id }})" || true
 
       - name: Post open questions to the issue
         if: always() && steps.decide.outputs.mode != 'skip' 
@@ -231,15 +283,33 @@ jobs:
           PR_URL="$(gh pr list --repo "${{ github.repository }}" \
                       --search "$STORY_ID in:title" --state all \
                       --json url --jq '.[0].url' 2>/dev/null || true)"
+          REASON="$(node -p "(require('./$CP').failure||{}).reason||''" 2>/dev/null || true)"
+          # A prefilled compare link, when pr.sh could not open the PR itself.
+          MANUAL_URL="$(grep -o 'PR_MANUAL_URL: .*' /tmp/arcus.log 2>/dev/null | tail -1 | sed 's/PR_MANUAL_URL: //')"
           {
             echo "<!-- arcus:v1 kind=status story=$STORY_ID -->"
             case "$STATUS" in
               COMPLETE) echo "### ARCUS finished" ;;
-              FAILED)   echo "### ARCUS stopped: \`$STAGE\` failed" ;;
+              FAILED)   echo "### ARCUS stopped at \`$STAGE\`" ;;
               *)        echo "### ARCUS paused at \`$STAGE\`" ;;
             esac
             echo ""
             [ -n "$PR_URL" ] && echo "Pull request: $PR_URL" && echo ""
+            if [ -n "$MANUAL_URL" ]; then
+              echo "**The branch is pushed and the work is done — this repository just does not allow Actions to open pull requests.**"
+              echo ""
+              echo "👉 **[Open the pull request]($MANUAL_URL)** — one click, title prefilled."
+              echo ""
+              echo "The description is ready at \`.arcus/specs/$STORY_ID/PR_DESCRIPTION.md\` on the \`${{ inputs.state_branch }}\` branch."
+              echo ""
+              echo "To let ARCUS do this itself: **Settings → Actions → General → Workflow permissions → _Allow GitHub Actions to create and approve pull requests_**."
+              echo ""
+            elif [ -n "$REASON" ]; then
+              echo "\`\`\`"
+              echo "$REASON"
+              echo "\`\`\`"
+              echo ""
+            fi
             echo "<sub>status \`$STATUS\` · stage \`$STAGE\` · [run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})</sub>"
           } > /tmp/status.md
           gh issue comment "${{ inputs.issue_number }}" --repo "${{ github.repository }}" --body-file /tmp/status.md

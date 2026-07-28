@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **A repository that forbids Actions from opening pull requests no longer strands a finished story.**
+  `Allow GitHub Actions to create and approve pull requests` is off by default, so `gh pr create`
+  fails at `closure` with a GraphQL permission error — after the branch is pushed and the PR body is
+  written. The work was complete; only the button was unpressable, and the run reported a bare
+  "closure failed".
+
+  `pr.sh` now recognises that specific error and exits `3` with a **prefilled compare link**
+  (`PR_MANUAL_URL`), and the status comment renders it as a one-click call to action alongside the
+  setting to change so ARCUS can do it itself next time. Any other `gh` failure still exits `1`.
+
+### Fixed
+
+- **The story branch is pushed while a run is in flight, not only at `closure`.** Nothing reached the
+  remote until the very end: `branch.sh` creates the branch locally, `commit.sh` commits to it
+  locally, and `pr.sh` performs the *first* push. So a timeout or cancel during Implementation threw
+  away every generated commit — an hour of code, not just bookkeeping — and there was nowhere to look
+  at the work while it ran. The background pusher now pushes the branch each tick (and a final
+  `always()` step catches a failed run). It uses `GITHUB_TOKEN`, which triggers no workflows, so an
+  in-progress branch cannot spam the target repo's CI.
+
+- **State is checkpointed to `arcus-state` while a run is in flight, not only at the end.** A single
+  push at job end meant a timeout, cancel or OOM discarded every artifact, and the next run redid
+  finished work — per-task commits survive on the story branch, but the checkpoint recording *what*
+  finished did not. With the timeout now at 90 minutes and Implementation running unattended, that is
+  an hour of work on one interruption. A background pusher checkpoints every 45s when the workspace
+  has changed, hashing the directory so an idle tick costs nothing, and is stopped before the final
+  push so it cannot race over the shared `.arcus/.state-wt` worktree. Long runs are now observable
+  from the branch as they go.
+
+- **`version-guard` covers the reusable workflow.** `arcus-pipeline.yml` is consumed by target repos
+  via `uses: …@v2`, and that tag only moves when `plugin.json` does — so a workflow-only change was
+  invisible to every caller until some unrelated bump happened to ship it. The guard now requires a
+  version bump when the workflow changes too.
+
 ### Added
 
 - **The cloud pipeline runs a labelled issue all the way to a pull request.** It stops only when a
