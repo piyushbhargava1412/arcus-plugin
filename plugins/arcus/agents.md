@@ -42,13 +42,38 @@ description: >               # REQUIRED — what it does + "use when …" dispat
 layer: capability            # REQUIRED — role axis: capability | coordinator | orchestrator | substrate
 user-invocable: false        # agents are never user-facing (this flag is the machine-readable source of truth)
                              # NEVER add `disable-model-invocation` — see Field rules below
-tools: Read, Grep, Glob, Bash    # REQUIRED allowlist — the only restriction hosts enforce
-disallowedTools: Edit, Write, MultiEdit  # camelCase ONLY - Claude Code ignores the kebab spelling
+tools: Read, Grep, Glob      # REQUIRED allowlist — the only restriction hosts enforce.
+                             #   Add Bash ONLY if the agent truly needs a shell: it grants an
+                             #   indirect write, and it suppresses Grep/Glob on Claude Code.
+disallowedTools: Edit, Write, MultiEdit  # camelCase ONLY — Claude Code ignores the kebab spelling
 model: sonnet                # tier word (opus | sonnet | haiku) or `inherit` — NEVER a versioned
                              #   model string (resolve tiers via arcus:model-strategy)
 color: cyan                  # OPTIONAL UI hint
 ---
 ```
+
+### What each field is load-bearing for
+
+Measured 2026-07-29 unless marked inferred. "CI" means the repo's own test harness, which is the
+only consumer for fields no host reads.
+
+| Field | Claude Code | Copilot CLI | OpenCode | CI |
+| --- | --- | --- | --- | --- |
+| `name` | registers `arcus-plugin:<name>` | registers `arcus-plugin:<name>` | flat `<name>` | L1-13 basename match |
+| `description` | dispatch routing | dispatch routing | dispatch routing | L1-13 (present, ≤1024) |
+| `layer` | inert | inert | inert | **L1-5, L1-6, L1-12** |
+| `user-invocable` | inert | inert | → `hidden: true` | **L4-1 roster** |
+| `tools` | **enforced** | **enforced** | → `permission:` | **L1-4** |
+| `disallowedTools` | **enforced** | inferred inert | → `permission: deny` | **L1-4** |
+| `disallowed-tools` | **silently ignored** | inferred inert | read as fallback | **L1-4 rejects** |
+| `disable-model-invocation` | ignored on agents | **drops from registry** | inferred inert | **L1-13 rejects** |
+| `model` | tier word honoured | **ignored** — session model | mapped to a model id | L1-10 |
+| `color` | UI hint | inert | mapped to hex | — |
+
+Two fields to read carefully. `layer` is **inert on every host** yet drives four CI gates — it is
+not decoration. `disable-model-invocation` is the mirror image: no CI gate wanted it, and it silently
+disabled the plugin on a host. A field being ignored by your host says nothing about whether it
+matters.
 
 ### Field rules
 

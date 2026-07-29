@@ -113,9 +113,9 @@ prints the resolved `ARCUS_HOME`.
 
 Do **not** treat an existing `.arcus/bin/` as good enough. It is a *copy* with no expiry: a repo
 bootstrapped by one host keeps serving that host's older scripts to every later session. Only Claude
-Code fires the plugin's `SessionStart` hook — Copilot CLI reads hooks from `.github/hooks/` in a
-different schema, so on a Copilot-only machine `.arcus/bin/` is never created at all. `locate.sh` is
-idempotent and costs milliseconds; run it unconditionally rather than checking first.
+Code is observed firing the plugin's `SessionStart` hook, so on a Copilot-only machine `.arcus/bin/`
+may never be created at all. `locate.sh` is idempotent and costs milliseconds; run it
+unconditionally rather than checking first.
 
 After it has run, `.arcus/bin/` is authoritative and `.arcus/env` carries `ARCUS_HOME` +
 `ARCUS_VERSION`.
