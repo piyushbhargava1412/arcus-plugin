@@ -989,6 +989,71 @@ const HOST_SPECIFIC_TOOLS = {
   semantic_search: { host: 'VS Code Copilot Chat', qualifier: 'VS Code' }
 };
 
+// Tools that let an agent load a skill. An agent that is told to consult a skill
+// but declares none of these cannot follow the instruction — measured on Copilot
+// CLI: `tools: Read, Skill` yields `view, skill` and loads the skill successfully,
+// while `tools: Read, Grep, Glob` yields `view, grep, glob` and the agent reports
+// it has no way to load one.
+const SKILL_LOAD_TOOLS = new Set(['Skill']);
+
+/**
+ * L1-17: An agent instructed to consult a skill must be able to load one.
+ *
+ * `tools:` is an allowlist, so an agent that omits `Skill` has no skill-loading
+ * capability at all — and the failure is silent in the usual way: the agent does
+ * not error, it improvises from whatever is already in its prompt. Measured on
+ * Copilot CLI, a `tools: Read, Grep, Glob` agent asked to load a skill replies
+ * that it has no tool for it and continues anyway.
+ *
+ * This mattered concretely: `test-spec-compiler` was told to "use the guardrail
+ * heuristics in the `arcus:model-strategy` skill" and `subagent-task-dispatcher`
+ * to "look up the complexity-to-model mapping in the `arcus:model-strategy`
+ * skill" — the Implementation loop's model resolution — and neither could.
+ *
+ * Only LOAD-SHAPED references count. ARCUS bodies also carry provenance prose
+ * ("it runs as part of the `arcus:code-reviewer` fan-out") which names a skill
+ * without instructing anything, and must not be flagged. A reference is treated
+ * as load-shaped when it is immediately followed by the word "skill", or
+ * introduced by `in` / `per` / `via` / `from` — the phrasings ARCUS actually uses
+ * to send a reader somewhere.
+ *
+ * @param {Object} input
+ * @param {string} input.name - Agent name
+ * @param {string} input.body - Agent body text
+ * @param {string[]|string} input.tools - Declared `tools:` allowlist
+ * @returns {{ ok: boolean, errors: string[] }}
+ */
+function checkSkillLoadCapability({ name, body, tools }) {
+  const errors = [];
+  const declared = Array.isArray(tools)
+    ? tools
+    : String(tools ?? '').split(',').map(t => t.trim()).filter(Boolean);
+
+  // No allowlist means no restriction, so nothing to enforce.
+  if (declared.length === 0) return { ok: true, errors };
+  if (declared.some(t => SKILL_LOAD_TOOLS.has(t))) return { ok: true, errors };
+
+  const followedBySkill = /`arcus:([a-z0-9-]+)`\s+skill\b/g;
+  const introduced = /\b(?:in|per|via|from)\s+(?:the\s+)?`arcus:([a-z0-9-]+)`/g;
+
+  const found = new Set();
+  for (const re of [followedBySkill, introduced]) {
+    let m;
+    while ((m = re.exec(body)) !== null) found.add(m[1]);
+  }
+
+  for (const target of found) {
+    errors.push(
+      `${name}: is instructed to consult the \`arcus:${target}\` skill but its ` +
+      `\`tools:\` allowlist has no skill-loading tool, so it cannot — it will ` +
+      `improvise instead of erroring. Add \`Skill\` to \`tools:\`, or reword the ` +
+      `reference as provenance rather than an instruction.`
+    );
+  }
+
+  return { ok: errors.length === 0, errors };
+}
+
 /**
  * L1-16: Bodies must not instruct a tool no supported host provides.
  *
@@ -1101,6 +1166,7 @@ export {
   checkAgentRefQualified,
   checkAgentDispatchPortable,
   checkNoHostSpecificTools,
+  checkSkillLoadCapability,
   checkResourcePaths,
   checkHooks,
   checkNoInlineModel,

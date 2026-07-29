@@ -98,6 +98,13 @@ matters.
   2026-07-29: `Read, Grep, Glob` yields exactly those three on Claude Code and
   `view, grep, glob` on Copilot CLI. Adding `Bash` to that list causes Claude Code to drop
   `Grep`/`Glob`, so the shorter list is also the more capable one there.
+- **`Skill` must be in `tools:` if the body tells the agent to consult a skill.** The allowlist
+  omits it by default, and the failure is silent: measured on Copilot CLI, `tools: Read, Skill`
+  yields `view, skill` and loads the skill; `tools: Read, Grep, Glob` yields `view, grep, glob` and
+  the agent reports it has no way to load one — then answers anyway from whatever is already in its
+  prompt. Enforced by `checkSkillLoadCapability` (L1-17), which distinguishes a consult
+  ("the heuristics **in** the `arcus:model-strategy` **skill**") from provenance prose
+  ("runs as part of the `arcus:code-reviewer` fan-out") and only requires the tool for the former.
 - **`disallowedTools`** — **camelCase only.** Claude Code honours `disallowedTools` and silently
   ignores kebab-case `disallowed-tools`, which ARCUS used for its entire history — so the denylist
   never fired. It is defence-in-depth; never rely on it alone.

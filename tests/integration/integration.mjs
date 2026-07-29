@@ -5,7 +5,7 @@
 
 import { assert, section, exitWithReport } from '../lib/assert.mjs';
 import { walkSkills, walkAgents, walkAll, readJSON, repoRoot, VALID_TIERS, ADVISORY_REVIEWERS } from '../lib/skills.mjs';
-import { checkManifests, checkFrontmatter, checkLineBudget, checkAdvisoryReadOnly, checkCapabilityNoState, checkNoInlinedDomain, checkCrossRefs, checkAgentRefQualified, checkAgentDispatchPortable, checkNoHostSpecificTools, checkCapabilityHasEvalSpec, checkAgentFrontmatter } from '../lib/checks.mjs';
+import { checkManifests, checkFrontmatter, checkLineBudget, checkAdvisoryReadOnly, checkCapabilityNoState, checkNoInlinedDomain, checkCrossRefs, checkAgentRefQualified, checkAgentDispatchPortable, checkNoHostSpecificTools, checkSkillLoadCapability, checkCapabilityHasEvalSpec, checkAgentFrontmatter } from '../lib/checks.mjs';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -180,9 +180,17 @@ section('L1-7: Cross-skill references resolve');
   let refFailures = 0;
 
   for (const item of items) {
+    // Scan the `description:` alongside the body. Nine agents carry provenance
+    // refs there ("Dispatched by arcus:code-reviewer") and the description is
+    // NOT part of `body`, so before this those refs were entirely unchecked —
+    // a rename would have left them dangling with nothing to notice. The
+    // description is also the field hosts use for autonomous selection, so a
+    // stale name there is read by the model, not just by humans.
+    const scanned = `${item.body}\n${item.frontmatter?.description ?? ''}`;
+
     const result = checkCrossRefs({
       name: item.name,
-      body: item.body,
+      body: scanned,
       knownSkillNames
     });
 
@@ -481,6 +489,24 @@ section('L1-16: No body instructs a host-specific tool');
   }
 
   assert(hostToolFailures === 0, `L1-16: all ${scanned.length} skills+agents+templates avoid host-specific tool names (${hostToolFailures} failures)`);
+}
+
+section('L1-17: Agents told to consult a skill can load one');
+{
+  const agents = walkAgents();
+  let loadFailures = 0;
+  for (const agent of agents) {
+    const result = checkSkillLoadCapability({
+      name: agent.name,
+      body: agent.body,
+      tools: agent.frontmatter.tools
+    });
+    if (!result.ok) {
+      loadFailures++;
+      console.error(`  agent ${agent.name}: ${result.errors.join('; ')}`);
+    }
+  }
+  assert(loadFailures === 0, `L1-17: all ${agents.length} agents can load the skills they are told to consult (${loadFailures} failures)`);
 }
 
 exitWithReport();

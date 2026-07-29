@@ -7,7 +7,7 @@ description: >
   the Code stage.
 layer: orchestrator
 user-invocable: false
-tools: Read, Grep, Glob, Bash, Task
+tools: Read, Grep, Glob, Bash, Task, Skill
 disallowedTools: AskUserQuestion, Edit, Write, MultiEdit
 model: sonnet
 color: orange

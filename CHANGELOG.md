@@ -40,6 +40,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   genuine gap: Copilot CLI ignores tier words in frontmatter `model:`, silently falling back to the
   session model.
 
+- **Two agents were told to consult a skill they had no tool to load.** `test-spec-compiler`
+  ("use the guardrail heuristics in the `arcus:model-strategy` skill") and
+  `subagent-task-dispatcher` ("look up the complexity-to-model mapping in the `arcus:model-strategy`
+  skill" — the Implementation loop's entire model resolution) both declared allowlists without
+  `Skill`. `tools:` is an allowlist, so neither could reach it. Measured on Copilot CLI with a
+  purpose-built probe: `tools: Read, Skill` yields `view, skill` and loads the skill correctly;
+  `tools: Read, Grep, Glob` yields `view, grep, glob` and the agent replies that it has no tool for
+  loading skills — then answers from whatever is already in its prompt rather than failing. Both
+  agents now declare `Skill`, and **L1-17** (`checkSkillLoadCapability`) keeps it true. It flags only
+  load-shaped references (`... in the arcus:x skill`), not the provenance prose ARCUS bodies are full
+  of (`runs as part of the arcus:code-reviewer fan-out`), so it stays useful rather than noisy.
+
+- **`arcus:` references in `description:` were never checked.** L1-7 scanned bodies only, while nine
+  agents carry their provenance ref in the description (`Dispatched by arcus:code-reviewer`) — a
+  field that is not part of the body, and that hosts read for autonomous selection. A rename would
+  have left every one of them dangling with nothing to notice. L1-7 now scans both.
+
 ### Changed
 
 - **The OpenCode adapter no longer leaks a shell to the read-only reviewers — the same hole, on the

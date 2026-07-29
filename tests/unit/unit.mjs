@@ -592,6 +592,52 @@ section('L1-4..L1-7');
     });
     assert(capabilityShaped.ok === true, 'checkNoHostSpecificTools passes the host-agnostic phrasing');
 
+    // Test L1-17: `tools:` is an allowlist, so an agent without `Skill` has no way
+    // to load one — and it improvises rather than erroring, so nothing surfaces.
+    const { checkSkillLoadCapability } = await import('../lib/checks.mjs');
+
+    const cannotLoad = checkSkillLoadCapability({
+      name: 'blind',
+      body: 'Use the guardrail heuristics in the `arcus:model-strategy` skill.',
+      tools: ['Read', 'Grep', 'Glob']
+    });
+    assert(cannotLoad.ok === false,
+           `checkSkillLoadCapability fails when a skill consult has no skill tool (got ok=${cannotLoad.ok})`);
+    assert(cannotLoad.errors.join(' ').includes('model-strategy'),
+           'checkSkillLoadCapability names the skill it cannot reach');
+
+    const canLoad = checkSkillLoadCapability({
+      name: 'equipped',
+      body: 'Use the guardrail heuristics in the `arcus:model-strategy` skill.',
+      tools: ['Read', 'Grep', 'Glob', 'Skill']
+    });
+    assert(canLoad.ok === true, 'checkSkillLoadCapability passes once `Skill` is declared');
+
+    // The `in`/`per`/`via` phrasing is a consult too, not just "<ref> skill".
+    const viaPhrasing = checkSkillLoadCapability({
+      name: 'via',
+      body: 'Resolve the dispatch target per **Agent Resolution** in `arcus:model-strategy`.',
+      tools: ['Read']
+    });
+    assert(viaPhrasing.ok === false, 'checkSkillLoadCapability catches the in/per/via phrasing');
+
+    // Negative control: provenance prose names a skill without instructing a load,
+    // and ARCUS bodies are full of it. Flagging this would make the gate useless.
+    const provenance = checkSkillLoadCapability({
+      name: 'prose',
+      body: 'It runs as part of the `arcus:code-reviewer` Step 3 fan-out, dispatched at `medium`.',
+      tools: ['Read', 'Grep', 'Glob']
+    });
+    assert(provenance.ok === true, 'checkSkillLoadCapability ignores provenance prose');
+
+    // No allowlist means no restriction, so there is nothing to enforce.
+    const unrestricted = checkSkillLoadCapability({
+      name: 'open',
+      body: 'Use the heuristics in the `arcus:model-strategy` skill.',
+      tools: []
+    });
+    assert(unrestricted.ok === true, 'checkSkillLoadCapability enforces nothing without an allowlist');
+
     pass('L1-4..L1-7 checks passed');
   } catch (err) {
     fail(`L1-4..L1-7 checks failed: ${err.message}`);
@@ -1250,7 +1296,7 @@ section('planted-violation coverage map');
   // and a planted-bad assertion (returns ok:false), EXCEPT L1-6 which is advisory
   // (asserts warnings on bad input, never sets ok:false).
   //
-  // This section programmatically asserts all 16 checks are covered above.
+  // This section programmatically asserts all 17 checks are covered above.
   const coveredChecks = [
     'L1-1',  // checkManifests: good=real manifests, bad=bad-manifest.json
     'L1-2',  // checkFrontmatter: good=spec-finalizer, bad=bad-frontmatter (reserved word)
@@ -1267,20 +1313,21 @@ section('planted-violation coverage map');
     'L1-13', // checkAgentFrontmatter: good=good-agent.md, bad=bad-agent.md (missing layer+model)
     'L1-14', // checkAgentRefQualified: good=kick-off, bad=unqualified-agent-ref fixture
     'L1-15', // checkAgentDispatchPortable: good=bare-name dispatch, bad=`arcus:`-prefixed dispatch
-    'L1-16'  // checkNoHostSpecificTools: good=host-qualified matrix row, bad=bare `get_errors`
+    'L1-16', // checkNoHostSpecificTools: good=host-qualified matrix row, bad=bare `get_errors`
+    'L1-17'  // checkSkillLoadCapability: good=`Skill` declared, bad=skill consult with no skill tool
   ];
 
-  assert(coveredChecks.length === 16,
-         `coverage map lists all 16 L1 checks (got ${coveredChecks.length})`);
+  assert(coveredChecks.length === 17,
+         `coverage map lists all 17 L1 checks (got ${coveredChecks.length})`);
 
-  // Verify the list is exactly L1-1 through L1-16
-  for (let i = 1; i <= 16; i++) {
+  // Verify the list is exactly L1-1 through L1-17
+  for (let i = 1; i <= 17; i++) {
     const checkId = `L1-${i}`;
     assert(coveredChecks.includes(checkId),
            `coverage map includes ${checkId}`);
   }
 
-  pass('planted-violation coverage: all 16 L1 checks have good+planted assertions');
+  pass('planted-violation coverage: all 17 L1 checks have good+planted assertions');
 }
 
 exitWithReport();

@@ -7,7 +7,7 @@ description: >
   test-spec-compiler skill wrapper.
 layer: capability
 user-invocable: false
-tools: Read, Grep, Glob, Write
+tools: Read, Grep, Glob, Write, Skill
 model: sonnet
 color: green
 ---
