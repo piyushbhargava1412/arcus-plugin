@@ -7,7 +7,7 @@ description: >
   the Code stage.
 layer: orchestrator
 user-invocable: false
-tools: Read, Grep, Glob, Task
+tools: Read, Grep, Glob, Bash, Task
 disallowedTools: AskUserQuestion, Edit, Write, MultiEdit
 model: sonnet
 color: orange
@@ -84,7 +84,8 @@ The subagent returns one of three statuses:
 After a `DONE` response:
 1. Confirm the `TDD_EVIDENCE` line shows a RED step (a test that failed first) followed by GREEN. If the implementer skipped the failing-test step, re-dispatch requiring proper TDD.
 2. Run the test suite to confirm tests actually pass
-3. Use `get_errors` on modified files to check for lint/compile issues
+3. Run the repository's own lint and type-check commands over the modified files. Take them from the
+   repo's build config; if it defines none, record that rather than treating the step as passed.
 4. If verification passes: proceed to Step 6 (Refactor gate)
 5. If verification fails: re-dispatch implementer subagent with error output as additional context (max 2 retries)
 

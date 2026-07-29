@@ -972,6 +972,68 @@ function checkAgentFrontmatter({ name, frontmatter }) {
   return { ok: errors.length === 0, errors };
 }
 
+// Tools that exist on only one supported host. A prompt naming one of these is
+// dead text everywhere else — the model does not error, it just skips the step,
+// so a verification instruction silently becomes a no-op. Instruct the capability
+// ("run the repo's lint command") rather than a tool name.
+//
+// `qualifier` is the substring that marks an occurrence as DOCUMENTATION rather
+// than an instruction: the cross-host matrix legitimately names `runSubagent`, but
+// it always says which host provides it on the same line. An occurrence without
+// its qualifier reads as a bare instruction, which is the failure case.
+const HOST_SPECIFIC_TOOLS = {
+  get_errors: { host: 'VS Code Copilot Chat', qualifier: 'VS Code' },
+  runSubagent: { host: 'VS Code Copilot Chat', qualifier: 'VS Code' },
+  run_in_terminal: { host: 'VS Code Copilot Chat', qualifier: 'VS Code' },
+  insert_edit_into_file: { host: 'VS Code Copilot Chat', qualifier: 'VS Code' },
+  semantic_search: { host: 'VS Code Copilot Chat', qualifier: 'VS Code' }
+};
+
+/**
+ * L1-16: Bodies must not instruct a tool no supported host provides.
+ *
+ * A prompt that says "use `get_errors`" is dead text on Claude Code and Copilot
+ * CLI — `get_errors` is a VS Code Copilot Chat tool. The model does not error; it
+ * shrugs and continues, so a verification step silently becomes a no-op. That is
+ * the same silent-degradation class as `disable-model-invocation` (a flag that
+ * looked like a guarantee and removed the agent) and kebab-case `disallowed-tools`
+ * (a denylist that never fired): the failure mode is nothing happening.
+ *
+ * Instruct a CAPABILITY instead of a tool name — "run the repository's lint and
+ * type-check commands" works on every host, because each resolves it to whatever
+ * shell or tool it actually has.
+ *
+ * Two narrowings keep this from flagging legitimate prose:
+ * - only backtick-quoted occurrences count, so ordinary words are left alone;
+ * - an occurrence on a line that also names the owning host is documentation
+ *   (the cross-host matrix must be able to state which tool belongs to which
+ *   host), not an instruction.
+ *
+ * @param {Object} input
+ * @param {string} input.name - Item name
+ * @param {string} input.body - Item body text
+ * @returns {{ ok: boolean, errors: string[] }}
+ */
+function checkNoHostSpecificTools({ name, body }) {
+  const errors = [];
+  const lines = body.split('\n');
+
+  for (const [tool, { host, qualifier }] of Object.entries(HOST_SPECIFIC_TOOLS)) {
+    const quoted = new RegExp('`' + tool + '`');
+    for (let i = 0; i < lines.length; i++) {
+      if (!quoted.test(lines[i])) continue;
+      if (lines[i].includes(qualifier)) continue; // host-qualified => documentation
+      errors.push(
+        `${name}:${i + 1}: instructs \`${tool}\`, which only ${host} provides — other ` +
+        `hosts silently ignore the step. Instruct the capability instead of the tool ` +
+        `name, or name the host on the same line if this is matrix documentation.`
+      );
+    }
+  }
+
+  return { ok: errors.length === 0, errors };
+}
+
 /**
  * L1-15: A pure-agent DISPATCH instruction must not use the `arcus:` prefix.
  *
@@ -1038,6 +1100,7 @@ export {
   checkCrossRefs,
   checkAgentRefQualified,
   checkAgentDispatchPortable,
+  checkNoHostSpecificTools,
   checkResourcePaths,
   checkHooks,
   checkNoInlineModel,

@@ -42,6 +42,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Prompts no longer instruct tools that only one host provides — and a gate (L1-16) keeps it that
+  way.** `subagent-task-dispatcher` and its dispatch template both hard-instructed `get_errors`, a
+  **VS Code Copilot Chat** tool that exists on neither Claude Code nor Copilot CLI. The failure mode
+  is the dangerous one: the model does not error on an unknown tool, it skips the step — so a
+  verification instruction quietly became a no-op on the two hosts ARCUS actually runs on. Both now
+  instruct the **capability** ("run the repository's own lint and type-check commands"), which every
+  host resolves against whatever tooling it has.
+
+  L1-16 flags backtick-quoted host-specific tool names (`get_errors`, `runSubagent`,
+  `run_in_terminal`, `insert_edit_into_file`, `semantic_search`) in skill, agent **and
+  `agent-resources/` template** bodies — the original offender lived in a template, which no
+  previous gate walked, even though templates are dispatched verbatim as subagent prompts. An
+  occurrence that names its owning host on the same line is documentation, not an instruction, so
+  the cross-host matrix rows still pass.
+
+  This is the third member of the same silent-degradation family found in this cycle, after
+  `disable-model-invocation` (a flag that read as a guarantee and removed the agent) and kebab-case
+  `disallowed-tools` (a denylist that never fired). In all three, nothing happened and nothing said
+  so.
+
+- **`subagent-task-dispatcher` regained a shell.** The tool-restriction pass above gave it
+  `tools: Read, Grep, Glob` while its Step 5 still says "run the test suite" — an instruction it had
+  no way to carry out. Corrected to `Read, Grep, Glob, Bash, Task`: it is an orchestrator that must
+  both spawn workers and run verification, not an advisory reviewer.
+
 - **The advisory reviewers are now actually read-only.** They carried
   `disallowed-tools: Edit, Write, MultiEdit` alongside `tools: Read, Grep, Glob, Bash`, which
   guaranteed nothing twice over. Measured on Claude Code: (1) the kebab-case spelling is **silently

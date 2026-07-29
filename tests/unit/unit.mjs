@@ -555,6 +555,43 @@ section('L1-4..L1-7');
     });
     assert(proseMention.ok === true, 'checkAgentDispatchPortable ignores non-dispatch prose mentions');
 
+    // Test L1-16: a bare host-specific tool name is dead text on every other host.
+    // The model does not error — it skips the step — so the instruction silently
+    // becomes a no-op. This is why the gate exists at all.
+    const { checkNoHostSpecificTools } = await import('../lib/checks.mjs');
+
+    const bareHostTool = checkNoHostSpecificTools({
+      name: 'bare',
+      body: 'After editing, call `get_errors` to confirm the file is clean.'
+    });
+    assert(bareHostTool.ok === false,
+           `checkNoHostSpecificTools fails on a bare host-specific tool (got ok=${bareHostTool.ok})`);
+    assert(bareHostTool.errors.join(' ').includes('VS Code Copilot Chat'),
+           'checkNoHostSpecificTools names the host that actually provides the tool');
+
+    // Negative control 1: host-qualified matrix documentation is legitimate — the
+    // cross-host tables must be able to say which tool belongs to which host.
+    const qualified = checkNoHostSpecificTools({
+      name: 'matrix',
+      body: '| Dispatch | Copilot CLI: `task` | VS Code Copilot Chat: `runSubagent` |'
+    });
+    assert(qualified.ok === true,
+           `checkNoHostSpecificTools allows host-qualified documentation (got ${qualified.errors?.join('; ') || 'ok'})`);
+
+    // Negative control 2: unquoted prose is not an instruction.
+    const unquoted = checkNoHostSpecificTools({
+      name: 'prose',
+      body: 'The runner should get errors from the build before proceeding.'
+    });
+    assert(unquoted.ok === true, 'checkNoHostSpecificTools ignores unquoted prose');
+
+    // The capability-shaped replacement is what E1 substituted in, and it must pass.
+    const capabilityShaped = checkNoHostSpecificTools({
+      name: 'agnostic',
+      body: "Run the repository's own lint and type-check commands and fix what they report."
+    });
+    assert(capabilityShaped.ok === true, 'checkNoHostSpecificTools passes the host-agnostic phrasing');
+
     pass('L1-4..L1-7 checks passed');
   } catch (err) {
     fail(`L1-4..L1-7 checks failed: ${err.message}`);
@@ -1151,7 +1188,7 @@ section('planted-violation coverage map');
   // and a planted-bad assertion (returns ok:false), EXCEPT L1-6 which is advisory
   // (asserts warnings on bad input, never sets ok:false).
   //
-  // This section programmatically asserts all 15 checks are covered above.
+  // This section programmatically asserts all 16 checks are covered above.
   const coveredChecks = [
     'L1-1',  // checkManifests: good=real manifests, bad=bad-manifest.json
     'L1-2',  // checkFrontmatter: good=spec-finalizer, bad=bad-frontmatter (reserved word)
@@ -1167,20 +1204,21 @@ section('planted-violation coverage map');
     'L1-12', // checkCapabilityHasEvalSpec: good=spec present, bad=capability with no spec (injected predicate)
     'L1-13', // checkAgentFrontmatter: good=good-agent.md, bad=bad-agent.md (missing layer+model)
     'L1-14', // checkAgentRefQualified: good=kick-off, bad=unqualified-agent-ref fixture
-    'L1-15'  // checkAgentDispatchPortable: good=bare-name dispatch, bad=`arcus:`-prefixed dispatch
+    'L1-15', // checkAgentDispatchPortable: good=bare-name dispatch, bad=`arcus:`-prefixed dispatch
+    'L1-16'  // checkNoHostSpecificTools: good=host-qualified matrix row, bad=bare `get_errors`
   ];
 
-  assert(coveredChecks.length === 15,
-         `coverage map lists all 15 L1 checks (got ${coveredChecks.length})`);
+  assert(coveredChecks.length === 16,
+         `coverage map lists all 16 L1 checks (got ${coveredChecks.length})`);
 
-  // Verify the list is exactly L1-1 through L1-15
-  for (let i = 1; i <= 15; i++) {
+  // Verify the list is exactly L1-1 through L1-16
+  for (let i = 1; i <= 16; i++) {
     const checkId = `L1-${i}`;
     assert(coveredChecks.includes(checkId),
            `coverage map includes ${checkId}`);
   }
 
-  pass('planted-violation coverage: all 15 L1 checks have good+planted assertions');
+  pass('planted-violation coverage: all 16 L1 checks have good+planted assertions');
 }
 
 exitWithReport();

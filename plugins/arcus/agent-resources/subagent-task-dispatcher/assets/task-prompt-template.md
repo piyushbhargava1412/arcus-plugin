@@ -46,7 +46,10 @@ Follow test-driven development: write tests first, then implement, then verify.
 2. **GREEN**: Implement the minimal code to make the test pass. Run it and confirm it now passes.
 3. **REFACTOR**: Improve clarity and pattern adherence with tests staying green.
 4. Run the full test suite — no regressions allowed.
-5. Use `get_errors` on all modified files — zero errors allowed.
+5. Run the repository's own lint and type-check commands over the modified files — zero errors
+   allowed. Take the commands from the repo's build config (`package.json` scripts, `Makefile`,
+   `pyproject.toml`, etc.); if the repo defines none, say so in `TDD_EVIDENCE` rather than silently
+   skipping this step.
 6. Do NOT perform git commits. Only stage changes.
 7. Do NOT modify files outside your task scope unless explicitly required.
 
