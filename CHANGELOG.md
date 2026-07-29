@@ -42,6 +42,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **The OpenCode adapter no longer leaks a shell to the read-only reviewers — the same hole, on the
+  third host.** OpenCode treats an **absent** `permission:` key as *allowed*, and the bundler emitted
+  only the keys an agent was granted. So `tools: Read, Grep, Glob` bundled to
+  `{read, glob, grep: allow}` with `bash` unspecified — allowed — and a shell writes by redirection.
+  `security-reviewer` even declared `disallowedTools: …, Bash` in source and the bundler dropped it
+  on the floor. The permission block is now **deny-by-default**: the allowlist is authoritative, every
+  key ARCUS knows about is emitted explicitly `allow` or `deny`, and a `disallowedTools` entry always
+  wins so the two can never contradict. Measured after: all four advisory reviewers bundle to
+  `bash: deny, edit: deny`; `subagent-task-dispatcher` keeps `bash: allow` because it must run
+  verification. When an agent declares no `tools:` at all nothing is inferred, rather than guessing
+  it into uselessness.
+
+  The adapter had **zero test coverage**, which is why this survived. `build-bundle.mjs` now guards
+  its own entry point and exports its pure converters, and the harness asserts the deny-by-default
+  behaviour, the denylist override, every advisory reviewer's bundled permissions, and that
+  `TIER_TO_MODEL` still matches the OpenCode column of the `model-strategy` table — a silent drift
+  there would repoint every bundled agent's model.
+
 - **Prompts no longer instruct tools that only one host provides — and a gate (L1-16) keeps it that
   way.** `subagent-task-dispatcher` and its dispatch template both hard-instructed `get_errors`, a
   **VS Code Copilot Chat** tool that exists on neither Claude Code nor Copilot CLI. The failure mode

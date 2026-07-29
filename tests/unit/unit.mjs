@@ -1182,6 +1182,68 @@ section('trigger matcher (L4)');
 }
 
 // --- planted-violation coverage map ---
+section('OpenCode adapter (build-bundle)');
+{
+  try {
+    const { buildPermission, TIER_TO_MODEL, stripArcusNamespace } =
+      await import('../../plugins/arcus-opencode/scripts/build-bundle.mjs');
+    const { walkAgents } = await import('../lib/skills.mjs');
+    const { ADVISORY_REVIEWERS } = await import('../lib/skills.mjs');
+
+    // The load-bearing property: OpenCode treats an ABSENT permission key as
+    // allowed. So emitting only the granted keys would reproduce, on OpenCode,
+    // the exact shell-escape hole `tools:` closes on the other two hosts.
+    const readOnly = buildPermission({ tools: 'Read, Grep, Glob' });
+    assert(readOnly.bash === 'deny',
+           `buildPermission denies bash when the allowlist omits it (got ${readOnly.bash})`);
+    assert(readOnly.edit === 'deny',
+           `buildPermission denies edit when the allowlist omits it (got ${readOnly.edit})`);
+    assert(readOnly.read === 'allow' && readOnly.grep === 'allow' && readOnly.glob === 'allow',
+           'buildPermission allows the tools the allowlist does grant');
+
+    // An agent that legitimately needs a shell keeps it.
+    const withShell = buildPermission({ tools: 'Read, Grep, Glob, Bash, Task' });
+    assert(withShell.bash === 'allow', 'buildPermission allows bash when the allowlist grants it');
+    assert(withShell.edit === 'deny', 'buildPermission still denies edit for a shell-only agent');
+
+    // A denylist entry must win over anything inferred from the allowlist, so the
+    // two can never disagree in the generated bundle.
+    const contradictory = buildPermission({ tools: 'Read, Bash', disallowedTools: 'Bash' });
+    assert(contradictory.bash === 'deny',
+           `buildPermission lets disallowedTools override the allowlist (got ${contradictory.bash})`);
+
+    // No allowlist at all => nothing can be inferred, so emit no denies rather
+    // than guessing an agent into uselessness.
+    const noAllowlist = buildPermission({});
+    assert(noAllowlist.bash === undefined && noAllowlist.edit === undefined,
+           'buildPermission infers no denies when no allowlist is declared');
+
+    // Every advisory reviewer must come out of the adapter genuinely read-only.
+    for (const name of ADVISORY_REVIEWERS) {
+      const agent = walkAgents().find(a => a.name === name);
+      if (!agent) continue;
+      const perms = buildPermission(agent.frontmatter);
+      assert(perms.edit === 'deny',
+             `OpenCode bundle: advisory reviewer ${name} is edit:deny (got ${perms.edit})`);
+    }
+
+    // The tier mapping is the OpenCode column of the model table in
+    // `model-strategy`; a drift here silently repoints every bundled agent.
+    assert(TIER_TO_MODEL.opus === 'github-copilot/claude-opus-4.8'
+        && TIER_TO_MODEL.sonnet === 'github-copilot/claude-sonnet-4.6'
+        && TIER_TO_MODEL.haiku === 'github-copilot/claude-haiku-4.5',
+           'TIER_TO_MODEL matches the OpenCode column of the model-strategy table');
+
+    assert(stripArcusNamespace('Dispatch `arcus:security-reviewer` now.')
+             === 'Dispatch `security-reviewer` now.',
+           'stripArcusNamespace flattens the namespace for OpenCode addressing');
+
+    pass('OpenCode adapter checks passed');
+  } catch (err) {
+    fail(`OpenCode adapter checks failed: ${err.message}`);
+  }
+}
+
 section('planted-violation coverage map');
 {
   // DoD guarantee: every L1 check has BOTH a good-input assertion (returns ok:true)

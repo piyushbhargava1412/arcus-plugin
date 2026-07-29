@@ -23,7 +23,7 @@
 
 import { cp, mkdir, readdir, readFile, writeFile, rm } from "node:fs/promises"
 import { existsSync } from "node:fs"
-import { dirname, join } from "node:path"
+import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -97,30 +97,49 @@ function parseAgentFrontmatter(fm) {
   return fields
 }
 
-/** Build the OpenCode `permission:` block from Claude tools / disallowedTools. */
+/**
+ * Build the OpenCode `permission:` block from Claude `tools:` / `disallowedTools:`.
+ *
+ * The allowlist is AUTHORITATIVE and this block is deny-by-default, because an
+ * OpenCode permission key that is simply absent defaults to allowed. Emitting only
+ * the granted keys therefore reproduces, on OpenCode, the exact hole that
+ * `tools:` closes on Claude Code and Copilot CLI: an advisory reviewer declaring
+ * `tools: Read, Grep, Glob` would bundle to `{read, grep, glob: allow}` with `bash`
+ * unspecified — and a shell writes by redirection, so the read-only guarantee
+ * would evaporate on the one host where nothing else enforces it.
+ *
+ * So: every key ARCUS knows about is emitted explicitly, allow or deny. An
+ * explicit `disallowedTools` entry always wins, so the two can never contradict.
+ */
 function buildPermission(fields) {
-  const tools = (fields.tools || "").split(",").map((t) => t.trim()).filter(Boolean)
-  const disallowed = (fields["disallowedTools"] || fields["disallowed-tools"] || "")
-    .split(",")
-    .map((t) => t.trim())
-    .filter(Boolean)
+  // Accept either spelling and either shape: this script's own parser yields
+  // comma-separated strings, while the test harness's parser yields arrays.
+  const toList = (v) =>
+    (Array.isArray(v) ? v : String(v ?? "").split(",")).map((t) => t.trim()).filter(Boolean)
+
+  const tools = toList(fields.tools)
+  const declaresTools = tools.length > 0
+  const disallowed = toList(fields["disallowedTools"] ?? fields["disallowed-tools"])
 
   const perms = {}
 
-  // Read-only quartet maps to allow when present in `tools`.
+  // Read-only quartet. With an allowlist present, absence means deny.
   const toolMap = { Read: "read", Grep: "grep", Glob: "glob", Bash: "bash" }
   for (const [claude, oc] of Object.entries(toolMap)) {
     if (tools.includes(claude)) perms[oc] = "allow"
+    else if (declaresTools) perms[oc] = "deny"
   }
 
   // Write capability: allow only when the agent explicitly lists Write/Edit.
   const canWrite = tools.includes("Write") || tools.includes("Edit")
   if (canWrite) perms.edit = "allow"
+  else if (declaresTools) perms.edit = "deny"
 
-  // Disallowed Edit/Write/MultiEdit -> edit: deny (advisory read-only agents).
+  // An explicit denylist entry always wins over anything inferred above.
   if (disallowed.some((d) => ["Edit", "Write", "MultiEdit"].includes(d))) {
     perms.edit = "deny"
   }
+  if (disallowed.includes("Bash")) perms.bash = "deny"
 
   // AskUserQuestion has no OpenCode tool; the analog is the `question` permission.
   if (disallowed.includes("AskUserQuestion")) perms.question = "deny"
@@ -259,7 +278,14 @@ async function main() {
   )
 }
 
-main().catch((err) => {
-  console.error("[build] failed:", err)
-  process.exit(1)
-})
+// Only build when run as a script, so the test harness can import the pure
+// conversion helpers without triggering a bundle write.
+const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+if (isMain) {
+  main().catch((err) => {
+    console.error("[build] failed:", err)
+    process.exit(1)
+  })
+}
+
+export { buildPermission, parseAgentFrontmatter, stripArcusNamespace, TIER_TO_MODEL }
