@@ -9,6 +9,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Every ARCUS agent is now dispatchable on GitHub Copilot CLI — previously none were.**
+  All 16 agents (and the `model-strategy` skill) carried `disable-model-invocation: true`. Copilot
+  CLI **honours** that field by removing the item from its `task` dispatch registry outright, so
+  `task(agent_type="arcus-plugin:security-reviewer")` had nothing to resolve; Claude Code **ignores**
+  it, which is why the bug stayed invisible. Measured before the fix: **0 of 16** agents present in
+  Copilot CLI's `agent_type` enum and `arcus:model-strategy` returning `CANNOT-LOAD`; after:
+  **16 of 16**, and the skill loads.
+
+  The intent behind the flag — *these agents are dispatched by an orchestrator, never picked
+  organically* — is sound, but the flag cannot express it: **orchestrated dispatch _is_ model
+  invocation**, the identical tool call from the identical caller, so opting out of one opts out of
+  both. That property is instead carried by `user-invocable: false` (kept), membership in the
+  `DISPATCHED_ONLY` roster, and orchestration-scoped `description:` text — all of which already
+  existed and are enforced by L4-1.
+
+  **This also restores the read-only guarantee on the advisory reviewers.** Undispatchable agents
+  had to be run as generic subagents, which carry no frontmatter and therefore no `tools:`
+  restriction — so `security-reviewer` silently inherited the full session toolset including `edit`.
+  Verified after the fix: a dispatched `arcus-plugin:security-reviewer` reports exactly
+  `bash, read_bash, stop_bash, list_bash, view, grep, glob` — no write tool of any kind.
+
+  **Supersedes the earlier claim that "GitHub Copilot CLI has no agent registry".** It does, it
+  namespaces plugin agents `<plugin>:<agent>` exactly as Claude Code does, and it enforces `tools:`
+  frontmatter. ARCUS had misdiagnosed its own frontmatter bug as a host limitation. Remaining
+  genuine gap: Copilot CLI ignores tier words in frontmatter `model:`, silently falling back to the
+  session model.
+
+### Changed
+
+- **L1-4 (advisory reviewers are read-only) is now allowlist-first.** It no longer requires
+  `disable-model-invocation`; it requires a `tools:` allowlist naming no write-capable tool — the
+  half every host actually enforces — while still requiring `disallowed-tools ⊇ [Edit, Write,
+  MultiEdit]` as defence-in-depth on Claude Code.
+- **L1-13 now rejects `disable-model-invocation` on any agent**, so the regression cannot return
+  silently on the host where it is inert.
+- `parseFrontmatter` parses `tools:` into an array, consistent with `allowed-tools` /
+  `disallowed-tools`.
+
 - **A repository that forbids Actions from opening pull requests no longer strands a finished story.**
   `Allow GitHub Actions to create and approve pull requests` is off by default, so `gh pr create`
   fails at `closure` with a GraphQL permission error — after the branch is pushed and the PR body is

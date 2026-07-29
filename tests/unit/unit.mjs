@@ -44,8 +44,10 @@ section('skills.mjs');
     assert(secFM['disallowed-tools'].includes('Edit'), 'disallowed-tools contains Edit');
     assert(secFM['disallowed-tools'].includes('Write'), 'disallowed-tools contains Write');
     assert(secFM['disallowed-tools'].includes('MultiEdit'), 'disallowed-tools contains MultiEdit');
-    assert(secFM['disable-model-invocation'] === true,
-           'disable-model-invocation is truthy for security-reviewer');
+    assert(secFM['user-invocable'] === false,
+           'security-reviewer is user-invocable: false (dispatched-only marker)');
+    assert(secFM['disable-model-invocation'] === undefined,
+           'security-reviewer carries no disable-model-invocation (Copilot CLI hides such agents)');
 
     // Test 3: the union of skills+agents has at least 26 entries (roster lower bound,
     // surface-independent — items moving skills/->agents/ stay counted)
@@ -64,20 +66,29 @@ section('skills.mjs');
     }
     assert(invalidTierCount === 0, `all skills have valid tiers (found ${invalidTierCount} invalid)`);
 
-    // Test 5: every DISPATCHED_ONLY name exists (in skills OR agents) and has
-    // disable-model-invocation. Resolved over the union so the move is surface-independent.
+    // Test 5: every DISPATCHED_ONLY name exists (in skills OR agents) and is marked
+    // dispatched-only the way hosts actually tolerate: `user-invocable: false`.
+    // Resolved over the union so the move is surface-independent.
+    //
+    // NOT asserted: `disable-model-invocation`. Copilot CLI honours that flag by
+    // removing the item from its dispatch registry entirely, so carrying it made all
+    // 16 agents unreachable and `model-strategy` unloadable; Claude Code ignores it.
+    // The roster set below is itself the marker.
     let missingDispatched = 0;
     for (const name of DISPATCHED_ONLY) {
       const item = allItems.find(s => s.name === name);
       if (!item) {
         console.error(`  DISPATCHED_ONLY item not found: ${name}`);
         missingDispatched++;
-      } else if (!item.frontmatter['disable-model-invocation']) {
-        console.error(`  DISPATCHED_ONLY item missing disable-model-invocation: ${name}`);
+      } else if (item.frontmatter['user-invocable'] !== false) {
+        console.error(`  DISPATCHED_ONLY item missing user-invocable: false: ${name}`);
+        missingDispatched++;
+      } else if (item.frontmatter['disable-model-invocation'] !== undefined) {
+        console.error(`  DISPATCHED_ONLY item reintroduced disable-model-invocation: ${name}`);
         missingDispatched++;
       }
     }
-    assert(missingDispatched === 0, `all DISPATCHED_ONLY items exist and have disable-model-invocation (${missingDispatched} issues)`);
+    assert(missingDispatched === 0, `all DISPATCHED_ONLY items exist, are user-invocable: false, and carry no disable-model-invocation (${missingDispatched} issues)`);
 
     // Test 6: every ADVISORY_REVIEWERS name exists (in skills OR agents)
     let missingAdvisory = 0;
@@ -856,6 +867,18 @@ section('L1-13');
       frontmatter: { ...goodFM, model: 'claude-sonnet-4-6' }
     });
     assert(versioned.ok === false, 'checkAgentFrontmatter rejects a versioned model string');
+
+    // PLANTED-BAD: reintroducing disable-model-invocation is rejected. Copilot CLI
+    // honours the flag by removing the agent from its dispatch registry, which is what
+    // made all 16 ARCUS agents unreachable there; Claude Code ignores it entirely.
+    const dmiReintroduced = checkAgentFrontmatter({
+      name: 'good-agent',
+      frontmatter: { ...goodFM, 'disable-model-invocation': true }
+    });
+    assert(dmiReintroduced.ok === false,
+           'checkAgentFrontmatter rejects a reintroduced disable-model-invocation');
+    assert(dmiReintroduced.errors.some(e => e.includes('disable-model-invocation')),
+           'checkAgentFrontmatter names disable-model-invocation in the error');
 
     pass('L1-13 check passed');
   } catch (err) {

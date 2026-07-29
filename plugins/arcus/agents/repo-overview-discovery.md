@@ -6,7 +6,6 @@ description: >
   arcus:repo-agentifier to produce the scope/map other discovery agents depend on.
 layer: capability
 user-invocable: false
-disable-model-invocation: true
 tools: Read, Grep, Glob, Bash, Write, Edit
 model: opus
 color: blue

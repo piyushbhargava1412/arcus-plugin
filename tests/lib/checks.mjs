@@ -5,6 +5,17 @@
 import { VALID_TIERS } from './skills.mjs';
 
 /**
+ * Tool aliases that can mutate the workspace, across every host dialect ARCUS
+ * targets. Used by L1-4 to prove an advisory reviewer's allowlist is read-only.
+ * `Bash` is deliberately absent: reviewers legitimately need it for `git diff`,
+ * and no host offers a read-only shell.
+ */
+const WRITE_TOOLS = new Set([
+  'Edit', 'Write', 'MultiEdit', 'NotebookEdit', 'Create',
+  'edit', 'write', 'create', 'str_replace_editor'
+]);
+
+/**
  * L1-1: Manifest validity check.
  * Validates plugin.json and marketplace.json structure and name consistency.
  *
@@ -133,8 +144,22 @@ function checkLineBudget({ name, body, fullText }) {
 
 /**
  * L1-4: Advisory reviewers are read-only (category invariant).
- * Advisory reviewers must have disable-model-invocation: true, user-invocable: false,
- * and disallowed-tools must include Edit, Write, and MultiEdit.
+ *
+ * The guarantee is carried by the TOOL SURFACE, not by an invocation flag:
+ *   - `tools:` (allowlist) must name no write-capable tool. This is the load-bearing
+ *     half — Claude Code, Copilot CLI and VS Code all enforce an allowlist, and it is
+ *     the only restriction that survives on hosts with no denylist field at all.
+ *   - `disallowed-tools` (denylist) must still cover Edit/Write/MultiEdit as
+ *     defence-in-depth on Claude Code.
+ *   - `user-invocable: false` keeps them out of the user-facing picker.
+ *
+ * Deliberately NOT checked: `disable-model-invocation`. It was removed from every
+ * ARCUS agent because Copilot CLI honours it by dropping the agent from its dispatch
+ * registry entirely — which forced reviewers onto a generic-subagent fallback that
+ * carries no frontmatter and therefore no tool restrictions, defeating this very
+ * invariant. Claude Code ignores the flag, so it never bought anything there either.
+ * "Dispatched-only" is expressed by the DISPATCHED_ONLY roster + `user-invocable:
+ * false` + an orchestration-scoped `description:`.
  *
  * @param {Object} input
  * @param {string} input.name - Skill name
@@ -150,17 +175,25 @@ function checkAdvisoryReadOnly({ name, frontmatter, advisorySet }) {
     return { ok: true, errors };
   }
 
-  // Check disable-model-invocation is true
-  if (frontmatter['disable-model-invocation'] !== true) {
-    errors.push(`${name}: advisory reviewer must have disable-model-invocation: true`);
-  }
-
   // Check user-invocable is false
   if (frontmatter['user-invocable'] !== false) {
     errors.push(`${name}: advisory reviewer must have user-invocable: false`);
   }
 
-  // Check disallowed-tools includes Edit, Write, and MultiEdit
+  // Allowlist: the restriction hosts actually enforce. Must exist and must name no
+  // write-capable tool.
+  const tools = frontmatter['tools'];
+  if (!Array.isArray(tools) || tools.length === 0) {
+    errors.push(`${name}: advisory reviewer must have a tools allowlist`);
+  } else {
+    for (const tool of tools) {
+      if (WRITE_TOOLS.has(tool)) {
+        errors.push(`${name}: advisory reviewer allowlists write-capable tool ${tool}`);
+      }
+    }
+  }
+
+  // Denylist: defence-in-depth on hosts that honour it.
   const disallowedTools = frontmatter['disallowed-tools'];
   if (!Array.isArray(disallowedTools)) {
     errors.push(`${name}: advisory reviewer must have disallowed-tools array`);
@@ -811,6 +844,8 @@ function checkCapabilityHasEvalSpec({ name, tier, specExists }) {
  *   - layer present and in VALID_TIERS (the role axis survives on agents)
  *   - model present and a TIER word (opus|sonnet|haiku) or `inherit` — never a
  *     versioned model string (tier->model resolution is owned by arcus:model-strategy)
+ *   - disable-model-invocation ABSENT (Copilot CLI honours it by removing the agent
+ *     from dispatch; Claude Code ignores it — see the inline note below)
  *
  * Pure: receives the already-parsed frontmatter; performs no I/O.
  *
@@ -868,6 +903,20 @@ function checkAgentFrontmatter({ name, frontmatter }) {
     errors.push(`${name}: agent frontmatter missing required field: model`);
   } else if (!VALID_AGENT_MODELS.has(String(frontmatter.model))) {
     errors.push(`${name}: invalid model "${frontmatter.model}" (must be a tier word: ${[...VALID_AGENT_MODELS].join(', ')} — resolve via arcus:model-strategy)`);
+  }
+
+  // disable-model-invocation must never come back. Measured: Copilot CLI honours it
+  // by dropping the agent from its `task` dispatch registry outright (0 of 16 ARCUS
+  // agents were reachable), while Claude Code ignores it — so it can never buy the
+  // "orchestrator-only" property it looks like it buys. Orchestrated dispatch IS
+  // model invocation: the same tool call, from the same caller. Express
+  // dispatched-only with `user-invocable: false` + DISPATCHED_ONLY roster membership
+  // + an orchestration-scoped `description:`.
+  if (frontmatter['disable-model-invocation'] !== undefined) {
+    errors.push(
+      `${name}: agent must not set disable-model-invocation ` +
+      `(Copilot CLI drops such agents from dispatch entirely; use user-invocable: false)`
+    );
   }
 
   return { ok: errors.length === 0, errors };

@@ -7,7 +7,6 @@ description: >
   Dispatched by arcus:code-reviewer.
 layer: capability
 user-invocable: false
-disable-model-invocation: true
 model: sonnet
 color: cyan
 metadata:

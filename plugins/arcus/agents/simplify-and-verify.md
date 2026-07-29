@@ -7,7 +7,6 @@ description: >
   post-GREEN refactor gate (skipped on `light` complexity tasks).
 layer: capability
 user-invocable: false
-disable-model-invocation: true
 model: sonnet
 color: teal
 metadata:

@@ -7,7 +7,6 @@ description: >
   by the pull-request-builder skill wrapper.
 layer: capability
 user-invocable: false
-disable-model-invocation: true
 model: haiku
 color: blue
 ---

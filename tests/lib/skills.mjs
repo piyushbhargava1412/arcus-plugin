@@ -56,7 +56,7 @@ const VALID_TIERS = ['capability', 'coordinator', 'orchestrator', 'substrate'];
  * Handles:
  * - Simple scalars (key: value)
  * - Folded descriptions (description: > followed by indented lines)
- * - Comma-list values (disallowed-tools: Edit, Write, MultiEdit) returned as arrays
+ * - Comma-list values (tools / allowed-tools / disallowed-tools) returned as arrays
  * - Boolean strings ('true'/'false') converted to actual booleans
  *
  * Returns {} with _hasFrontmatter:false if no frontmatter block found.
@@ -125,8 +125,9 @@ function parseFrontmatter(text) {
     if (value === 'true') value = true;
     if (value === 'false') value = false;
 
-    // Handle comma-list values for certain keys
-    if (key === 'disallowed-tools' || key === 'allowed-tools') {
+    // Handle comma-list values for certain keys. `tools` is the allowlist every host
+    // enforces, so it must parse the same way its denylist counterpart does.
+    if (key === 'disallowed-tools' || key === 'allowed-tools' || key === 'tools') {
       result[key] = value.split(',').map(v => v.trim()).filter(v => v.length > 0);
     } else {
       result[key] = value;

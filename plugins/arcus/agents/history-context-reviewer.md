@@ -8,7 +8,6 @@ description: >
   arcus:code-reviewer.
 layer: capability
 user-invocable: false
-disable-model-invocation: true
 tools: Read, Grep, Glob, Bash
 disallowed-tools: Edit, Write, MultiEdit
 model: sonnet

@@ -4,7 +4,7 @@ description: >
   A planted violation fixture: this reviewer allows Write (missing from disallowed-tools).
 layer: capability
 user-invocable: false
-disable-model-invocation: true
+tools: Read, Grep, Glob
 disallowed-tools: Edit, MultiEdit
 ---
 
@@ -12,3 +12,4 @@ disallowed-tools: Edit, MultiEdit
 
 This fixture simulates an advisory reviewer that incorrectly allows Write operations.
 It should fail the L1-4 checkAdvisoryReadOnly check because Write is not in disallowed-tools.
+The `tools:` allowlist is deliberately valid so the denylist gap is the ONLY violation.

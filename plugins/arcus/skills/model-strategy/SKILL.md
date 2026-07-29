@@ -8,7 +8,6 @@ description: >
 layer: substrate
 standalone: false
 user-invocable: false
-disable-model-invocation: true
 ---
 
 # Model-Tiered Strategy
@@ -19,21 +18,21 @@ Single source of truth for complexity classification and model selection across 
 
 Skills that assess task difficulty use these three levels:
 
-| Level  | Description                                                                 |
-|--------|-----------------------------------------------------------------------------|
-| heavy  | Deep reasoning, multi-file coordination, new patterns, ambiguity resolution |
-| medium | Standard implementation, moderate reasoning, pattern-following              |
-| light  | Simple changes, template filling, single-file edits following existing patterns |
+| Level | Description |
+| --- | --- |
+| heavy | Deep reasoning, multi-file coordination, new patterns, ambiguity resolution |
+| medium | Standard implementation, moderate reasoning, pattern-following |
+| light | Simple changes, template filling, single-file edits following existing patterns |
 
 ## Complexity-to-Model Mapping
 
 The dispatcher resolves complexity to a model tier using this table:
 
 | Complexity | Model Tier |
-|------------|------------|
-| heavy      | opus       |
-| medium     | sonnet     |
-| light      | haiku      |
+| --- | --- |
+| heavy | opus |
+| medium | sonnet |
+| light | haiku |
 
 **Default**: If a task or test case is missing the `complexity` field, treat it as `medium`.
 
@@ -43,11 +42,11 @@ This mapping can be overridden for specific runs (e.g., "all Opus for a quality 
 
 The dispatcher resolves the model tier to a platform-specific string:
 
-| Model Tier | VS Code / GitHub Copilot        | Claude Code CLI | OpenCode (provider/model-id)        |
-|------------|---------------------------------|-----------------|-------------------------------------|
-| opus       | "Claude Opus 4.6 (copilot)"    | "opus"          | `github-copilot/claude-opus-4.8`    |
-| sonnet     | "Claude Sonnet 4.6 (copilot)"  | "sonnet"        | `github-copilot/claude-sonnet-4.6`  |
-| haiku      | "Claude Haiku 4.5 (copilot)"   | "haiku"         | `github-copilot/claude-haiku-4.5`   |
+| Model Tier | VS Code / GitHub Copilot | Claude Code CLI | OpenCode (provider/model-id) |
+| --- | --- | --- | --- |
+| opus | "Claude Opus 4.6 (copilot)" | "opus" | `github-copilot/claude-opus-4.8` |
+| sonnet | "Claude Sonnet 4.6 (copilot)" | "sonnet" | `github-copilot/claude-sonnet-4.6` |
+| haiku | "Claude Haiku 4.5 (copilot)" | "haiku" | `github-copilot/claude-haiku-4.5` |
 
 **Update this table** when new model versions are released.
 
@@ -83,22 +82,22 @@ Helper Scripts section of `arcus-controller`).
 
 Fixed complexity for orchestrator-level stages (does not vary per story):
 
-| Stage Subagent           | Complexity | Rationale                                    |
-|--------------------------|------------|----------------------------------------------|
-| context-pack-builder     | medium     | Codebase search + assembly                   |
-| spec-finalizer           | heavy      | Multi-source synthesis, ambiguity resolution |
-| implementation-planner   | heavy      | Architectural decomposition, task design     |
-| test-spec-compiler       | medium     | Pattern-following matrix generation          |
-| spec-compliance-reviewer | medium     | Checklist verification against spec          |
-| code-quality-reviewer    | medium     | Pattern matching against conventions         |
-| code-reviewer            | heavy      | Holistic review coordination, dedupe + judge |
-| security-reviewer        | medium     | Vulnerability detection in changed code      |
-| performance-reviewer     | medium     | Hot-path / resource regression detection     |
-| pull-request-builder     | light      | Template fill + summary                      |
-| repo-overview-discovery  | heavy      | Full repo scan, multi-area coordination      |
-| flow-discovery           | heavy      | Code path tracing across multiple layers     |
-| test-pattern-discovery   | medium     | Pattern extraction, template-following       |
-| design-pattern-discovery | heavy      | Source-wide convention + anti-pattern synthesis |
+| Stage Subagent | Complexity | Rationale |
+| --- | --- | --- |
+| context-pack-builder | medium | Codebase search + assembly |
+| spec-finalizer | heavy | Multi-source synthesis, ambiguity resolution |
+| implementation-planner | heavy | Architectural decomposition, task design |
+| test-spec-compiler | medium | Pattern-following matrix generation |
+| spec-compliance-reviewer | medium | Checklist verification against spec |
+| code-quality-reviewer | medium | Pattern matching against conventions |
+| code-reviewer | heavy | Holistic review coordination, dedupe + judge |
+| security-reviewer | medium | Vulnerability detection in changed code |
+| performance-reviewer | medium | Hot-path / resource regression detection |
+| pull-request-builder | light | Template fill + summary |
+| repo-overview-discovery | heavy | Full repo scan, multi-area coordination |
+| flow-discovery | heavy | Code path tracing across multiple layers |
+| test-pattern-discovery | medium | Pattern extraction, template-following |
+| design-pattern-discovery | heavy | Source-wide convention + anti-pattern synthesis |
 
 ## Classification Guardrails
 

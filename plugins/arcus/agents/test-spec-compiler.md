@@ -7,7 +7,6 @@ description: >
   test-spec-compiler skill wrapper.
 layer: capability
 user-invocable: false
-disable-model-invocation: true
 model: sonnet
 color: green
 ---

@@ -5,7 +5,6 @@ description: >
   and maintainability. Returns severity-tagged findings for a holistic code-quality pass over the whole branch diff. Dispatched by arcus:code-reviewer.
 layer: capability
 user-invocable: false
-disable-model-invocation: true
 tools: Read, Grep, Glob, Bash
 disallowed-tools: Edit, Write, MultiEdit
 model: sonnet

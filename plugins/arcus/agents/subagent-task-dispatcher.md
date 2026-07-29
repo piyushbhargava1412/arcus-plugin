@@ -7,7 +7,6 @@ description: >
   the Code stage.
 layer: orchestrator
 user-invocable: false
-disable-model-invocation: true
 disallowed-tools: AskUserQuestion
 model: sonnet
 color: orange
