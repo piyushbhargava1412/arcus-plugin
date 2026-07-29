@@ -77,7 +77,7 @@ one is host-specific, so resolve the dispatch target in this order and use the *
    agents by **plugin name**: both **Claude Code** and **GitHub Copilot CLI** expose them as
    `arcus-plugin:<name>` (Claude Code via `Agent`/`Task`, Copilot CLI via
    `task(agent_type=…)`, `--agent=`, or `/agent`). **Prefer this**: the host then enforces the
-   agent's `tools:` allowlist, which is what keeps the advisory reviewers genuinely read-only.
+   agent's `tools:` allowlist, which is what keeps the advisory reviewers read-only.
 2. **A generic subagent** whose prompt opens with: *"Read and follow the agent spec at
    `$ARCUS_HOME/agents/<name>.md`."* Use this only where **no registry entry exists**. That is not a
    per-host property — it is per **name**:
@@ -99,6 +99,29 @@ one is host-specific, so resolve the dispatch target in this order and use the *
 > honours it on **skills**, so a flagged skill is unloadable on every host. Orchestrated dispatch *is*
 > model invocation, so the flag cannot mean "orchestrator-only". Express that with
 > `user-invocable: false` plus an orchestration-scoped `description:`.
+
+### Tool names in `tools:` (measured)
+
+| Authored | Claude Code | Copilot CLI |
+| --- | --- | --- |
+| `Read` | `Read` | `view` |
+| `Grep` | `Grep` | `grep` |
+| `Glob` | `Glob` | `glob` |
+| `Bash` | `Bash` | `bash`, `read_bash`, `stop_bash`, `list_bash` |
+| `Edit` / `Write` | `Edit` / `Write` | `edit` |
+| `Task` / `Agent` | `Agent` | `task` |
+
+Two behaviours to author around:
+
+- **Unknown names are dropped silently.** A misspelled or host-specific tool narrows the agent's real
+  toolset with no error anywhere. Prefer these names.
+- **Listing `Bash` alongside `Grep`/`Glob` costs you those two on Claude Code.** `Read, Grep, Glob`
+  gives all three; `Read, Grep, Glob, Bash` gives only `Read, Bash`.
+
+**`Bash` is a write tool.** A denylist of `Edit`/`Write`/`MultiEdit` does not make an agent
+read-only if the allowlist contains a shell — `printf x > f` writes, `git commit` rewrites history,
+`rm` deletes. A dispatch tool is the same hole one level out. An agent that must not modify the
+repository allowlists neither, and receives what it needs as a prompt input instead.
 
 ### Host namespaces (measured)
 

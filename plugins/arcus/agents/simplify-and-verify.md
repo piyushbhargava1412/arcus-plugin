@@ -7,6 +7,7 @@ description: >
   post-GREEN refactor gate (skipped on `light` complexity tasks).
 layer: capability
 user-invocable: false
+tools: Read, Grep, Glob, Bash, Edit, Write
 model: sonnet
 color: teal
 metadata:

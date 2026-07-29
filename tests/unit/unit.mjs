@@ -40,10 +40,18 @@ section('skills.mjs');
     const { AGENTS_DIR } = await import('../lib/skills.mjs');
     const secReviewerText = await fs.readFile(`${AGENTS_DIR}/security-reviewer.md`, 'utf-8');
     const secFM = parseFrontmatter(secReviewerText);
-    assert(Array.isArray(secFM['disallowed-tools']), 'disallowed-tools is parsed as an array');
-    assert(secFM['disallowed-tools'].includes('Edit'), 'disallowed-tools contains Edit');
-    assert(secFM['disallowed-tools'].includes('Write'), 'disallowed-tools contains Write');
-    assert(secFM['disallowed-tools'].includes('MultiEdit'), 'disallowed-tools contains MultiEdit');
+    assert(Array.isArray(secFM['disallowedTools']), 'disallowedTools is parsed as an array');
+    assert(secFM['disallowedTools'].includes('Edit'), 'disallowedTools contains Edit');
+    assert(secFM['disallowedTools'].includes('Write'), 'disallowedTools contains Write');
+    assert(secFM['disallowedTools'].includes('MultiEdit'), 'disallowedTools contains MultiEdit');
+    // Measured 2026-07-29: Claude Code honours only the camelCase spelling and
+    // ignores kebab-case silently, so the kebab form must not come back.
+    assert(secFM['disallowed-tools'] === undefined,
+           'security-reviewer does not use the inert kebab-case disallowed-tools');
+    // Bash writes by redirection, so allowlisting it would void the read-only
+    // guarantee the denylist above only appears to give.
+    assert(!secFM['tools'].includes('Bash'),
+           'security-reviewer does not allowlist Bash (shell redirection is a write)');
     assert(secFM['user-invocable'] === false,
            'security-reviewer is user-invocable: false (dispatched-only marker)');
     assert(secFM['disable-model-invocation'] === undefined,
@@ -293,6 +301,62 @@ section('L1-4..L1-7');
     });
     assert(writeEnabledResult.ok === false, `checkAdvisoryReadOnly fails on write-enabled-reviewer (got ok=${writeEnabledResult.ok})`);
     assert(writeEnabledResult.errors.length > 0, 'checkAdvisoryReadOnly returns error messages for write-enabled-reviewer');
+
+    // PLANTED-BAD (L1-4): a shell in the allowlist voids the read-only guarantee.
+    // Measured on Claude Code 2026-07-29: an agent with no Write tool still created
+    // a file via `printf x > f`, so a denylist over Edit/Write/MultiEdit is cosmetic
+    // whenever Bash is allowlisted.
+    const bashReviewer = checkAdvisoryReadOnly({
+      name: 'security-reviewer',
+      frontmatter: {
+        'user-invocable': false,
+        tools: ['Read', 'Grep', 'Glob', 'Bash'],
+        disallowedTools: ['Edit', 'Write', 'MultiEdit']
+      },
+      advisorySet: ADVISORY_REVIEWERS
+    });
+    assert(bashReviewer.ok === false, 'checkAdvisoryReadOnly rejects an advisory reviewer that allowlists Bash');
+    assert(bashReviewer.errors.some(e => e.includes('Bash')),
+           'checkAdvisoryReadOnly names Bash as an indirect write');
+
+    // A dispatch tool is the same hole one level out: it can spawn a writer.
+    const taskReviewer = checkAdvisoryReadOnly({
+      name: 'security-reviewer',
+      frontmatter: {
+        'user-invocable': false,
+        tools: ['Read', 'Task'],
+        disallowedTools: ['Edit', 'Write', 'MultiEdit']
+      },
+      advisorySet: ADVISORY_REVIEWERS
+    });
+    assert(taskReviewer.ok === false, 'checkAdvisoryReadOnly rejects an advisory reviewer that allowlists Task');
+
+    // SHELL_EXEMPT: history-context-reviewer's git archaeology is irreducibly
+    // shell-shaped, so it is the one documented exception.
+    const exemptReviewer = checkAdvisoryReadOnly({
+      name: 'history-context-reviewer',
+      frontmatter: {
+        'user-invocable': false,
+        tools: ['Read', 'Grep', 'Glob', 'Bash'],
+        disallowedTools: ['Edit', 'Write', 'MultiEdit']
+      },
+      advisorySet: ADVISORY_REVIEWERS
+    });
+    assert(exemptReviewer.ok === true, `SHELL_EXEMPT lets history-context-reviewer keep Bash (got ${exemptReviewer.errors?.join('; ') || 'ok'})`);
+
+    // PLANTED-BAD (L1-4): kebab-case disallowed-tools is inert on Claude Code.
+    const kebabReviewer = checkAdvisoryReadOnly({
+      name: 'security-reviewer',
+      frontmatter: {
+        'user-invocable': false,
+        tools: ['Read', 'Grep', 'Glob'],
+        'disallowed-tools': ['Edit', 'Write', 'MultiEdit']
+      },
+      advisorySet: ADVISORY_REVIEWERS
+    });
+    assert(kebabReviewer.ok === false, 'checkAdvisoryReadOnly rejects the inert kebab-case disallowed-tools');
+    assert(kebabReviewer.errors.some(e => e.includes('disallowedTools')),
+           'checkAdvisoryReadOnly points at the camelCase spelling');
 
     // Test L1-4: checkAdvisoryReadOnly passes (not applicable) on non-advisory skill
     const specFinalizer = allSkills.find(s => s.name === 'spec-finalizer');

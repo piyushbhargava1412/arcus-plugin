@@ -42,8 +42,8 @@ description: >               # REQUIRED — what it does + "use when …" dispat
 layer: capability            # REQUIRED — role axis: capability | coordinator | orchestrator | substrate
 user-invocable: false        # agents are never user-facing (this flag is the machine-readable source of truth)
                              # NEVER add `disable-model-invocation` — see Field rules below
-tools: Read, Grep, Glob, Bash    # OPTIONAL allowlist of tools the agent may use
-disallowed-tools: Edit, Write, MultiEdit   # advisory/read-only agents MUST disallow these
+tools: Read, Grep, Glob, Bash    # REQUIRED allowlist — the only restriction hosts enforce
+disallowedTools: Edit, Write, MultiEdit  # camelCase ONLY - Claude Code ignores the kebab spelling
 model: sonnet                # tier word (opus | sonnet | haiku) or `inherit` — NEVER a versioned
                              #   model string (resolve tiers via arcus:model-strategy)
 color: cyan                  # OPTIONAL UI hint
@@ -69,10 +69,22 @@ color: cyan                  # OPTIONAL UI hint
   skills by dropping the item from its registry (the agent then loses host-enforced `tools:`); Claude
   Code ignores it on agents but honours it on skills. `user-invocable: false` already carries the
   "not user-facing" intent. Rejected by `checkAgentFrontmatter` (L1-13).
+- **`tools`** — the allowlist, and the **only** restriction hosts actually enforce. Measured
+  2026-07-29: `Read, Grep, Glob` yields exactly those three on Claude Code and
+  `view, grep, glob` on Copilot CLI. Adding `Bash` to that list causes Claude Code to drop
+  `Grep`/`Glob`, so the shorter list is also the more capable one there.
+- **`disallowedTools`** — **camelCase only.** Claude Code honours `disallowedTools` and silently
+  ignores kebab-case `disallowed-tools`, which ARCUS used for its entire history — so the denylist
+  never fired. It is defence-in-depth; never rely on it alone.
+- **A denylist cannot make an agent read-only if the allowlist contains `Bash`.** Measured: an agent
+  with no `Write` tool created a file with `printf x > f`. Same for a dispatch tool (`Task`/`Agent`),
+  which can spawn a writer. Enforced by `checkAdvisoryReadOnly` via `INDIRECT_WRITE_TOOLS`; the one
+  documented exception is `history-context-reviewer`, whose `git log`/`git blame` archaeology is
+  irreducibly shell-shaped and whose read-only-ness is therefore trusted, not enforced.
 - **Advisory reviewers** (`security-reviewer`, `performance-reviewer`, `code-quality-reviewer`,
   `history-context-reviewer`, `spec-compliance-reviewer`) additionally require
   `user-invocable: false`, a `tools:` allowlist naming no write-capable tool, and
-  `disallowed-tools ⊇ [Edit, Write, MultiEdit]` (enforced by `checkAdvisoryReadOnly`).
+  `disallowedTools ⊇ [Edit, Write, MultiEdit]` (enforced by `checkAdvisoryReadOnly`).
 
 ## Body authoring
 

@@ -15,6 +15,25 @@ const WRITE_TOOLS = new Set([
   'edit', 'write', 'create', 'str_replace_editor'
 ]);
 
+// Tools that grant an INDIRECT write. A shell writes files by redirection
+// (`printf x > f`), rewrites history (`git commit`) and deletes (`rm`), so it
+// defeats a denylist completely — measured on Claude Code 2026-07-29: an agent
+// with `tools: Read, Bash` and `disallowedTools: Edit, Write, MultiEdit`
+// correctly reported having no Write tool, then created a file via `printf >`.
+// A dispatch tool is the same hole one level out: it can spawn a subagent that
+// writes. An agent that must stay read-only may allowlist neither.
+const INDIRECT_WRITE_TOOLS = new Set([
+  'Bash', 'Task', 'Agent', 'Execute', 'Shell',
+  'bash', 'task', 'shell'
+]);
+
+// Advisory reviewers permitted to allowlist a shell despite the above, because
+// their work is irreducibly shell-shaped. `history-context-reviewer` chooses
+// `git log` / `git blame` / `git show` invocations per changed file as it reads,
+// so the data cannot be pre-supplied as a prompt input the way `change_set` is.
+// Its read-only-ness is trusted, not enforced. Keep this set as small as possible.
+const SHELL_EXEMPT = new Set(['history-context-reviewer']);
+
 /**
  * L1-1: Manifest validity check.
  * Validates plugin.json and marketplace.json structure and name consistency.
@@ -146,20 +165,36 @@ function checkLineBudget({ name, body, fullText }) {
  * L1-4: Advisory reviewers are read-only (category invariant).
  *
  * The guarantee is carried by the TOOL SURFACE, not by an invocation flag:
- *   - `tools:` (allowlist) must name no write-capable tool. This is the load-bearing
- *     half — Claude Code, Copilot CLI and VS Code all enforce an allowlist, and it is
- *     the only restriction that survives on hosts with no denylist field at all.
- *   - `disallowed-tools` (denylist) must still cover Edit/Write/MultiEdit as
- *     defence-in-depth on Claude Code.
+ *   - `tools:` (allowlist) must name no write-capable tool, DIRECT or INDIRECT.
+ *     This is the load-bearing half — Claude Code, Copilot CLI and VS Code all
+ *     enforce an allowlist, and it is the only restriction that survives on hosts
+ *     with no denylist field at all.
+ *   - `disallowedTools` (denylist, camelCase) must still cover Edit/Write/MultiEdit
+ *     as defence-in-depth on Claude Code. Measured 2026-07-29: Claude Code honours
+ *     `disallowedTools` and silently ignores the kebab-case `disallowed-tools`,
+ *     which ARCUS used for its whole history — so the denylist never fired at all.
  *   - `user-invocable: false` keeps them out of the user-facing picker.
+ *
+ * Why INDIRECT_WRITE_TOOLS matters: a denylist over Edit/Write/MultiEdit is
+ * cosmetic if `Bash` is allowlisted, because the shell writes by redirection.
+ * Dropping `Bash` costs these reviewers nothing — `change_set` is already a
+ * declared INPUT they receive from the code-reviewer coordinator — and on Claude
+ * Code it actively helps: with `Bash` present that host drops `Grep`/`Glob` from
+ * the agent, so `Read, Grep, Glob` yields a strictly larger real toolset than
+ * `Read, Grep, Glob, Bash` did.
+ *
+ * SHELL_EXEMPT records the one reviewer whose job is irreducibly shell-shaped.
+ * `history-context-reviewer` performs git archaeology — `git log`, `git blame`,
+ * `git show` chosen per changed file — which cannot be pre-supplied in a prompt.
+ * Its read-only-ness is NOT tool-enforced; that is a documented, deliberate gap,
+ * not an oversight.
  *
  * Deliberately NOT checked: `disable-model-invocation`. It was removed from every
  * ARCUS agent because Copilot CLI honours it by dropping the agent from its dispatch
  * registry entirely — which forced reviewers onto a generic-subagent fallback that
  * carries no frontmatter and therefore no tool restrictions, defeating this very
- * invariant. Claude Code ignores the flag, so it never bought anything there either.
- * "Dispatched-only" is expressed by the DISPATCHED_ONLY roster + `user-invocable:
- * false` + an orchestration-scoped `description:`.
+ * invariant. "Dispatched-only" is expressed by the DISPATCHED_ONLY roster +
+ * `user-invocable: false` + an orchestration-scoped `description:`.
  *
  * @param {Object} input
  * @param {string} input.name - Skill name
@@ -181,7 +216,7 @@ function checkAdvisoryReadOnly({ name, frontmatter, advisorySet }) {
   }
 
   // Allowlist: the restriction hosts actually enforce. Must exist and must name no
-  // write-capable tool.
+  // write-capable tool, directly or indirectly.
   const tools = frontmatter['tools'];
   if (!Array.isArray(tools) || tools.length === 0) {
     errors.push(`${name}: advisory reviewer must have a tools allowlist`);
@@ -190,13 +225,28 @@ function checkAdvisoryReadOnly({ name, frontmatter, advisorySet }) {
       if (WRITE_TOOLS.has(tool)) {
         errors.push(`${name}: advisory reviewer allowlists write-capable tool ${tool}`);
       }
+      if (INDIRECT_WRITE_TOOLS.has(tool) && !SHELL_EXEMPT.has(name)) {
+        errors.push(
+          `${name}: advisory reviewer allowlists ${tool}, which grants an indirect ` +
+          `write (a shell writes by redirection; a dispatch tool spawns a writer). ` +
+          `Receive the data as an input instead, or add ${name} to SHELL_EXEMPT ` +
+          `with a rationale if the need is irreducible.`
+        );
+      }
     }
   }
 
-  // Denylist: defence-in-depth on hosts that honour it.
-  const disallowedTools = frontmatter['disallowed-tools'];
+  // Denylist: defence-in-depth on hosts that honour it. Claude Code honours only
+  // the camelCase spelling.
+  if (frontmatter['disallowed-tools'] !== undefined) {
+    errors.push(
+      `${name}: uses kebab-case disallowed-tools, which Claude Code silently ` +
+      `ignores — rename to disallowedTools`
+    );
+  }
+  const disallowedTools = frontmatter['disallowedTools'];
   if (!Array.isArray(disallowedTools)) {
-    errors.push(`${name}: advisory reviewer must have disallowed-tools array`);
+    errors.push(`${name}: advisory reviewer must have disallowedTools array`);
   } else {
     const requiredTools = ['Edit', 'Write', 'MultiEdit'];
     for (const tool of requiredTools) {

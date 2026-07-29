@@ -7,7 +7,7 @@ description: >
 layer: capability
 user-invocable: false
 tools: Read, Grep, Glob
-disallowed-tools: Edit, Write, MultiEdit
+disallowedTools: Edit, Write, MultiEdit
 model: sonnet
 color: cyan
 ---

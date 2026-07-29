@@ -8,8 +8,8 @@ description: >
   arcus:code-reviewer.
 layer: capability
 user-invocable: false
-tools: Read, Grep, Glob, Bash
-disallowed-tools: Edit, Write, MultiEdit
+tools: Read, Grep, Glob
+disallowedTools: Edit, Write, MultiEdit, Bash
 model: sonnet
 color: green
 ---

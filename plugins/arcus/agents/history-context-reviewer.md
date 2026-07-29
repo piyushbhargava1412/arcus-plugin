@@ -9,7 +9,7 @@ description: >
 layer: capability
 user-invocable: false
 tools: Read, Grep, Glob, Bash
-disallowed-tools: Edit, Write, MultiEdit
+disallowedTools: Edit, Write, MultiEdit
 model: sonnet
 color: magenta
 ---

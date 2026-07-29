@@ -7,6 +7,7 @@ description: >
   by the pull-request-builder skill wrapper.
 layer: capability
 user-invocable: false
+tools: Read, Grep, Glob, Bash, Write
 model: haiku
 color: blue
 ---

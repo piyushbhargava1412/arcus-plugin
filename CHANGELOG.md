@@ -42,6 +42,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **The advisory reviewers are now actually read-only.** They carried
+  `disallowed-tools: Edit, Write, MultiEdit` alongside `tools: Read, Grep, Glob, Bash`, which
+  guaranteed nothing twice over. Measured on Claude Code: (1) the kebab-case spelling is **silently
+  ignored** — only `disallowedTools` is honoured, so the denylist never fired in ARCUS's entire
+  history; (2) even honoured, it is cosmetic next to `Bash`, because an agent with no `Write` tool
+  still created a file with `printf x > f`. A shell writes by redirection, rewrites history with
+  `git commit`, and deletes with `rm`.
+
+  `Bash` is dropped from `security-reviewer`, `performance-reviewer`, `code-quality-reviewer` and
+  `spec-compliance-reviewer`, and every denylist is renamed to `disallowedTools`. This costs those
+  reviewers nothing: `change_set` was already a declared **input** the `code-reviewer` coordinator
+  assembles and passes. Verified after the change on Copilot CLI — a dispatched agent with
+  `tools: Read, Grep, Glob` reports exactly `view, grep, glob` and cannot produce a file by any
+  means.
+
+  It also makes them **more** capable on Claude Code, not less: with `Bash` present that host drops
+  `Grep`/`Glob` from the agent, so `Read, Grep, Glob` yields all three where
+  `Read, Grep, Glob, Bash` yielded only `Read, Bash`.
+
+  `history-context-reviewer` keeps `Bash` as the one documented exception — its `git log` / `git
+  blame` archaeology is chosen per changed file as it reads and cannot be pre-supplied as an input.
+  It is recorded in `SHELL_EXEMPT` with that rationale; its read-only-ness is trusted, not enforced.
+- **All 16 agents now declare a `tools:` allowlist.** Seven had none
+  (`context-pack-builder`, `pull-request-builder`, `review-consolidator`, `simplify-and-verify`,
+  `test-spec-compiler`, `context-drift-sync`, `subagent-task-dispatcher`) and so inherited the full
+  session toolset — including `Edit` and `Write` — on every host.
+- **L1-4 now rejects indirect writes and the inert spelling.** `INDIRECT_WRITE_TOOLS` covers shells
+  and dispatch tools (a dispatcher can spawn a writer); kebab-case `disallowed-tools` is a hard
+  fail with a pointer to the camelCase form.
+- **`model-strategy` documents the measured `tools:` name mapping** across Claude Code and Copilot
+  CLI, plus the two authoring traps: unknown names are dropped silently, and listing `Bash`
+  suppresses `Grep`/`Glob` on Claude Code.
+- The OpenCode bundle builder reads `disallowedTools`, still falling back to the kebab spelling.
+
 - **L1-4 (advisory reviewers are read-only) is now allowlist-first.** It no longer requires
   `disable-model-invocation`; it requires a `tools:` allowlist naming no write-capable tool — the
   half every host actually enforces — while still requiring `disallowed-tools ⊇ [Edit, Write,

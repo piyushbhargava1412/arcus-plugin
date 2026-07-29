@@ -7,6 +7,7 @@ description: >
   Dispatched by arcus:code-reviewer.
 layer: capability
 user-invocable: false
+tools: Read, Grep, Glob, Write
 model: sonnet
 color: cyan
 metadata:

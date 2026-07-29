@@ -56,7 +56,9 @@ const VALID_TIERS = ['capability', 'coordinator', 'orchestrator', 'substrate'];
  * Handles:
  * - Simple scalars (key: value)
  * - Folded descriptions (description: > followed by indented lines)
- * - Comma-list values (tools / allowed-tools / disallowed-tools) returned as arrays
+ * - Comma-list values (tools / allowed-tools / disallowedTools) returned as arrays.
+ *   The kebab-case disallowed-tools is still parsed so L1-4 can REJECT it: Claude
+ *   Code honours only the camelCase spelling and ignores kebab silently.
  * - Boolean strings ('true'/'false') converted to actual booleans
  *
  * Returns {} with _hasFrontmatter:false if no frontmatter block found.
@@ -127,7 +129,7 @@ function parseFrontmatter(text) {
 
     // Handle comma-list values for certain keys. `tools` is the allowlist every host
     // enforces, so it must parse the same way its denylist counterpart does.
-    if (key === 'disallowed-tools' || key === 'allowed-tools' || key === 'tools') {
+    if (key === 'disallowedTools' || key === 'disallowed-tools' || key === 'allowed-tools' || key === 'tools') {
       result[key] = value.split(',').map(v => v.trim()).filter(v => v.length > 0);
     } else {
       result[key] = value;

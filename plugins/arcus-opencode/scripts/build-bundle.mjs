@@ -97,10 +97,10 @@ function parseAgentFrontmatter(fm) {
   return fields
 }
 
-/** Build the OpenCode `permission:` block from Claude tools / disallowed-tools. */
+/** Build the OpenCode `permission:` block from Claude tools / disallowedTools. */
 function buildPermission(fields) {
   const tools = (fields.tools || "").split(",").map((t) => t.trim()).filter(Boolean)
-  const disallowed = (fields["disallowed-tools"] || "")
+  const disallowed = (fields["disallowedTools"] || fields["disallowed-tools"] || "")
     .split(",")
     .map((t) => t.trim())
     .filter(Boolean)
