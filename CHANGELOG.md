@@ -9,13 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- **Every ARCUS agent is now dispatchable on GitHub Copilot CLI — previously none were.**
+- **Every ARCUS agent is now dispatchable on GitHub Copilot CLI — previously none were, and the
+  `model-strategy` skill was unloadable on _every_ host.**
   All 16 agents (and the `model-strategy` skill) carried `disable-model-invocation: true`. Copilot
-  CLI **honours** that field by removing the item from its `task` dispatch registry outright, so
-  `task(agent_type="arcus-plugin:security-reviewer")` had nothing to resolve; Claude Code **ignores**
-  it, which is why the bug stayed invisible. Measured before the fix: **0 of 16** agents present in
-  Copilot CLI's `agent_type` enum and `arcus:model-strategy` returning `CANNOT-LOAD`; after:
-  **16 of 16**, and the skill loads.
+  CLI **honours** that field on **both** surfaces by removing the item from its registry outright, so
+  `task(agent_type="arcus-plugin:security-reviewer")` had nothing to resolve. Claude Code ignores it
+  on **agents** — which is why the agent bug stayed invisible — but **honours it on skills**, so
+  `model-strategy`, the substrate that owns tier→model resolution and the Agent Resolution rule and
+  which 30 references point at, failed to load on Claude Code too. Measured before the fix: **0 of
+  16** agents present in Copilot CLI's `agent_type` enum, `arcus:model-strategy` returning
+  `CANNOT-LOAD` on Copilot CLI and absent from Claude Code's skill list (12 of 13 visible); after:
+  **16 of 16**, and the skill loads on both.
 
   The intent behind the flag — *these agents are dispatched by an orchestrator, never picked
   organically* — is sound, but the flag cannot express it: **orchestrated dispatch _is_ model
@@ -46,6 +50,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   silently on the host where it is inert.
 - `parseFrontmatter` parses `tools:` into an array, consistent with `allowed-tools` /
   `disallowed-tools`.
+- **The `arcus:<name>` warning is stated once instead of seven times.** The seven duplicated
+  "Dispatching an ARCUS agent" blockquotes now carry only the positive instruction and point at
+  `arcus:model-strategy` § Agent Resolution; the prohibition itself lives there alone. The
+  duplication existed because a probe told to read `model-strategy` got "not found" — a direct
+  consequence of the `disable-model-invocation` bug fixed above, so its justification is void.
+- **`model-strategy` § Agent Resolution now states the namespace positively**, as a measured
+  Claude Code × Copilot CLI table for agents and skills, replacing the bare prohibition. It records
+  the asymmetry that motivates the token at all: agents resolve as `arcus-plugin:<name>` on both
+  hosts, but skills are `arcus-plugin:<name>` on Claude Code and **bare `<name>`** on Copilot CLI —
+  so no single literal is correct for a skill on both, which is why ARCUS prose uses the
+  host-neutral `arcus:<name>` and converts at dispatch.
+- **`agents.md` canonical frontmatter no longer tells authors to set `disable-model-invocation`**,
+  which L1-13 now rejects, and its packaging note no longer implies Copilot CLI needs a separate
+  agent dialect.
 
 - **A repository that forbids Actions from opening pull requests no longer strands a finished story.**
   `Allow GitHub Actions to create and approve pull requests` is off by default, so `gh pr create`

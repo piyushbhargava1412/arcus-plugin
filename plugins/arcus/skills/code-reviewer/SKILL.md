@@ -119,8 +119,8 @@ Mechanical churn must not consume a loopback round. Only lint errors with **no**
 > ending in `<name>` — Claude Code and GitHub Copilot CLI both expose these as `arcus-plugin:<name>`,
 > and the host then enforces the agent's `tools:` frontmatter; (2) otherwise a **generic subagent**
 > whose prompt opens *"Read and follow the agent spec at `$ARCUS_HOME/agents/<name>.md`"*, on hosts
-> with no registry — there the tool restrictions are only advisory. Never address an agent as
-> `arcus:<name>`; that is a docs token no host resolves. Full rule: `model-strategy` § Agent Resolution.
+> with no registry — there the tool restrictions are only advisory. Full rule:
+> `arcus:model-strategy` § Agent Resolution.
 
 ## Step 3: Fan out to reviewers
 

@@ -84,16 +84,24 @@ one is host-specific, so resolve the dispatch target in this order and use the *
    tool restrictions are then **advisory**: honor them as written, and never edit files from a
    read-only reviewer.
 
-> **Never set `disable-model-invocation` on an ARCUS agent or skill.** Copilot CLI honours it by
-> removing the item from its dispatch registry entirely, which forces every agent onto route 2 and
-> silently voids the read-only reviewer guarantee; Claude Code ignores it. Orchestrated dispatch *is*
+> **Never set `disable-model-invocation` on an ARCUS agent or skill.** Copilot CLI honours it on
+> **both** surfaces by removing the item from its registry entirely, which forces every agent onto
+> route 2 and silently voids the read-only reviewer guarantee; Claude Code ignores it on agents but
+> honours it on **skills**, so a flagged skill is unloadable on every host. Orchestrated dispatch *is*
 > model invocation, so the flag cannot mean "orchestrator-only". Express that with
 > `user-invocable: false` plus an orchestration-scoped `description:`.
 
-> **`arcus:<name>` is a documentation token, not a host namespace.** It exists so the test harness can
-> validate cross-references (`walkAll()`); no host resolves it. Addressing an agent as
-> `arcus:<name>` fails on both registries — they use `arcus-plugin:`. Always resolve via the two
-> steps above.
+### Host namespaces (measured)
+
+| Reference | Claude Code | GitHub Copilot CLI |
+| --- | --- | --- |
+| **Agent** (`agents/<name>.md`) | `arcus-plugin:<name>` | `arcus-plugin:<name>` |
+| **Skill** (`skills/<name>/SKILL.md`) | `arcus-plugin:<name>` | `<name>` (bare) |
+
+`arcus:<name>` throughout ARCUS prose is a **host-neutral reference token**, not a namespace. It lets
+the test harness validate every cross-reference (`walkAll()`) against one spelling — necessary
+because, as the table shows, **a skill has no single literal that is correct on both hosts**. Convert
+it to the host form above before you dispatch or load; never pass `arcus:<name>` to a tool.
 
 Resolve `$ARCUS_HOME` from `.arcus/env`; if that file is absent, run the bootstrap first (see the
 Helper Scripts section of `arcus-controller`).

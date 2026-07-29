@@ -28,9 +28,10 @@ dialogue/gates, OR it is a stateful driver that owns the user conversation.
 ## Canonical frontmatter
 
 Agent files use the **Claude Code native `agents/` frontmatter** as the canonical source of truth.
-(Copilot CLI `.agent`/`runSubagent` and VS Code `.agent.md` each have an equivalent agent primitive;
-per-surface packaging validation is a documented follow-up — the Claude Code dialect is authored here
-as canonical.)
+Both **Claude Code** and **GitHub Copilot CLI** read it directly and register the agent as
+`arcus-plugin:<name>`, enforcing its `tools:` allowlist. VS Code Copilot Chat (`.agent.md`,
+`runSubagent`) and OpenCode have equivalent primitives with different dialects; per-surface packaging
+validation is a documented follow-up.
 
 ```yaml
 ---
@@ -40,7 +41,7 @@ description: >               # REQUIRED — what it does + "use when …" dispat
   Dispatched by <caller>.
 layer: capability            # REQUIRED — role axis: capability | coordinator | orchestrator | substrate
 user-invocable: false        # agents are never user-facing (this flag is the machine-readable source of truth)
-disable-model-invocation: true
+                             # NEVER add `disable-model-invocation` — see Field rules below
 tools: Read, Grep, Glob, Bash    # OPTIONAL allowlist of tools the agent may use
 disallowed-tools: Edit, Write, MultiEdit   # advisory/read-only agents MUST disallow these
 model: sonnet                # tier word (opus | sonnet | haiku) or `inherit` — NEVER a versioned
@@ -63,10 +64,15 @@ color: cyan                  # OPTIONAL UI hint
   (`tests/e2e/evals/specs/<name>/evals.json`).
 - **`model`** — a **tier word** (`opus`/`sonnet`/`haiku`) or `inherit`. Never hardcode a versioned
   model id; tier→model resolution is owned solely by `arcus:model-strategy`.
+- **`disable-model-invocation`** — **never set it.** Orchestrated dispatch *is* model invocation, so
+  the flag cannot mean "orchestrator-only". Measured: Copilot CLI honours it on **both** agents and
+  skills by dropping the item from its registry (the agent then loses host-enforced `tools:`); Claude
+  Code ignores it on agents but honours it on skills. `user-invocable: false` already carries the
+  "not user-facing" intent. Rejected by `checkAgentFrontmatter` (L1-13).
 - **Advisory reviewers** (`security-reviewer`, `performance-reviewer`, `code-quality-reviewer`,
   `history-context-reviewer`, `spec-compliance-reviewer`) additionally require
-  `user-invocable: false`, `disable-model-invocation: true`, and `disallowed-tools ⊇
-  [Edit, Write, MultiEdit]` (enforced by `checkAdvisoryReadOnly`).
+  `user-invocable: false`, a `tools:` allowlist naming no write-capable tool, and
+  `disallowed-tools ⊇ [Edit, Write, MultiEdit]` (enforced by `checkAdvisoryReadOnly`).
 
 ## Body authoring
 
