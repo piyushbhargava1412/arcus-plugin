@@ -79,10 +79,19 @@ one is host-specific, so resolve the dispatch target in this order and use the *
    `task(agent_type=…)`, `--agent=`, or `/agent`). **Prefer this**: the host then enforces the
    agent's `tools:` allowlist, which is what keeps the advisory reviewers genuinely read-only.
 2. **A generic subagent** whose prompt opens with: *"Read and follow the agent spec at
-   `$ARCUS_HOME/agents/<name>.md`."* Use this only on hosts with **no** plugin agent registry — VS
-   Code Copilot Chat, OpenCode, or an ARCUS checkout that is not installed as a plugin. The agent's
-   tool restrictions are then **advisory**: honor them as written, and never edit files from a
-   read-only reviewer.
+   `$ARCUS_HOME/agents/<name>.md`."* Use this only where **no registry entry exists**. That is not a
+   per-host property — it is per **name**:
+   - an ARCUS checkout **not installed as a plugin** (no registry at all);
+   - **VS Code Copilot Chat**, where ARCUS agents are not registered unless converted to `.agent.md`;
+   - a **restricted-tools subagent** — an agent whose own `tools:` allowlist omits the skill and
+     dispatch tools cannot resolve *any* reference, even on a registry host;
+   - a **single name absent from an otherwise healthy registry**, i.e. that item failed to load.
+
+   OpenCode is **not** in this list: its bundle registers agents as `mode: subagent` and rewrites
+   `arcus:<name>` to the flat name at build time.
+
+   Under route 2 the agent's tool restrictions are only **advisory**: honor them as written, and
+   never edit files from a read-only reviewer.
 
 > **Never set `disable-model-invocation` on an ARCUS agent or skill.** Copilot CLI honours it on
 > **both** surfaces by removing the item from its registry entirely, which forces every agent onto
@@ -97,6 +106,9 @@ one is host-specific, so resolve the dispatch target in this order and use the *
 | --- | --- | --- |
 | **Agent** (`agents/<name>.md`) | `arcus-plugin:<name>` | `arcus-plugin:<name>` |
 | **Skill** (`skills/<name>/SKILL.md`) | `arcus-plugin:<name>` | `<name>` (bare) |
+
+OpenCode needs no runtime resolution: the bundle rewrites `arcus:<name>` to the flat name at build
+time.
 
 `arcus:<name>` throughout ARCUS prose is a **host-neutral reference token**, not a namespace. It lets
 the test harness validate every cross-reference (`walkAll()`) against one spelling — necessary
