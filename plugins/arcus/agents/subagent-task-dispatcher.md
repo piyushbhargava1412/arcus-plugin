@@ -16,11 +16,11 @@ color: orange
 
 > **Dispatching an ARCUS agent.** Agents live at `$ARCUS_HOME/agents/<name>.md` and always run as
 > isolated subagents. Use the **first** that your host offers: (1) a **registered subagent type**
-> ending in `<name>` — Claude Code exposes these as `arcus-plugin:<name>`, and the host then enforces
-> the agent's `tools:`/`disallowed-tools:` frontmatter; (2) otherwise a **generic subagent** whose
-> prompt opens *"Read and follow the agent spec at `$ARCUS_HOME/agents/<name>.md`"* — Copilot CLI has
-> no agent registry, so this is the only route there. Never address an agent as `arcus:<name>`; that
-> is a docs token no host resolves. Full rule: `model-strategy/SKILL.md` § Agent Resolution.
+> ending in `<name>` — Claude Code and GitHub Copilot CLI both expose these as `arcus-plugin:<name>`,
+> and the host then enforces the agent's `tools:` frontmatter; (2) otherwise a **generic subagent**
+> whose prompt opens *"Read and follow the agent spec at `$ARCUS_HOME/agents/<name>.md`"*, on hosts
+> with no registry — there the tool restrictions are only advisory. Never address an agent as
+> `arcus:<name>`; that is a docs token no host resolves. Full rule: `model-strategy` § Agent Resolution.
 
 ## Overview
 
@@ -59,13 +59,14 @@ Resolve the task's model before dispatching:
 3. Look up the tier-to-platform mapping in the same file to get the platform model string.
 
 Invoke the subagent using the platform's spawner, passing the resolved model string:
-- **Copilot / VS Code**: `runSubagent`
-- **Claude Code**: the **`Agent`** tool
+- **GitHub Copilot CLI**: the **`task`** tool (`agent_type` + `model`)
+- **VS Code Copilot Chat**: `runSubagent`
+- **Claude Code**: the **`Agent`** tool (alias `Task`)
 
 With:
 - **prompt**: The constructed prompt from Step 2
 - **description**: `"Task N: <short task title>"`
-- **model**: The resolved platform model string (Claude Code: `"opus"`/`"sonnet"`/`"haiku"`; Copilot: e.g. `"Claude Sonnet 4.6 (copilot)"`). Passing this is what makes a `light` task run on `haiku` and a `medium` task on `sonnet` instead of the session default — omitting it forfeits the savings.
+- **model**: The resolved platform model string (Claude Code: `"opus"`/`"sonnet"`/`"haiku"`; Copilot CLI: a slug id, e.g. `"claude-sonnet-4.6"`; VS Code: e.g. `"Claude Sonnet 4.6 (copilot)"`). Passing this is what makes a `light` task run on `haiku` and a `medium` task on `sonnet` instead of the session default — omitting it forfeits the savings. **On Copilot CLI it is the only signal that works**: tier words in the agent's `model:` frontmatter are ignored there.
 
 ### Step 4: Handle Response
 

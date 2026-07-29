@@ -461,7 +461,7 @@ section('L1-4..L1-7');
            'checkAgentRefQualified identifies the unqualified pure-agent ref');
 
     // Test L1-15: dispatching a pure agent as `arcus:<name>` resolves on NO host —
-    // Claude registers `arcus-plugin:<name>`, Copilot has no agent registry at all.
+    // both Claude Code and Copilot CLI register plugin agents as `arcus-plugin:<name>`.
     const purePortability = new Set(['context-pack-builder', 'security-reviewer']);
 
     const portableDispatch = checkAgentDispatchPortable({

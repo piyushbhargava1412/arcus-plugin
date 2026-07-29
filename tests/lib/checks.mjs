@@ -927,12 +927,16 @@ function checkAgentFrontmatter({ name, frontmatter }) {
  *
  * `arcus:` is a documentation token the test harness resolves (`walkAll()`); it is
  * NOT a host namespace, and no host resolves it as a dispatch target. Verified
- * empirically against both surfaces:
- *   - Claude Code registers plugin agents under the PLUGIN name
- *     (`arcus-plugin:<name>`); `arcus:<name>` fails and the model only recovers by
- *     guessing again after a wasted tool call.
- *   - GitHub Copilot CLI has no agent registry at all — it exposes `skill(...)`
- *     and `task(...)` only, so a named agent is unresolvable there entirely.
+ * empirically against both registries — they use the PLUGIN name, `arcus-plugin:`:
+ *   - Claude Code registers plugin agents as `arcus-plugin:<name>` (Agent/Task tool);
+ *     `arcus:<name>` fails and the model only recovers by guessing again after a
+ *     wasted tool call.
+ *   - GitHub Copilot CLI registers them identically as `arcus-plugin:<name>` in its
+ *     `task` tool's `agent_type` enum, and enforces their `tools:` frontmatter.
+ *     (Measured on standalone copilot CLI 1.0.75. An earlier revision of this file
+ *     claimed Copilot CLI had no agent registry — that was a misdiagnosis of ARCUS's
+ *     own `disable-model-invocation` frontmatter, which Copilot honours by hiding the
+ *     agent. The flag is gone; see L1-13.)
  *
  * Dispatch must therefore go through the Agent Resolution rule in
  * `arcus:model-strategy`: prefer the host's registered subagent type, else spawn a
@@ -964,7 +968,7 @@ function checkAgentDispatchPortable({ name, body, pureAgentNames }) {
   for (const refName of flagged) {
     errors.push(
       `${name}: dispatches pure agent as \`arcus:${refName}\` — no host resolves that form ` +
-      `(Claude registers \`arcus-plugin:${refName}\`; Copilot has no agent registry). ` +
+      `(both Claude Code and Copilot CLI register \`arcus-plugin:${refName}\`). ` +
       `Use the bare name and resolve via Agent Resolution in arcus:model-strategy.`
     );
   }

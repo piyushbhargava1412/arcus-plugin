@@ -67,11 +67,11 @@ Stage status values: `pending | in_progress | awaiting_handoff | complete | need
 
 > **Dispatching an ARCUS agent.** Agents live at `$ARCUS_HOME/agents/<name>.md` and always run as
 > isolated subagents. Use the **first** that your host offers: (1) a **registered subagent type**
-> ending in `<name>` — Claude Code exposes these as `arcus-plugin:<name>`, and the host then enforces
-> the agent's `tools:`/`disallowed-tools:` frontmatter; (2) otherwise a **generic subagent** whose
-> prompt opens *"Read and follow the agent spec at `$ARCUS_HOME/agents/<name>.md`"* — Copilot CLI has
-> no agent registry, so this is the only route there. Never address an agent as `arcus:<name>`; that
-> is a docs token no host resolves. Full rule: `model-strategy/SKILL.md` § Agent Resolution.
+> ending in `<name>` — Claude Code and GitHub Copilot CLI both expose these as `arcus-plugin:<name>`,
+> and the host then enforces the agent's `tools:` frontmatter; (2) otherwise a **generic subagent**
+> whose prompt opens *"Read and follow the agent spec at `$ARCUS_HOME/agents/<name>.md`"*, on hosts
+> with no registry — there the tool restrictions are only advisory. Never address an agent as
+> `arcus:<name>`; that is a docs token no host resolves. Full rule: `model-strategy` § Agent Resolution.
 
 ## Protocol
 
@@ -117,7 +117,7 @@ the heading order.
 
 Reference the model strategy once: load `arcus:model-strategy` for complexity→model resolution. Each
 task's `complexity` resolves to a model tier that the dispatcher passes as the subagent `model`
-override (Copilot `runSubagent`; **Claude Code: the `Agent` tool, which honors `model`** —
+override (Copilot CLI: the `task` tool; VS Code: `runSubagent`; **Claude Code: the `Agent` tool** —
 `light`→`haiku`, `medium`→`sonnet`, `heavy`→`opus`), so mechanical tasks run on cheaper tiers. Only
 the **main orchestration thread** (this loop) is fixed to the session model and cannot switch
 mid-session; the per-task override applies to the dispatched subagents. `complexity` also guides the
