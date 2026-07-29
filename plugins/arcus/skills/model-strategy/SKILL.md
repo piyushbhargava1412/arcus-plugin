@@ -100,8 +100,13 @@ one is host-specific, so resolve the dispatch target in this order and use the *
 
 `arcus:<name>` throughout ARCUS prose is a **host-neutral reference token**, not a namespace. It lets
 the test harness validate every cross-reference (`walkAll()`) against one spelling — necessary
-because, as the table shows, **a skill has no single literal that is correct on both hosts**. Convert
-it to the host form above before you dispatch or load; never pass `arcus:<name>` to a tool.
+because, as the table shows, **a skill has no single literal that is correct on both hosts**
+(`arcus-plugin:model-strategy` is an error on Copilot CLI).
+
+Resolve it by **matching `<name>` against your host's live skill/agent registry**, not by rewriting
+the prefix: take the name, find it in the enum your host offers, and call it with whatever spelling
+appears there. If the name is missing from the registry, do **not** guess a prefix — the item failed
+to load, and the error text usually lists what is available.
 
 Resolve `$ARCUS_HOME` from `.arcus/env`; if that file is absent, run the bootstrap first (see the
 Helper Scripts section of `arcus-controller`).
