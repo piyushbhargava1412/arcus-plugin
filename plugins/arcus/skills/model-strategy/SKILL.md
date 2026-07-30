@@ -83,8 +83,10 @@ one is host-specific, so resolve the dispatch target in this order and use the *
    per-host property — it is per **name**:
    - an ARCUS checkout **not installed as a plugin** (no registry at all);
    - **VS Code Copilot Chat**, where ARCUS agents are not registered unless converted to `.agent.md`;
-   - a **restricted-tools subagent** — an agent whose own `tools:` allowlist omits the skill and
-     dispatch tools cannot resolve *any* reference, even on a registry host;
+   - a **restricted-tools subagent** — an agent whose own `tools:` allowlist omits `Skill` and the
+     dispatch tools cannot resolve *any* reference, even on a registry host. ARCUS prevents this by
+     construction: L1-17 requires `Skill` in the allowlist of any agent whose body tells it to
+     consult a skill;
    - a **single name absent from an otherwise healthy registry**, i.e. that item failed to load.
 
    OpenCode is **not** in this list: its bundle registers agents as `mode: subagent` and rewrites
@@ -110,6 +112,7 @@ one is host-specific, so resolve the dispatch target in this order and use the *
 | `Bash` | `Bash` | `bash`, `read_bash`, `stop_bash`, `list_bash` |
 | `Edit` / `Write` | `Edit` / `Write` | `edit` |
 | `Task` / `Agent` | `Agent` | `task` |
+| `Skill` | `Skill` | `skill` |
 
 Two behaviours to author around:
 

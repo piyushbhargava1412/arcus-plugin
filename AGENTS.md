@@ -39,6 +39,12 @@ axis — do not infer the rules from the summary below.
 When resolving a cross-reference, treat the **union** of `skills/` + `agents/` as one namespace
 (`walkAll()` in `tests/lib/skills.mjs`).
 
+**Before changing agent frontmatter, read
+[`site/concepts/cross-host.md`](site/concepts/cross-host.md).** Every field is either enforced,
+ignored, or destructive depending on the host, and when a host ignores a field it does so
+**silently** — no error, just a guarantee that was never in effect. That page is the measured
+record; do not infer host behavior from field names or from vendor docs.
+
 - Technical map: [.context/repo_map.md](.context/repo_map.md)
 - Business scope (purpose, responsibilities, repo invariants): [.context/repo_scope.md](.context/repo_scope.md)
 
@@ -61,6 +67,7 @@ When resolving a cross-reference, treat the **union** of `skills/` + `agents/` a
 | Dependencies | [repo_map.md#tech-stack](.context/repo_map.md#tech-stack) |
 | Testing conventions | [testing-patterns.md](.context/testing-patterns.md) |
 | Design & coding patterns | [design-and-coding-patterns.md](.context/design-and-coding-patterns.md) |
+| Cross-host behavior (what each host enforces vs. silently ignores) | [site/concepts/cross-host.md](site/concepts/cross-host.md) |
 
 ## Business Flows
 

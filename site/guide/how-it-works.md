@@ -91,3 +91,8 @@ This checkpoint allows you to:
 - Skip to specific stages when resuming
 
 The checkpoint is persisted to disk after each stage completes, ensuring no work is lost between agent sessions.
+
+## Related
+
+- [Running Across Hosts](/concepts/cross-host) — what each host actually enforces, ignores, or
+  silently drops, and how an ARCUS agent is addressed on each

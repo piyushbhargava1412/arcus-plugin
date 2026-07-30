@@ -57,7 +57,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   field that is not part of the body, and that hosts read for autonomous selection. A rename would
   have left every one of them dangling with nothing to notice. L1-7 now scans both.
 
+- **Route 2 (registry-less dispatch) was never measured — now it is, and its tool restrictions are
+  confirmed advisory only.** Measured on Copilot CLI: the fallback resolves and runs correctly, but a
+  generic subagent handed a spec declaring `tools: Read, Grep, Glob` reported having `bash`,
+  `apply_patch`, `task`, `skill` and twenty more. **The spec's `tools:` is not enforced at all.**
+  Route 2 is a graceful degradation for reachability, not a security boundary — which makes route 1
+  (a real registry entry, where the host enforces the allowlist) the only place the read-only
+  reviewer guarantee actually holds. Documented as such.
+
+- **`Skill` added to the measured tool-name mapping table**, and route 2's restricted-tools case now
+  records that ARCUS prevents it by construction via L1-17 rather than leaving it as a live hazard.
+
 ### Changed
+
+- **New docs page: `site/concepts/cross-host.md` ("Running Across Hosts").** Collects the measured
+  cross-host record in one place: the per-field × per-host enforcement table, agent/skill namespacing,
+  the tool-name mapping and its two traps, the two dispatch routes and when route 2 applies, the
+  OpenCode build-time translation, and the hooks situation. It opens with the failure mode that
+  produced every bug in this cycle — *a field that reads as a guarantee and does nothing, with no
+  error anywhere* — and the table of seven real instances. Linked from the sidebar, from
+  `how-it-works`, and from `AGENTS.md`, which now tells contributors to read it **before** changing
+  agent frontmatter.
+
+- **Corrected a stale comic quiz answer and hook panel.** The quiz asserted that "Copilot CLI reads
+  hooks from `.github/hooks/` in a different schema" — disproven earlier in this cycle: Copilot CLI
+  does auto-discover a plugin's `hooks/hooks.json` and does normalize PascalCase event names, and why
+  ARCUS's hooks do not fire there remains unexplained. Exhibit E's "other hosts wire hooks
+  differently" was corrected to match. No other comic content was invalidated — it makes no
+  read-only or registry claims.
 
 - **The OpenCode adapter no longer leaks a shell to the read-only reviewers — the same hole, on the
   third host.** OpenCode treats an **absent** `permission:` key as *allowed*, and the bundler emitted

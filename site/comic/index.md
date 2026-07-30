@@ -222,7 +222,7 @@ layout: page
     </svg>
   </template>
   <template #talk>
-    <TalkBubble who="Genie">A <em>hook</em> isn't a teammate anyone calls — it's wired into the building itself and fires on its own event. In Claude Code, <code>bootstrap.sh</code> runs on <code>SessionStart</code> before anyone says a word. Other hosts wire hooks differently, so Lucie never <em>relies</em> on it — she re-stages the toolbox herself at the top of every run.</TalkBubble>
+    <TalkBubble who="Genie">A <em>hook</em> isn't a teammate anyone calls — it's wired into the building itself and fires on its own event. In Claude Code, <code>bootstrap.sh</code> runs on <code>SessionStart</code> before anyone says a word. Elsewhere it is not observed firing — and nobody has worked out why — so Lucie never <em>relies</em> on it. She re-stages the toolbox herself at the top of every run.</TalkBubble>
   </template>
 </ComicPanel>
 
