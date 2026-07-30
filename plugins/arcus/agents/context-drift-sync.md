@@ -5,7 +5,7 @@ description: >
   `.context/` artifact, and surgically sync only the affected ones. Strict, diff-driven, FACTS-ONLY — no story artifacts read.
 layer: capability
 user-invocable: false
-disable-model-invocation: true
+tools: Read, Grep, Glob, Bash, Edit, Write
 model: sonnet
 color: purple
 ---

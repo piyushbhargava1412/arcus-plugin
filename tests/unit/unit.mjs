@@ -40,12 +40,22 @@ section('skills.mjs');
     const { AGENTS_DIR } = await import('../lib/skills.mjs');
     const secReviewerText = await fs.readFile(`${AGENTS_DIR}/security-reviewer.md`, 'utf-8');
     const secFM = parseFrontmatter(secReviewerText);
-    assert(Array.isArray(secFM['disallowed-tools']), 'disallowed-tools is parsed as an array');
-    assert(secFM['disallowed-tools'].includes('Edit'), 'disallowed-tools contains Edit');
-    assert(secFM['disallowed-tools'].includes('Write'), 'disallowed-tools contains Write');
-    assert(secFM['disallowed-tools'].includes('MultiEdit'), 'disallowed-tools contains MultiEdit');
-    assert(secFM['disable-model-invocation'] === true,
-           'disable-model-invocation is truthy for security-reviewer');
+    assert(Array.isArray(secFM['disallowedTools']), 'disallowedTools is parsed as an array');
+    assert(secFM['disallowedTools'].includes('Edit'), 'disallowedTools contains Edit');
+    assert(secFM['disallowedTools'].includes('Write'), 'disallowedTools contains Write');
+    assert(secFM['disallowedTools'].includes('MultiEdit'), 'disallowedTools contains MultiEdit');
+    // Measured 2026-07-29: Claude Code honours only the camelCase spelling and
+    // ignores kebab-case silently, so the kebab form must not come back.
+    assert(secFM['disallowed-tools'] === undefined,
+           'security-reviewer does not use the inert kebab-case disallowed-tools');
+    // Bash writes by redirection, so allowlisting it would void the read-only
+    // guarantee the denylist above only appears to give.
+    assert(!secFM['tools'].includes('Bash'),
+           'security-reviewer does not allowlist Bash (shell redirection is a write)');
+    assert(secFM['user-invocable'] === false,
+           'security-reviewer is user-invocable: false (dispatched-only marker)');
+    assert(secFM['disable-model-invocation'] === undefined,
+           'security-reviewer carries no disable-model-invocation (Copilot CLI hides such agents)');
 
     // Test 3: the union of skills+agents has at least 26 entries (roster lower bound,
     // surface-independent — items moving skills/->agents/ stay counted)
@@ -64,20 +74,29 @@ section('skills.mjs');
     }
     assert(invalidTierCount === 0, `all skills have valid tiers (found ${invalidTierCount} invalid)`);
 
-    // Test 5: every DISPATCHED_ONLY name exists (in skills OR agents) and has
-    // disable-model-invocation. Resolved over the union so the move is surface-independent.
+    // Test 5: every DISPATCHED_ONLY name exists (in skills OR agents) and is marked
+    // dispatched-only the way hosts actually tolerate: `user-invocable: false`.
+    // Resolved over the union so the move is surface-independent.
+    //
+    // NOT asserted: `disable-model-invocation`. Copilot CLI honours that flag by
+    // removing the item from its dispatch registry entirely, so carrying it made all
+    // 16 agents unreachable and `model-strategy` unloadable; Claude Code ignores it.
+    // The roster set below is itself the marker.
     let missingDispatched = 0;
     for (const name of DISPATCHED_ONLY) {
       const item = allItems.find(s => s.name === name);
       if (!item) {
         console.error(`  DISPATCHED_ONLY item not found: ${name}`);
         missingDispatched++;
-      } else if (!item.frontmatter['disable-model-invocation']) {
-        console.error(`  DISPATCHED_ONLY item missing disable-model-invocation: ${name}`);
+      } else if (item.frontmatter['user-invocable'] !== false) {
+        console.error(`  DISPATCHED_ONLY item missing user-invocable: false: ${name}`);
+        missingDispatched++;
+      } else if (item.frontmatter['disable-model-invocation'] !== undefined) {
+        console.error(`  DISPATCHED_ONLY item reintroduced disable-model-invocation: ${name}`);
         missingDispatched++;
       }
     }
-    assert(missingDispatched === 0, `all DISPATCHED_ONLY items exist and have disable-model-invocation (${missingDispatched} issues)`);
+    assert(missingDispatched === 0, `all DISPATCHED_ONLY items exist, are user-invocable: false, and carry no disable-model-invocation (${missingDispatched} issues)`);
 
     // Test 6: every ADVISORY_REVIEWERS name exists (in skills OR agents)
     let missingAdvisory = 0;
@@ -283,6 +302,62 @@ section('L1-4..L1-7');
     assert(writeEnabledResult.ok === false, `checkAdvisoryReadOnly fails on write-enabled-reviewer (got ok=${writeEnabledResult.ok})`);
     assert(writeEnabledResult.errors.length > 0, 'checkAdvisoryReadOnly returns error messages for write-enabled-reviewer');
 
+    // PLANTED-BAD (L1-4): a shell in the allowlist voids the read-only guarantee.
+    // Measured on Claude Code 2026-07-29: an agent with no Write tool still created
+    // a file via `printf x > f`, so a denylist over Edit/Write/MultiEdit is cosmetic
+    // whenever Bash is allowlisted.
+    const bashReviewer = checkAdvisoryReadOnly({
+      name: 'security-reviewer',
+      frontmatter: {
+        'user-invocable': false,
+        tools: ['Read', 'Grep', 'Glob', 'Bash'],
+        disallowedTools: ['Edit', 'Write', 'MultiEdit']
+      },
+      advisorySet: ADVISORY_REVIEWERS
+    });
+    assert(bashReviewer.ok === false, 'checkAdvisoryReadOnly rejects an advisory reviewer that allowlists Bash');
+    assert(bashReviewer.errors.some(e => e.includes('Bash')),
+           'checkAdvisoryReadOnly names Bash as an indirect write');
+
+    // A dispatch tool is the same hole one level out: it can spawn a writer.
+    const taskReviewer = checkAdvisoryReadOnly({
+      name: 'security-reviewer',
+      frontmatter: {
+        'user-invocable': false,
+        tools: ['Read', 'Task'],
+        disallowedTools: ['Edit', 'Write', 'MultiEdit']
+      },
+      advisorySet: ADVISORY_REVIEWERS
+    });
+    assert(taskReviewer.ok === false, 'checkAdvisoryReadOnly rejects an advisory reviewer that allowlists Task');
+
+    // SHELL_EXEMPT: history-context-reviewer's git archaeology is irreducibly
+    // shell-shaped, so it is the one documented exception.
+    const exemptReviewer = checkAdvisoryReadOnly({
+      name: 'history-context-reviewer',
+      frontmatter: {
+        'user-invocable': false,
+        tools: ['Read', 'Grep', 'Glob', 'Bash'],
+        disallowedTools: ['Edit', 'Write', 'MultiEdit']
+      },
+      advisorySet: ADVISORY_REVIEWERS
+    });
+    assert(exemptReviewer.ok === true, `SHELL_EXEMPT lets history-context-reviewer keep Bash (got ${exemptReviewer.errors?.join('; ') || 'ok'})`);
+
+    // PLANTED-BAD (L1-4): kebab-case disallowed-tools is inert on Claude Code.
+    const kebabReviewer = checkAdvisoryReadOnly({
+      name: 'security-reviewer',
+      frontmatter: {
+        'user-invocable': false,
+        tools: ['Read', 'Grep', 'Glob'],
+        'disallowed-tools': ['Edit', 'Write', 'MultiEdit']
+      },
+      advisorySet: ADVISORY_REVIEWERS
+    });
+    assert(kebabReviewer.ok === false, 'checkAdvisoryReadOnly rejects the inert kebab-case disallowed-tools');
+    assert(kebabReviewer.errors.some(e => e.includes('disallowedTools')),
+           'checkAdvisoryReadOnly points at the camelCase spelling');
+
     // Test L1-4: checkAdvisoryReadOnly passes (not applicable) on non-advisory skill
     const specFinalizer = allSkills.find(s => s.name === 'spec-finalizer');
     const nonAdvisoryResult = checkAdvisoryReadOnly({
@@ -450,7 +525,7 @@ section('L1-4..L1-7');
            'checkAgentRefQualified identifies the unqualified pure-agent ref');
 
     // Test L1-15: dispatching a pure agent as `arcus:<name>` resolves on NO host —
-    // Claude registers `arcus-plugin:<name>`, Copilot has no agent registry at all.
+    // both Claude Code and Copilot CLI register plugin agents as `arcus-plugin:<name>`.
     const purePortability = new Set(['context-pack-builder', 'security-reviewer']);
 
     const portableDispatch = checkAgentDispatchPortable({
@@ -479,6 +554,128 @@ section('L1-4..L1-7');
       pureAgentNames: purePortability
     });
     assert(proseMention.ok === true, 'checkAgentDispatchPortable ignores non-dispatch prose mentions');
+
+    // Test L1-16: a bare host-specific tool name is dead text on every other host.
+    // The model does not error — it skips the step — so the instruction silently
+    // becomes a no-op. This is why the gate exists at all.
+    const { checkNoHostSpecificTools } = await import('../lib/checks.mjs');
+
+    const bareHostTool = checkNoHostSpecificTools({
+      name: 'bare',
+      body: 'After editing, call `get_errors` to confirm the file is clean.'
+    });
+    assert(bareHostTool.ok === false,
+           `checkNoHostSpecificTools fails on a bare host-specific tool (got ok=${bareHostTool.ok})`);
+    assert(bareHostTool.errors.join(' ').includes('VS Code Copilot Chat'),
+           'checkNoHostSpecificTools names the host that actually provides the tool');
+
+    // Negative control 1: host-qualified matrix documentation is legitimate — the
+    // cross-host tables must be able to say which tool belongs to which host.
+    const qualified = checkNoHostSpecificTools({
+      name: 'matrix',
+      body: '| Dispatch | Copilot CLI: `task` | VS Code Copilot Chat: `runSubagent` |'
+    });
+    assert(qualified.ok === true,
+           `checkNoHostSpecificTools allows host-qualified documentation (got ${qualified.errors?.join('; ') || 'ok'})`);
+
+    // Negative control: the bare token unquoted is prose, not an instruction. This
+    // fixture deliberately CONTAINS `get_errors` so the backtick narrowing is what
+    // makes the test pass — a fixture without the token would pass even if the
+    // anchors were deleted, proving nothing.
+    const unquoted = checkNoHostSpecificTools({
+      name: 'prose',
+      body: 'Historically this step called get_errors; it no longer does.'
+    });
+    assert(unquoted.ok === true, 'checkNoHostSpecificTools ignores the bare token outside backticks');
+
+    // The capability-shaped replacement is what E1 substituted in, and it must pass.
+    const capabilityShaped = checkNoHostSpecificTools({
+      name: 'agnostic',
+      body: "Run the repository's own lint and type-check commands and fix what they report."
+    });
+    assert(capabilityShaped.ok === true, 'checkNoHostSpecificTools passes the host-agnostic phrasing');
+
+    // Test L1-17: `tools:` is an allowlist, so an agent without `Skill` has no way
+    // to load one — and it improvises rather than erroring, so nothing surfaces.
+    const { checkSkillLoadCapability } = await import('../lib/checks.mjs');
+
+    const cannotLoad = checkSkillLoadCapability({
+      name: 'blind',
+      body: 'Use the guardrail heuristics in the `arcus:model-strategy` skill.',
+      tools: ['Read', 'Grep', 'Glob']
+    });
+    assert(cannotLoad.ok === false,
+           `checkSkillLoadCapability fails when a skill consult has no skill tool (got ok=${cannotLoad.ok})`);
+    assert(cannotLoad.errors.join(' ').includes('model-strategy'),
+           'checkSkillLoadCapability names the skill it cannot reach');
+
+    const canLoad = checkSkillLoadCapability({
+      name: 'equipped',
+      body: 'Use the guardrail heuristics in the `arcus:model-strategy` skill.',
+      tools: ['Read', 'Grep', 'Glob', 'Skill']
+    });
+    assert(canLoad.ok === true, 'checkSkillLoadCapability passes once `Skill` is declared');
+
+    // The `in`/`per`/`via` phrasing is a consult too, not just "<ref> skill".
+    const viaPhrasing = checkSkillLoadCapability({
+      name: 'via',
+      body: 'Resolve the dispatch target per **Agent Resolution** in `arcus:model-strategy`.',
+      tools: ['Read']
+    });
+    assert(viaPhrasing.ok === false, 'checkSkillLoadCapability catches the in/per/via phrasing');
+
+    // Negative control: provenance prose names a skill without instructing a load,
+    // and ARCUS bodies are full of it. Flagging this would make the gate useless.
+    const provenance = checkSkillLoadCapability({
+      name: 'prose',
+      body: 'It runs as part of the `arcus:code-reviewer` Step 3 fan-out, dispatched at `medium`.',
+      tools: ['Read', 'Grep', 'Glob']
+    });
+    assert(provenance.ok === true, 'checkSkillLoadCapability ignores provenance prose');
+
+    // The dispatch boilerplate copy-pasted across ARCUS ends with a section
+    // pointer, not the word "skill". An earlier version of this gate missed it
+    // entirely — exactly the shape it was written to catch.
+    const boilerplate = checkSkillLoadCapability({
+      name: 'boilerplate',
+      body: '> Full rule:\n> `arcus:model-strategy` § Agent Resolution.',
+      tools: ['Read', 'Grep', 'Glob']
+    });
+    assert(boilerplate.ok === false, 'checkSkillLoadCapability catches the `§` section-pointer boilerplate');
+
+    for (const verb of ['Consult', 'See', 'Refer to']) {
+      const r = checkSkillLoadCapability({
+        name: verb,
+        body: `${verb} \`arcus:model-strategy\` for the mapping.`,
+        tools: ['Read']
+      });
+      assert(r.ok === false, `checkSkillLoadCapability catches the "${verb}" phrasing`);
+    }
+
+    // "built-in" must not be read as the introducer "in".
+    const hyphenated = checkSkillLoadCapability({
+      name: 'hyphen',
+      body: 'This is a built-in `arcus:model-strategy` behaviour.',
+      tools: ['Read']
+    });
+    assert(hyphenated.ok === true, 'checkSkillLoadCapability does not read "built-in" as the introducer "in"');
+
+    // With a skill list, an AGENT reference needs a dispatch tool, not `Skill`.
+    const agentRef = checkSkillLoadCapability({
+      name: 'agentref',
+      body: 'Severity comes from the heuristics in `arcus:security-reviewer`.',
+      tools: ['Read'],
+      skillNames: new Set(['model-strategy'])
+    });
+    assert(agentRef.ok === true, 'checkSkillLoadCapability ignores agent references when given a skill list');
+
+    // No allowlist means no restriction, so there is nothing to enforce.
+    const unrestricted = checkSkillLoadCapability({
+      name: 'open',
+      body: 'Use the heuristics in the `arcus:model-strategy` skill.',
+      tools: []
+    });
+    assert(unrestricted.ok === true, 'checkSkillLoadCapability enforces nothing without an allowlist');
 
     pass('L1-4..L1-7 checks passed');
   } catch (err) {
@@ -857,6 +1054,18 @@ section('L1-13');
     });
     assert(versioned.ok === false, 'checkAgentFrontmatter rejects a versioned model string');
 
+    // PLANTED-BAD: reintroducing disable-model-invocation is rejected. Copilot CLI
+    // honours the flag by removing the agent from its dispatch registry, which is what
+    // made all 16 ARCUS agents unreachable there; Claude Code ignores it entirely.
+    const dmiReintroduced = checkAgentFrontmatter({
+      name: 'good-agent',
+      frontmatter: { ...goodFM, 'disable-model-invocation': true }
+    });
+    assert(dmiReintroduced.ok === false,
+           'checkAgentFrontmatter rejects a reintroduced disable-model-invocation');
+    assert(dmiReintroduced.errors.some(e => e.includes('disable-model-invocation')),
+           'checkAgentFrontmatter names disable-model-invocation in the error');
+
     pass('L1-13 check passed');
   } catch (err) {
     fail(`L1-13 check failed: ${err.message}`);
@@ -1058,13 +1267,75 @@ section('trigger matcher (L4)');
 }
 
 // --- planted-violation coverage map ---
+section('OpenCode adapter (build-bundle)');
+{
+  try {
+    const { buildPermission, TIER_TO_MODEL, stripArcusNamespace } =
+      await import('../../plugins/arcus-opencode/scripts/lib/convert.mjs');
+    const { walkAgents } = await import('../lib/skills.mjs');
+    const { ADVISORY_REVIEWERS } = await import('../lib/skills.mjs');
+
+    // The load-bearing property: OpenCode treats an ABSENT permission key as
+    // allowed. So emitting only the granted keys would reproduce, on OpenCode,
+    // the exact shell-escape hole `tools:` closes on the other two hosts.
+    const readOnly = buildPermission({ tools: 'Read, Grep, Glob' });
+    assert(readOnly.bash === 'deny',
+           `buildPermission denies bash when the allowlist omits it (got ${readOnly.bash})`);
+    assert(readOnly.edit === 'deny',
+           `buildPermission denies edit when the allowlist omits it (got ${readOnly.edit})`);
+    assert(readOnly.read === 'allow' && readOnly.grep === 'allow' && readOnly.glob === 'allow',
+           'buildPermission allows the tools the allowlist does grant');
+
+    // An agent that legitimately needs a shell keeps it.
+    const withShell = buildPermission({ tools: 'Read, Grep, Glob, Bash, Task' });
+    assert(withShell.bash === 'allow', 'buildPermission allows bash when the allowlist grants it');
+    assert(withShell.edit === 'deny', 'buildPermission still denies edit for a shell-only agent');
+
+    // A denylist entry must win over anything inferred from the allowlist, so the
+    // two can never disagree in the generated bundle.
+    const contradictory = buildPermission({ tools: 'Read, Bash', disallowedTools: 'Bash' });
+    assert(contradictory.bash === 'deny',
+           `buildPermission lets disallowedTools override the allowlist (got ${contradictory.bash})`);
+
+    // No allowlist at all => nothing can be inferred, so emit no denies rather
+    // than guessing an agent into uselessness.
+    const noAllowlist = buildPermission({});
+    assert(noAllowlist.bash === undefined && noAllowlist.edit === undefined,
+           'buildPermission infers no denies when no allowlist is declared');
+
+    // Every advisory reviewer must come out of the adapter genuinely read-only.
+    for (const name of ADVISORY_REVIEWERS) {
+      const agent = walkAgents().find(a => a.name === name);
+      if (!agent) continue;
+      const perms = buildPermission(agent.frontmatter);
+      assert(perms.edit === 'deny',
+             `OpenCode bundle: advisory reviewer ${name} is edit:deny (got ${perms.edit})`);
+    }
+
+    // The tier mapping is the OpenCode column of the model table in
+    // `model-strategy`; a drift here silently repoints every bundled agent.
+    assert(TIER_TO_MODEL.opus === 'github-copilot/claude-opus-4.8'
+        && TIER_TO_MODEL.sonnet === 'github-copilot/claude-sonnet-4.6'
+        && TIER_TO_MODEL.haiku === 'github-copilot/claude-haiku-4.5',
+           'TIER_TO_MODEL matches the OpenCode column of the model-strategy table');
+
+    assert(stripArcusNamespace('Dispatch `arcus:security-reviewer` now.')
+             === 'Dispatch `security-reviewer` now.',
+           'stripArcusNamespace flattens the namespace for OpenCode addressing');
+
+    pass('OpenCode adapter checks passed');
+  } catch (err) {
+    fail(`OpenCode adapter checks failed: ${err.message}`);
+  }
+}
+
 section('planted-violation coverage map');
 {
   // DoD guarantee: every L1 check has BOTH a good-input assertion (returns ok:true)
   // and a planted-bad assertion (returns ok:false), EXCEPT L1-6 which is advisory
   // (asserts warnings on bad input, never sets ok:false).
   //
-  // This section programmatically asserts all 15 checks are covered above.
+  // This section programmatically asserts all 17 checks are covered above.
   const coveredChecks = [
     'L1-1',  // checkManifests: good=real manifests, bad=bad-manifest.json
     'L1-2',  // checkFrontmatter: good=spec-finalizer, bad=bad-frontmatter (reserved word)
@@ -1080,20 +1351,22 @@ section('planted-violation coverage map');
     'L1-12', // checkCapabilityHasEvalSpec: good=spec present, bad=capability with no spec (injected predicate)
     'L1-13', // checkAgentFrontmatter: good=good-agent.md, bad=bad-agent.md (missing layer+model)
     'L1-14', // checkAgentRefQualified: good=kick-off, bad=unqualified-agent-ref fixture
-    'L1-15'  // checkAgentDispatchPortable: good=bare-name dispatch, bad=`arcus:`-prefixed dispatch
+    'L1-15', // checkAgentDispatchPortable: good=bare-name dispatch, bad=`arcus:`-prefixed dispatch
+    'L1-16', // checkNoHostSpecificTools: good=host-qualified matrix row, bad=bare `get_errors`
+    'L1-17'  // checkSkillLoadCapability: good=`Skill` declared, bad=skill consult with no skill tool
   ];
 
-  assert(coveredChecks.length === 15,
-         `coverage map lists all 15 L1 checks (got ${coveredChecks.length})`);
+  assert(coveredChecks.length === 17,
+         `coverage map lists all 17 L1 checks (got ${coveredChecks.length})`);
 
-  // Verify the list is exactly L1-1 through L1-15
-  for (let i = 1; i <= 15; i++) {
+  // Verify the list is exactly L1-1 through L1-17
+  for (let i = 1; i <= 17; i++) {
     const checkId = `L1-${i}`;
     assert(coveredChecks.includes(checkId),
            `coverage map includes ${checkId}`);
   }
 
-  pass('planted-violation coverage: all 15 L1 checks have good+planted assertions');
+  pass('planted-violation coverage: all 17 L1 checks have good+planted assertions');
 }
 
 exitWithReport();

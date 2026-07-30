@@ -31,102 +31,14 @@ const pkgRoot = join(__dirname, "..") // plugins/arcus-opencode
 const arcusSource = join(pkgRoot, "..", "arcus") // plugins/arcus (authoring source)
 const bundled = join(pkgRoot, "bundled")
 
-// `arcus:<name>` -> `<name>` for OpenCode's flat skill/agent addressing.
-const ARCUS_TOKEN = /\barcus:([a-z0-9][a-z0-9-]*)/g
-const stripArcusNamespace = (s) => s.replace(ARCUS_TOKEN, "$1")
-
-// Tier word -> OpenCode provider/model-id (default provider: GitHub Copilot).
-// Canonical mapping is documented in plugins/arcus/skills/model-strategy.
-const TIER_TO_MODEL = {
-  opus: "github-copilot/claude-opus-4.8",
-  sonnet: "github-copilot/claude-sonnet-4.6",
-  haiku: "github-copilot/claude-haiku-4.5",
-}
-
-// ARCUS uses Claude color words; OpenCode `color` accepts only a #hex value or a
-// theme name (primary|secondary|accent|success|warning|error|info). Map the
-// Claude words to hex to preserve the authored intent.
-const COLOR_TO_HEX = {
-  red: "#e5484d",
-  green: "#30a46c",
-  blue: "#3e63dd",
-  yellow: "#f5d90a",
-  orange: "#f76b15",
-  purple: "#8e4ec6",
-  magenta: "#d6409f",
-  cyan: "#05a2c2",
-  teal: "#12a594",
-  gray: "#8b8d98",
-  grey: "#8b8d98",
-}
-
-const FRONTMATTER_RE = /^---\n([\s\S]*?)\n---\n?([\s\S]*)$/
-
-/**
- * Parse the simple, regular ARCUS agent frontmatter (no nested YAML except the
- * known `metadata:` block) into a flat field map. `description` may be a folded
- * (`>`) multi-line block; it is collapsed to a single spaced string.
- */
-function parseAgentFrontmatter(fm) {
-  const fields = {}
-  const lines = fm.split("\n")
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i]
-    const m = /^([a-zA-Z][\w-]*):\s*(.*)$/.exec(line)
-    if (!m) continue
-    const key = m[1]
-    let val = m[2]
-
-    if (key === "description" && (val === ">" || val === "|" || val === "")) {
-      // Gather the indented continuation lines.
-      const buf = []
-      while (i + 1 < lines.length && /^\s+\S/.test(lines[i + 1])) {
-        buf.push(lines[++i].trim())
-      }
-      fields.description = buf.join(" ").replace(/\s+/g, " ").trim()
-      continue
-    }
-    if (key === "metadata") {
-      // Skip the nested metadata block entirely (OpenCode metadata is
-      // string->string only; ARCUS's version/team/type is not load-bearing).
-      while (i + 1 < lines.length && /^\s+\S/.test(lines[i + 1])) i++
-      continue
-    }
-    fields[key] = val.trim()
-  }
-  return fields
-}
-
-/** Build the OpenCode `permission:` block from Claude tools / disallowed-tools. */
-function buildPermission(fields) {
-  const tools = (fields.tools || "").split(",").map((t) => t.trim()).filter(Boolean)
-  const disallowed = (fields["disallowed-tools"] || "")
-    .split(",")
-    .map((t) => t.trim())
-    .filter(Boolean)
-
-  const perms = {}
-
-  // Read-only quartet maps to allow when present in `tools`.
-  const toolMap = { Read: "read", Grep: "grep", Glob: "glob", Bash: "bash" }
-  for (const [claude, oc] of Object.entries(toolMap)) {
-    if (tools.includes(claude)) perms[oc] = "allow"
-  }
-
-  // Write capability: allow only when the agent explicitly lists Write/Edit.
-  const canWrite = tools.includes("Write") || tools.includes("Edit")
-  if (canWrite) perms.edit = "allow"
-
-  // Disallowed Edit/Write/MultiEdit -> edit: deny (advisory read-only agents).
-  if (disallowed.some((d) => ["Edit", "Write", "MultiEdit"].includes(d))) {
-    perms.edit = "deny"
-  }
-
-  // AskUserQuestion has no OpenCode tool; the analog is the `question` permission.
-  if (disallowed.includes("AskUserQuestion")) perms.question = "deny"
-
-  return perms
-}
+import {
+  buildPermission,
+  parseAgentFrontmatter,
+  stripArcusNamespace,
+  TIER_TO_MODEL,
+  COLOR_TO_HEX,
+  FRONTMATTER_RE,
+} from "./lib/convert.mjs"
 
 /** Render an OpenCode-dialect frontmatter + body for one ARCUS agent. */
 function convertAgent(name, raw) {

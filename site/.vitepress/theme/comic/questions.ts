@@ -64,7 +64,7 @@ export const QUIZ: QuizQuestion[] = [
     a: 1, w: 'Angelina is the "day one" step — she produces the .context/ notebook and pins up AGENTS.md + CLAUDE.md.' },
   { d: 'medium', q: 'ARCUS bundles a SessionStart hook that runs bootstrap.sh. Why does it re-stage the toolbox at the start of every run anyway?',
     o: ['To pick up new stories', 'Because .arcus/bin is a copy that never expires, and not every host fires the hook', 'To reset the checkpoint', 'It does not — the hook is enough'],
-    a: 1, w: 'Only Claude Code fires the bundled hook; Copilot CLI reads hooks from .github/hooks/ in a different schema. And .arcus/bin is a snapshot with no expiry, so a repo bootstrapped once would serve those same scripts forever. locate.sh re-stages from the newest install every run.' },
+    a: 1, w: 'Only Claude Code is observed firing the bundled hook. It is not a schema difference — Copilot CLI does auto-discover a plugin\'s hooks/hooks.json and does normalize PascalCase event names; why ARCUS\'s hooks do not fire there is still unexplained. And .arcus/bin is a snapshot with no expiry, so a repo bootstrapped once would serve those same scripts forever. locate.sh re-stages from the newest install every run, so ARCUS never depends on the hook at all.' },
   { d: 'easy', q: 'Which pipeline stage comes immediately after `plan` in the ordered stage keys?',
     o: ['branch', 'test_plan', 'code_review', 'closure'],
     a: 1, w: 'The ordered keys are scaffold → context_pack → spec_finalizer → plan → test_plan → branch → task_1..N → code_review → context_sync → closure.' },

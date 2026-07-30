@@ -6,7 +6,6 @@ description: >
   with the flow/design discovery agents) after the repo overview exists.
 layer: capability
 user-invocable: false
-disable-model-invocation: true
 tools: Read, Grep, Glob, Bash, Write, Edit
 model: sonnet
 color: blue

@@ -9,6 +9,213 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Every ARCUS agent is now dispatchable on GitHub Copilot CLI — previously none were, and the
+  `model-strategy` skill was unloadable on _every_ host.**
+  All 16 agents (and the `model-strategy` skill) carried `disable-model-invocation: true`. Copilot
+  CLI **honours** that field on **both** surfaces by removing the item from its registry outright, so
+  `task(agent_type="arcus-plugin:security-reviewer")` had nothing to resolve. Claude Code ignores it
+  on **agents** — which is why the agent bug stayed invisible — but **honours it on skills**, so
+  `model-strategy`, the substrate that owns tier→model resolution and the Agent Resolution rule and
+  which 30 references point at, failed to load on Claude Code too. Measured before the fix: **0 of
+  16** agents present in Copilot CLI's `agent_type` enum, `arcus:model-strategy` returning
+  `CANNOT-LOAD` on Copilot CLI and absent from Claude Code's skill list (12 of 13 visible); after:
+  **16 of 16**, and the skill loads on both.
+
+  The intent behind the flag — *these agents are dispatched by an orchestrator, never picked
+  organically* — is sound, but the flag cannot express it: **orchestrated dispatch _is_ model
+  invocation**, the identical tool call from the identical caller, so opting out of one opts out of
+  both. That property is instead carried by `user-invocable: false` (kept), membership in the
+  `DISPATCHED_ONLY` roster, and orchestration-scoped `description:` text — all of which already
+  existed and are enforced by L4-1.
+
+  **This also restores the read-only guarantee on the advisory reviewers.** Undispatchable agents
+  had to be run as generic subagents, which carry no frontmatter and therefore no `tools:`
+  restriction — so `security-reviewer` silently inherited the full session toolset including `edit`.
+  Verified after the fix: a dispatched `arcus-plugin:security-reviewer` reports exactly
+  `bash, read_bash, stop_bash, list_bash, view, grep, glob` — no write tool of any kind.
+
+  **Supersedes the earlier claim that "GitHub Copilot CLI has no agent registry".** It does, it
+  namespaces plugin agents `<plugin>:<agent>` exactly as Claude Code does, and it enforces `tools:`
+  frontmatter. ARCUS had misdiagnosed its own frontmatter bug as a host limitation. Remaining
+  genuine gap: Copilot CLI ignores tier words in frontmatter `model:`, silently falling back to the
+  session model.
+
+- **Two agents were told to consult a skill they had no tool to load.** `test-spec-compiler`
+  ("use the guardrail heuristics in the `arcus:model-strategy` skill") and
+  `subagent-task-dispatcher` ("look up the complexity-to-model mapping in the `arcus:model-strategy`
+  skill" — the Implementation loop's entire model resolution) both declared allowlists without
+  `Skill`. `tools:` is an allowlist, so neither could reach it. Measured on Copilot CLI with a
+  purpose-built probe: `tools: Read, Skill` yields `view, skill` and loads the skill correctly;
+  `tools: Read, Grep, Glob` yields `view, grep, glob` and the agent replies that it has no tool for
+  loading skills — then answers from whatever is already in its prompt rather than failing. Both
+  agents now declare `Skill`, and **L1-17** (`checkSkillLoadCapability`) keeps it true. It flags only
+  load-shaped references (`... in the arcus:x skill`), not the provenance prose ARCUS bodies are full
+  of (`runs as part of the arcus:code-reviewer fan-out`), so it stays useful rather than noisy.
+
+- **`arcus:` references in `description:` were never checked.** L1-7 scanned bodies only, while nine
+  agents carry their provenance ref in the description (`Dispatched by arcus:code-reviewer`) — a
+  field that is not part of the body, and that hosts read for autonomous selection. A rename would
+  have left every one of them dangling with nothing to notice. L1-7 now scans both.
+
+- **Route 2 (registry-less dispatch) was never measured — now it is, and its tool restrictions are
+  confirmed advisory only.** Measured on Copilot CLI: the fallback resolves and runs correctly, but a
+  generic subagent handed a spec declaring `tools: Read, Grep, Glob` reported having `bash`,
+  `apply_patch`, `task`, `skill` and twenty more. **The spec's `tools:` is not enforced at all.**
+  Route 2 is a graceful degradation for reachability, not a security boundary — which makes route 1
+  (a real registry entry, where the host enforces the allowlist) the only place the read-only
+  reviewer guarantee actually holds. Documented as such.
+
+- **`Skill` added to the measured tool-name mapping table**, and route 2's restricted-tools case now
+  records that ARCUS prevents it by construction via L1-17 rather than leaving it as a live hazard.
+
+- **The OpenCode bundler no longer silently ships an empty tarball when the repo is reached through
+  a symlink.** `build-bundle.mjs` guarded its `main()` call with an `isMain` check comparing
+  `import.meta.url` against `process.argv[1]`; those two strings disagree whenever any path segment
+  is a symlink (a `/tmp` build, a pnpm store, a macOS `/var` path), so `prepack` ran the module,
+  built nothing, and **exited 0**. Fixed structurally rather than patched: the pure converters moved
+  to `plugins/arcus-opencode/scripts/lib/convert.mjs` so the unit tests can import them without
+  triggering a build, and the entrypoint now calls `main()` unconditionally with no guard to get
+  wrong. Verified from both a normal and a symlinked path.
+
+- **L1-17 no longer misses the exact phrasing it was written to catch.** The gate only fired when a
+  skill reference was followed by the literal word "skill", but ARCUS's own dispatch boilerplate ends
+  with a section pointer — `` `arcus:model-strategy` § Agent Resolution`` — and so slipped through,
+  as did "consult", "see" and "refer to". It also mis-read the hyphen in `built-in` as the
+  introducer "in". The gate now recognises all four shapes, is anchored so `built-in` cannot match,
+  and accepts an optional skill-name set so *agent* references (L1-15's job, which needs a dispatch
+  tool rather than `Skill`) are no longer swept in.
+
+- **The L1-16 negative control was vacuous.** Its fixture contained no host-specific tool name at
+  all, so it passed for the wrong reason and would have kept passing if the backtick anchor were
+  deleted. The fixture now carries the bare token `get_errors` in prose, making the anchor
+  load-bearing; verified by mutation — removing the anchor now fails exactly that assertion.
+
+### Changed
+
+- **The `Bash` / `Grep` / `Glob` interaction is now measured on both hosts, not just one.** A review
+  flagged the five agents that pair `Bash` with `Grep`/`Glob` as carrying dead allowlist entries,
+  since Claude Code resolves `Read, Grep, Glob, Bash` to only `Read, Bash`. Probing Copilot CLI with
+  the identical frontmatter returned `bash, read_bash, stop_bash, list_bash, view, grep, glob` — all
+  of them. The entries are therefore **live on Copilot CLI and inert only on Claude Code**, and
+  removing them would have stripped real capability on one host to tidy a no-op on the other. Kept,
+  with the host asymmetry now documented in `model-strategy`, `agents.md` and the cross-host page.
+
+- **New docs page: `site/concepts/cross-host.md` ("Running Across Hosts").** Collects the measured
+  cross-host record in one place: the per-field × per-host enforcement table, agent/skill namespacing,
+  the tool-name mapping and its two traps, the two dispatch routes and when route 2 applies, the
+  OpenCode build-time translation, and the hooks situation. It opens with the failure mode that
+  produced every bug in this cycle — *a field that reads as a guarantee and does nothing, with no
+  error anywhere* — and the table of seven real instances. Linked from the sidebar, from
+  `how-it-works`, and from `AGENTS.md`, which now tells contributors to read it **before** changing
+  agent frontmatter.
+
+- **Corrected a stale comic quiz answer and hook panel.** The quiz asserted that "Copilot CLI reads
+  hooks from `.github/hooks/` in a different schema" — disproven earlier in this cycle: Copilot CLI
+  does auto-discover a plugin's `hooks/hooks.json` and does normalize PascalCase event names, and why
+  ARCUS's hooks do not fire there remains unexplained. Exhibit E's "other hosts wire hooks
+  differently" was corrected to match. No other comic content was invalidated — it makes no
+  read-only or registry claims.
+
+- **The OpenCode adapter no longer leaks a shell to the read-only reviewers — the same hole, on the
+  third host.** OpenCode treats an **absent** `permission:` key as *allowed*, and the bundler emitted
+  only the keys an agent was granted. So `tools: Read, Grep, Glob` bundled to
+  `{read, glob, grep: allow}` with `bash` unspecified — allowed — and a shell writes by redirection.
+  `security-reviewer` even declared `disallowedTools: …, Bash` in source and the bundler dropped it
+  on the floor. The permission block is now **deny-by-default**: the allowlist is authoritative, every
+  key ARCUS knows about is emitted explicitly `allow` or `deny`, and a `disallowedTools` entry always
+  wins so the two can never contradict. Measured after: all four advisory reviewers bundle to
+  `bash: deny, edit: deny`; `subagent-task-dispatcher` keeps `bash: allow` because it must run
+  verification. When an agent declares no `tools:` at all nothing is inferred, rather than guessing
+  it into uselessness.
+
+  The adapter had **zero test coverage**, which is why this survived. `build-bundle.mjs` now guards
+  its own entry point and exports its pure converters, and the harness asserts the deny-by-default
+  behaviour, the denylist override, every advisory reviewer's bundled permissions, and that
+  `TIER_TO_MODEL` still matches the OpenCode column of the `model-strategy` table — a silent drift
+  there would repoint every bundled agent's model.
+
+- **Prompts no longer instruct tools that only one host provides — and a gate (L1-16) keeps it that
+  way.** `subagent-task-dispatcher` and its dispatch template both hard-instructed `get_errors`, a
+  **VS Code Copilot Chat** tool that exists on neither Claude Code nor Copilot CLI. The failure mode
+  is the dangerous one: the model does not error on an unknown tool, it skips the step — so a
+  verification instruction quietly became a no-op on the two hosts ARCUS actually runs on. Both now
+  instruct the **capability** ("run the repository's own lint and type-check commands"), which every
+  host resolves against whatever tooling it has.
+
+  L1-16 flags backtick-quoted host-specific tool names (`get_errors`, `runSubagent`,
+  `run_in_terminal`, `insert_edit_into_file`, `semantic_search`) in skill, agent **and
+  `agent-resources/` template** bodies — the original offender lived in a template, which no
+  previous gate walked, even though templates are dispatched verbatim as subagent prompts. An
+  occurrence that names its owning host on the same line is documentation, not an instruction, so
+  the cross-host matrix rows still pass.
+
+  This is the third member of the same silent-degradation family found in this cycle, after
+  `disable-model-invocation` (a flag that read as a guarantee and removed the agent) and kebab-case
+  `disallowed-tools` (a denylist that never fired). In all three, nothing happened and nothing said
+  so.
+
+- **`subagent-task-dispatcher` regained a shell.** The tool-restriction pass above gave it
+  `tools: Read, Grep, Glob` while its Step 5 still says "run the test suite" — an instruction it had
+  no way to carry out. Corrected to `Read, Grep, Glob, Bash, Task`: it is an orchestrator that must
+  both spawn workers and run verification, not an advisory reviewer.
+
+- **The advisory reviewers are now actually read-only.** They carried
+  `disallowed-tools: Edit, Write, MultiEdit` alongside `tools: Read, Grep, Glob, Bash`, which
+  guaranteed nothing twice over. Measured on Claude Code: (1) the kebab-case spelling is **silently
+  ignored** — only `disallowedTools` is honoured, so the denylist never fired in ARCUS's entire
+  history; (2) even honoured, it is cosmetic next to `Bash`, because an agent with no `Write` tool
+  still created a file with `printf x > f`. A shell writes by redirection, rewrites history with
+  `git commit`, and deletes with `rm`.
+
+  `Bash` is dropped from `security-reviewer`, `performance-reviewer`, `code-quality-reviewer` and
+  `spec-compliance-reviewer`, and every denylist is renamed to `disallowedTools`. This costs those
+  reviewers nothing: `change_set` was already a declared **input** the `code-reviewer` coordinator
+  assembles and passes. Verified after the change on Copilot CLI — a dispatched agent with
+  `tools: Read, Grep, Glob` reports exactly `view, grep, glob` and cannot produce a file by any
+  means.
+
+  It also makes them **more** capable on Claude Code, not less: with `Bash` present that host drops
+  `Grep`/`Glob` from the agent, so `Read, Grep, Glob` yields all three where
+  `Read, Grep, Glob, Bash` yielded only `Read, Bash`.
+
+  `history-context-reviewer` keeps `Bash` as the one documented exception — its `git log` / `git
+  blame` archaeology is chosen per changed file as it reads and cannot be pre-supplied as an input.
+  It is recorded in `SHELL_EXEMPT` with that rationale; its read-only-ness is trusted, not enforced.
+- **All 16 agents now declare a `tools:` allowlist.** Seven had none
+  (`context-pack-builder`, `pull-request-builder`, `review-consolidator`, `simplify-and-verify`,
+  `test-spec-compiler`, `context-drift-sync`, `subagent-task-dispatcher`) and so inherited the full
+  session toolset — including `Edit` and `Write` — on every host.
+- **L1-4 now rejects indirect writes and the inert spelling.** `INDIRECT_WRITE_TOOLS` covers shells
+  and dispatch tools (a dispatcher can spawn a writer); kebab-case `disallowed-tools` is a hard
+  fail with a pointer to the camelCase form.
+- **`model-strategy` documents the measured `tools:` name mapping** across Claude Code and Copilot
+  CLI, plus the two authoring traps: unknown names are dropped silently, and listing `Bash`
+  suppresses `Grep`/`Glob` on Claude Code.
+- The OpenCode bundle builder reads `disallowedTools`, still falling back to the kebab spelling.
+
+- **L1-4 (advisory reviewers are read-only) is now allowlist-first.** It no longer requires
+  `disable-model-invocation`; it requires a `tools:` allowlist naming no write-capable tool — the
+  half every host actually enforces — while still requiring `disallowed-tools ⊇ [Edit, Write,
+  MultiEdit]` as defence-in-depth on Claude Code.
+- **L1-13 now rejects `disable-model-invocation` on any agent**, so the regression cannot return
+  silently on the host where it is inert.
+- `parseFrontmatter` parses `tools:` into an array, consistent with `allowed-tools` /
+  `disallowed-tools`.
+- **The `arcus:<name>` warning is stated once instead of seven times.** The seven duplicated
+  "Dispatching an ARCUS agent" blockquotes now carry only the positive instruction and point at
+  `arcus:model-strategy` § Agent Resolution; the prohibition itself lives there alone. The
+  duplication existed because a probe told to read `model-strategy` got "not found" — a direct
+  consequence of the `disable-model-invocation` bug fixed above, so its justification is void.
+- **`model-strategy` § Agent Resolution now states the namespace positively**, as a measured
+  Claude Code × Copilot CLI table for agents and skills, replacing the bare prohibition. It records
+  the asymmetry that motivates the token at all: agents resolve as `arcus-plugin:<name>` on both
+  hosts, but skills are `arcus-plugin:<name>` on Claude Code and **bare `<name>`** on Copilot CLI —
+  so no single literal is correct for a skill on both, which is why ARCUS prose uses the
+  host-neutral `arcus:<name>` and converts at dispatch.
+- **`agents.md` canonical frontmatter no longer tells authors to set `disable-model-invocation`**,
+  which L1-13 now rejects, and its packaging note no longer implies Copilot CLI needs a separate
+  agent dialect.
+
 - **A repository that forbids Actions from opening pull requests no longer strands a finished story.**
   `Allow GitHub Actions to create and approve pull requests` is off by default, so `gh pr create`
   fails at `closure` with a GraphQL permission error — after the branch is pushed and the PR body is

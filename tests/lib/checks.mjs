@@ -5,6 +5,36 @@
 import { VALID_TIERS } from './skills.mjs';
 
 /**
+ * Tool aliases that can mutate the workspace, across every host dialect ARCUS
+ * targets. Used by L1-4 to prove an advisory reviewer's allowlist is read-only.
+ * `Bash` is deliberately absent: reviewers legitimately need it for `git diff`,
+ * and no host offers a read-only shell.
+ */
+const WRITE_TOOLS = new Set([
+  'Edit', 'Write', 'MultiEdit', 'NotebookEdit', 'Create',
+  'edit', 'write', 'create', 'str_replace_editor'
+]);
+
+// Tools that grant an INDIRECT write. A shell writes files by redirection
+// (`printf x > f`), rewrites history (`git commit`) and deletes (`rm`), so it
+// defeats a denylist completely — measured on Claude Code 2026-07-29: an agent
+// with `tools: Read, Bash` and `disallowedTools: Edit, Write, MultiEdit`
+// correctly reported having no Write tool, then created a file via `printf >`.
+// A dispatch tool is the same hole one level out: it can spawn a subagent that
+// writes. An agent that must stay read-only may allowlist neither.
+const INDIRECT_WRITE_TOOLS = new Set([
+  'Bash', 'Task', 'Agent', 'Execute', 'Shell',
+  'bash', 'task', 'shell'
+]);
+
+// Advisory reviewers permitted to allowlist a shell despite the above, because
+// their work is irreducibly shell-shaped. `history-context-reviewer` chooses
+// `git log` / `git blame` / `git show` invocations per changed file as it reads,
+// so the data cannot be pre-supplied as a prompt input the way `change_set` is.
+// Its read-only-ness is trusted, not enforced. Keep this set as small as possible.
+const SHELL_EXEMPT = new Set(['history-context-reviewer']);
+
+/**
  * L1-1: Manifest validity check.
  * Validates plugin.json and marketplace.json structure and name consistency.
  *
@@ -133,8 +163,38 @@ function checkLineBudget({ name, body, fullText }) {
 
 /**
  * L1-4: Advisory reviewers are read-only (category invariant).
- * Advisory reviewers must have disable-model-invocation: true, user-invocable: false,
- * and disallowed-tools must include Edit, Write, and MultiEdit.
+ *
+ * The guarantee is carried by the TOOL SURFACE, not by an invocation flag:
+ *   - `tools:` (allowlist) must name no write-capable tool, DIRECT or INDIRECT.
+ *     This is the load-bearing half — Claude Code, Copilot CLI and VS Code all
+ *     enforce an allowlist, and it is the only restriction that survives on hosts
+ *     with no denylist field at all.
+ *   - `disallowedTools` (denylist, camelCase) must still cover Edit/Write/MultiEdit
+ *     as defence-in-depth on Claude Code. Measured 2026-07-29: Claude Code honours
+ *     `disallowedTools` and silently ignores the kebab-case `disallowed-tools`,
+ *     which ARCUS used for its whole history — so the denylist never fired at all.
+ *   - `user-invocable: false` keeps them out of the user-facing picker.
+ *
+ * Why INDIRECT_WRITE_TOOLS matters: a denylist over Edit/Write/MultiEdit is
+ * cosmetic if `Bash` is allowlisted, because the shell writes by redirection.
+ * Dropping `Bash` costs these reviewers nothing — `change_set` is already a
+ * declared INPUT they receive from the code-reviewer coordinator — and on Claude
+ * Code it actively helps: with `Bash` present that host drops `Grep`/`Glob` from
+ * the agent, so `Read, Grep, Glob` yields a strictly larger real toolset than
+ * `Read, Grep, Glob, Bash` did.
+ *
+ * SHELL_EXEMPT records the one reviewer whose job is irreducibly shell-shaped.
+ * `history-context-reviewer` performs git archaeology — `git log`, `git blame`,
+ * `git show` chosen per changed file — which cannot be pre-supplied in a prompt.
+ * Its read-only-ness is NOT tool-enforced; that is a documented, deliberate gap,
+ * not an oversight.
+ *
+ * Deliberately NOT checked: `disable-model-invocation`. It was removed from every
+ * ARCUS agent because Copilot CLI honours it by dropping the agent from its dispatch
+ * registry entirely — which forced reviewers onto a generic-subagent fallback that
+ * carries no frontmatter and therefore no tool restrictions, defeating this very
+ * invariant. "Dispatched-only" is expressed by the DISPATCHED_ONLY roster +
+ * `user-invocable: false` + an orchestration-scoped `description:`.
  *
  * @param {Object} input
  * @param {string} input.name - Skill name
@@ -150,20 +210,43 @@ function checkAdvisoryReadOnly({ name, frontmatter, advisorySet }) {
     return { ok: true, errors };
   }
 
-  // Check disable-model-invocation is true
-  if (frontmatter['disable-model-invocation'] !== true) {
-    errors.push(`${name}: advisory reviewer must have disable-model-invocation: true`);
-  }
-
   // Check user-invocable is false
   if (frontmatter['user-invocable'] !== false) {
     errors.push(`${name}: advisory reviewer must have user-invocable: false`);
   }
 
-  // Check disallowed-tools includes Edit, Write, and MultiEdit
-  const disallowedTools = frontmatter['disallowed-tools'];
+  // Allowlist: the restriction hosts actually enforce. Must exist and must name no
+  // write-capable tool, directly or indirectly.
+  const tools = frontmatter['tools'];
+  if (!Array.isArray(tools) || tools.length === 0) {
+    errors.push(`${name}: advisory reviewer must have a tools allowlist`);
+  } else {
+    for (const tool of tools) {
+      if (WRITE_TOOLS.has(tool)) {
+        errors.push(`${name}: advisory reviewer allowlists write-capable tool ${tool}`);
+      }
+      if (INDIRECT_WRITE_TOOLS.has(tool) && !SHELL_EXEMPT.has(name)) {
+        errors.push(
+          `${name}: advisory reviewer allowlists ${tool}, which grants an indirect ` +
+          `write (a shell writes by redirection; a dispatch tool spawns a writer). ` +
+          `Receive the data as an input instead, or add ${name} to SHELL_EXEMPT ` +
+          `with a rationale if the need is irreducible.`
+        );
+      }
+    }
+  }
+
+  // Denylist: defence-in-depth on hosts that honour it. Claude Code honours only
+  // the camelCase spelling.
+  if (frontmatter['disallowed-tools'] !== undefined) {
+    errors.push(
+      `${name}: uses kebab-case disallowed-tools, which Claude Code silently ` +
+      `ignores — rename to disallowedTools`
+    );
+  }
+  const disallowedTools = frontmatter['disallowedTools'];
   if (!Array.isArray(disallowedTools)) {
-    errors.push(`${name}: advisory reviewer must have disallowed-tools array`);
+    errors.push(`${name}: advisory reviewer must have disallowedTools array`);
   } else {
     const requiredTools = ['Edit', 'Write', 'MultiEdit'];
     for (const tool of requiredTools) {
@@ -811,6 +894,8 @@ function checkCapabilityHasEvalSpec({ name, tier, specExists }) {
  *   - layer present and in VALID_TIERS (the role axis survives on agents)
  *   - model present and a TIER word (opus|sonnet|haiku) or `inherit` — never a
  *     versioned model string (tier->model resolution is owned by arcus:model-strategy)
+ *   - disable-model-invocation ABSENT (Copilot CLI honours it by removing the agent
+ *     from dispatch; Claude Code ignores it — see the inline note below)
  *
  * Pure: receives the already-parsed frontmatter; performs no I/O.
  *
@@ -870,6 +955,163 @@ function checkAgentFrontmatter({ name, frontmatter }) {
     errors.push(`${name}: invalid model "${frontmatter.model}" (must be a tier word: ${[...VALID_AGENT_MODELS].join(', ')} — resolve via arcus:model-strategy)`);
   }
 
+  // disable-model-invocation must never come back. Measured: Copilot CLI honours it
+  // by dropping the agent from its `task` dispatch registry outright (0 of 16 ARCUS
+  // agents were reachable), while Claude Code ignores it — so it can never buy the
+  // "orchestrator-only" property it looks like it buys. Orchestrated dispatch IS
+  // model invocation: the same tool call, from the same caller. Express
+  // dispatched-only with `user-invocable: false` + DISPATCHED_ONLY roster membership
+  // + an orchestration-scoped `description:`.
+  if (frontmatter['disable-model-invocation'] !== undefined) {
+    errors.push(
+      `${name}: agent must not set disable-model-invocation ` +
+      `(Copilot CLI drops such agents from dispatch entirely; use user-invocable: false)`
+    );
+  }
+
+  return { ok: errors.length === 0, errors };
+}
+
+// Tools that exist on only one supported host. A prompt naming one of these is
+// dead text everywhere else — the model does not error, it just skips the step,
+// so a verification instruction silently becomes a no-op. Instruct the capability
+// ("run the repo's lint command") rather than a tool name.
+//
+// `qualifier` is the substring that marks an occurrence as DOCUMENTATION rather
+// than an instruction: the cross-host matrix legitimately names `runSubagent`, but
+// it always says which host provides it on the same line. An occurrence without
+// its qualifier reads as a bare instruction, which is the failure case.
+const HOST_SPECIFIC_TOOLS = {
+  get_errors: { host: 'VS Code Copilot Chat', qualifier: 'VS Code' },
+  runSubagent: { host: 'VS Code Copilot Chat', qualifier: 'VS Code' },
+  run_in_terminal: { host: 'VS Code Copilot Chat', qualifier: 'VS Code' },
+  insert_edit_into_file: { host: 'VS Code Copilot Chat', qualifier: 'VS Code' },
+  semantic_search: { host: 'VS Code Copilot Chat', qualifier: 'VS Code' }
+};
+
+// Tools that let an agent load a skill. An agent that is told to consult a skill
+// but declares none of these cannot follow the instruction — measured on Copilot
+// CLI: `tools: Read, Skill` yields `view, skill` and loads the skill successfully,
+// while `tools: Read, Grep, Glob` yields `view, grep, glob` and the agent reports
+// it has no way to load one.
+const SKILL_LOAD_TOOLS = new Set(['Skill']);
+
+/**
+ * L1-17: An agent instructed to consult a skill must be able to load one.
+ *
+ * `tools:` is an allowlist, so an agent that omits `Skill` has no skill-loading
+ * capability at all — and the failure is silent in the usual way: the agent does
+ * not error, it improvises from whatever is already in its prompt. Measured on
+ * Copilot CLI, a `tools: Read, Grep, Glob` agent asked to load a skill replies
+ * that it has no tool for it and continues anyway.
+ *
+ * This mattered concretely: `test-spec-compiler` was told to "use the guardrail
+ * heuristics in the `arcus:model-strategy` skill" and `subagent-task-dispatcher`
+ * to "look up the complexity-to-model mapping in the `arcus:model-strategy`
+ * skill" — the Implementation loop's model resolution — and neither could.
+ *
+ * Only LOAD-SHAPED references count. ARCUS bodies also carry provenance prose
+ * ("it runs as part of the `arcus:code-reviewer` fan-out") which names a skill
+ * without instructing anything, and must not be flagged. A reference is treated
+ * as load-shaped when it is:
+ *   - followed by the word "skill"  ("the `arcus:model-strategy` skill");
+ *   - followed by a section pointer ("`arcus:model-strategy` § Agent Resolution"),
+ *     which is the shape of the dispatch boilerplate copy-pasted across ARCUS; or
+ *   - introduced by in / per / via / from / consult / see / refer to.
+ *
+ * The introducer must start at a non-word, non-hyphen boundary, so "built-in
+ * `arcus:x`" is not read as "in `arcus:x`".
+ *
+ * When `skillNames` is supplied, only references to actual SKILLS are considered.
+ * A reference to an agent needs a dispatch tool, not `Skill`, and is L1-15's job.
+ *
+ * @param {Object} input
+ * @param {string} input.name - Agent name
+ * @param {string} input.body - Agent body text
+ * @param {string[]|string} input.tools - Declared `tools:` allowlist
+ * @param {Set<string>} [input.skillNames] - Known skill names; when given, agents are ignored
+ * @returns {{ ok: boolean, errors: string[] }}
+ */
+function checkSkillLoadCapability({ name, body, tools, skillNames }) {
+  const errors = [];
+  const declared = Array.isArray(tools)
+    ? tools
+    : String(tools ?? '').split(',').map(t => t.trim()).filter(Boolean);
+
+  // No allowlist means no restriction, so nothing to enforce.
+  if (declared.length === 0) return { ok: true, errors };
+  if (declared.some(t => SKILL_LOAD_TOOLS.has(t))) return { ok: true, errors };
+
+  const patterns = [
+    /`arcus:([a-z0-9-]+)`\s+skill\b/g,
+    /`arcus:([a-z0-9-]+)`\s*§/g,
+    /(?:^|[^\w-])(?:in|per|via|from|consult|see|refer\s+to)\s+(?:the\s+)?`arcus:([a-z0-9-]+)`/gim
+  ];
+
+  const found = new Set();
+  for (const re of patterns) {
+    re.lastIndex = 0;
+    let m;
+    while ((m = re.exec(body)) !== null) {
+      if (skillNames && !skillNames.has(m[1])) continue;
+      found.add(m[1]);
+    }
+  }
+
+  for (const target of found) {
+    errors.push(
+      `${name}: is instructed to consult the \`arcus:${target}\` skill but its ` +
+      `\`tools:\` allowlist has no skill-loading tool, so it cannot — it will ` +
+      `improvise instead of erroring. Add \`Skill\` to \`tools:\`, or reword the ` +
+      `reference as provenance rather than an instruction.`
+    );
+  }
+
+  return { ok: errors.length === 0, errors };
+}
+
+/**
+ * L1-16: Bodies must not instruct a tool no supported host provides.
+ *
+ * A prompt that says "use `get_errors`" is dead text on Claude Code and Copilot
+ * CLI — `get_errors` is a VS Code Copilot Chat tool. The model does not error; it
+ * shrugs and continues, so a verification step silently becomes a no-op. That is
+ * the same silent-degradation class as `disable-model-invocation` (a flag that
+ * looked like a guarantee and removed the agent) and kebab-case `disallowed-tools`
+ * (a denylist that never fired): the failure mode is nothing happening.
+ *
+ * Instruct a CAPABILITY instead of a tool name — "run the repository's lint and
+ * type-check commands" works on every host, because each resolves it to whatever
+ * shell or tool it actually has.
+ *
+ * Two narrowings keep this from flagging legitimate prose:
+ * - only backtick-quoted occurrences count, so ordinary words are left alone;
+ * - an occurrence on a line that also names the owning host is documentation
+ *   (the cross-host matrix must be able to state which tool belongs to which
+ *   host), not an instruction.
+ *
+ * @param {Object} input
+ * @param {string} input.name - Item name
+ * @param {string} input.body - Item body text
+ * @returns {{ ok: boolean, errors: string[] }}
+ */
+function checkNoHostSpecificTools({ name, body }) {
+  const errors = [];
+  const lines = body.split('\n');
+
+  for (const [tool, { host, qualifier }] of Object.entries(HOST_SPECIFIC_TOOLS)) {
+    const quoted = new RegExp('`' + tool + '`');
+    for (let i = 0; i < lines.length; i++) {
+      if (!quoted.test(lines[i])) continue;
+      if (lines[i].includes(qualifier)) continue; // host-qualified => documentation
+      errors.push(
+        `${name}:${i + 1}: instructs \`${tool}\`, which only ${host} provides — other ` +
+        `hosts silently ignore the step. Instruct the capability instead of the tool ` +
+        `name, or name the host on the same line if this is matrix documentation.`
+      );
+    }
+  }
+
   return { ok: errors.length === 0, errors };
 }
 
@@ -878,12 +1120,16 @@ function checkAgentFrontmatter({ name, frontmatter }) {
  *
  * `arcus:` is a documentation token the test harness resolves (`walkAll()`); it is
  * NOT a host namespace, and no host resolves it as a dispatch target. Verified
- * empirically against both surfaces:
- *   - Claude Code registers plugin agents under the PLUGIN name
- *     (`arcus-plugin:<name>`); `arcus:<name>` fails and the model only recovers by
- *     guessing again after a wasted tool call.
- *   - GitHub Copilot CLI has no agent registry at all — it exposes `skill(...)`
- *     and `task(...)` only, so a named agent is unresolvable there entirely.
+ * empirically against both registries — they use the PLUGIN name, `arcus-plugin:`:
+ *   - Claude Code registers plugin agents as `arcus-plugin:<name>` (Agent/Task tool);
+ *     `arcus:<name>` fails and the model only recovers by guessing again after a
+ *     wasted tool call.
+ *   - GitHub Copilot CLI registers them identically as `arcus-plugin:<name>` in its
+ *     `task` tool's `agent_type` enum, and enforces their `tools:` frontmatter.
+ *     (Measured on standalone copilot CLI 1.0.75. An earlier revision of this file
+ *     claimed Copilot CLI had no agent registry — that was a misdiagnosis of ARCUS's
+ *     own `disable-model-invocation` frontmatter, which Copilot honours by hiding the
+ *     agent. The flag is gone; see L1-13.)
  *
  * Dispatch must therefore go through the Agent Resolution rule in
  * `arcus:model-strategy`: prefer the host's registered subagent type, else spawn a
@@ -915,7 +1161,7 @@ function checkAgentDispatchPortable({ name, body, pureAgentNames }) {
   for (const refName of flagged) {
     errors.push(
       `${name}: dispatches pure agent as \`arcus:${refName}\` — no host resolves that form ` +
-      `(Claude registers \`arcus-plugin:${refName}\`; Copilot has no agent registry). ` +
+      `(both Claude Code and Copilot CLI register \`arcus-plugin:${refName}\`). ` +
       `Use the bare name and resolve via Agent Resolution in arcus:model-strategy.`
     );
   }
@@ -935,6 +1181,8 @@ export {
   checkCrossRefs,
   checkAgentRefQualified,
   checkAgentDispatchPortable,
+  checkNoHostSpecificTools,
+  checkSkillLoadCapability,
   checkResourcePaths,
   checkHooks,
   checkNoInlineModel,

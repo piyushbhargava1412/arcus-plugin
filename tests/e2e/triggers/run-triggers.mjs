@@ -6,12 +6,14 @@
 // { query, owner } pairs (owner = the skill that should activate, or "none").
 //
 // GRADING (deterministic — no LLM, no network, zero tokens):
-//   Only ORGANICALLY-INVOCABLE skills can fire. Skills marked
-//   `disable-model-invocation: true` (the 10 dispatched-only skills) are NEVER
-//   candidates — they are invoked imperatively by an orchestrator, never by an
-//   organic query. This is exactly why an adversarial near-miss like
-//   "check this code for security issues" must resolve to owner "none": the
-//   security-reviewer is dispatched-only, so nothing organic fires.
+//   Only ORGANICALLY-INVOCABLE skills can fire. Skills in the DISPATCHED_ONLY roster
+//   (tests/lib/skills.mjs) are NEVER candidates — they are invoked imperatively by an
+//   orchestrator, never by an organic query. This is exactly why an adversarial
+//   near-miss like "check this code for security issues" must resolve to owner "none":
+//   the security-reviewer is dispatched-only, so nothing organic fires.
+//   (The roster is the marker. ARCUS deliberately carries no
+//   `disable-model-invocation` frontmatter: Copilot CLI honours it by dropping the item
+//   from its dispatch registry outright, and Claude Code ignores it.)
 //
 //   For each organic candidate, its `description:` trigger phrases (the quoted,
 //   multi-word/placeholder phrases) are compiled into START-ANCHORED matchers.
@@ -139,8 +141,11 @@ function buildMatchers(skills) {
   const table = [];
   for (const skill of skills) {
     const name = skill.name;
+    // The roster is the source of truth. The frontmatter flag is still tolerated here
+    // so a third-party/vendored skill that sets it is honoured, but no ARCUS item
+    // carries it (Copilot CLI drops such items from dispatch entirely).
     const dmi = skill.frontmatter && skill.frontmatter['disable-model-invocation'];
-    const isDispatchedOnly = dmi === true || dmi === 'true' || DISPATCHED_ONLY.has(name);
+    const isDispatchedOnly = DISPATCHED_ONLY.has(name) || dmi === true || dmi === 'true';
     if (isDispatchedOnly) continue; // organic candidates only
     const phrases = extractTriggerPhrases(skill.frontmatter && skill.frontmatter.description);
     if (phrases.length === 0) continue;
@@ -209,7 +214,7 @@ function validateCorpus(corpus, organicNames) {
     // L4-1: a positive owner MUST be an organically-invocable skill.
     if (!organicNames.has(entry.owner)) {
       if (DISPATCHED_ONLY.has(entry.owner)) {
-        errors.push(`${tag}: owner "${entry.owner}" is dispatched-only (disable-model-invocation) — it may appear ONLY as a negative (owner "none") (L4-1)`);
+        errors.push(`${tag}: owner "${entry.owner}" is dispatched-only (DISPATCHED_ONLY roster) — it may appear ONLY as a negative (owner "none") (L4-1)`);
       } else {
         errors.push(`${tag}: owner "${entry.owner}" is not a known organically-invocable skill (L4-1)`);
       }

@@ -12,7 +12,7 @@ evals) is **graded by a live, dollar-budgeted `claude` CLI** and is run manually
 
 | Layer | What it validates | Cost | When it runs | Status |
 |-------|------------------|------|--------------|--------|
-| **Layer 1: Static checks** | Skill manifests, frontmatter, line budgets, category invariants, cross-references, hooks integrity, artifact schemas, every-capability-owns-an-eval-spec | **0 tokens** (pure Node ESM checks) | Every commit (pre-push hook), CI, manual `pnpm test` | ✅ **Implemented** (L1-1 through L1-12) |
+| **Layer 1: Static checks** | Skill manifests, frontmatter, line budgets, category invariants, cross-references, hooks integrity, artifact schemas, every-capability-owns-an-eval-spec | **0 tokens** (pure Node ESM checks) | Every commit (pre-push hook), CI, manual `pnpm test` | ✅ **Implemented** (L1-1 through L1-17) |
 | **Layer 2: Capability eval specs** | Capability I/O contracts: per-capability eval specs (18 specs / 43 cases), one per capability. Graded by the **live `claude` CLI**, bounded by a per-eval dollar budget. Lint is a separate zero-token pass. | **0 tokens** for lint (`test:evals:lint`); **costs money** when run live (`test:evals`), bounded by `--max-budget-usd` | Lint: every push / CI. Live grading: **manual** (needs an authenticated `claude` CLI on PATH) | ✅ **Authored & lint-clean**; live grading run on demand |
 | **Layer 3: Seam + end-to-end story tests** | — | — | — | ❌ **Not implemented** (descoped for simplicity) |
 | **Layer 4: Trigger harness** | Natural-language intent recognition — does the right skill fire for a query, and do dispatched-only skills correctly NOT fire? Corpus graded against `SKILL.md` trigger phrasing | **0 tokens** (deterministic trigger match — no LLM, no network) | `pnpm test:triggers`, every push / CI | ✅ **Implemented** (deterministic gates) |
@@ -190,15 +190,20 @@ Each check is a **pure function**: `checkX(input) => { ok: boolean, errors: stri
 | **L1-1** | Manifest validity: `plugin.json` and `marketplace.json` structure, name consistency, source path resolution | Hard fail | `tests/fixtures/bad-manifest.json` |
 | **L1-2** | Frontmatter validity (per skill): required fields (`name`, `description`, `layer`), kebab-case naming, reserved word ban (`claude`, `anthropic`), description length ≤1024 chars | Hard fail | `tests/fixtures/bad-frontmatter/SKILL.md` (reserved word) |
 | **L1-3** | Line budget: every `SKILL.md` ≤500 lines (including frontmatter) | Hard fail | `tests/fixtures/over-budget.md` (>500 lines) |
-| **L1-4** | Advisory reviewers are read-only (category invariant): `disable-model-invocation: true`, `user-invocable: false`, `disallowed-tools: [Edit, Write, MultiEdit]` | Hard fail | `tests/fixtures/write-enabled-reviewer/SKILL.md` |
+| **L1-4** | Advisory reviewers are read-only (category invariant): `user-invocable: false`, a `tools:` allowlist naming no write-capable tool AND no indirect-write tool (`Bash`, `Task` — a shell writes by redirection), and camelCase `disallowedTools: [Edit, Write, MultiEdit]` as defence-in-depth. `SHELL_EXEMPT` holds the one documented exception | Hard fail | `tests/fixtures/write-enabled-reviewer/SKILL.md` |
 | **L1-5** | Capabilities hold no orchestration state (category invariant): must NOT reference `checkpoint.sh set-status`, `branch.sh`, `git checkout -b`, or "next stage" routing | Hard fail | `tests/fixtures/capability-with-state/SKILL.md` |
 | **L1-6** | Orchestrators/coordinators no inlined domain logic (heuristic): flags ≥15 consecutive prose lines without dispatch patterns (`arcus:`, `delegate`, `invoke`) | **Advisory (warning-only, never fails)** | `tests/fixtures/prose-heavy-coordinator/SKILL.md` |
-| **L1-7** | Cross-skill references resolve: every `arcus:<skill-name>` mention must resolve to a real skill directory (excludes placeholders like `arcus:<...>`) | Hard fail | `tests/fixtures/dangling-ref/SKILL.md` |
+| **L1-7** | Cross-skill references resolve: every `arcus:<skill-name>` mention must resolve to a real skill directory or agent file (excludes placeholders like `arcus:<...>`). Scans the **`description:` frontmatter as well as the body** — nine agents carry provenance refs there, and the description is the field hosts read for autonomous selection | Hard fail | `tests/fixtures/dangling-ref/SKILL.md` |
 | **L1-8** | Bundled-resource paths resolve: every `references/...` or `assets/...` path **with a file extension** must exist relative to the skill's directory | Hard fail | `tests/fixtures/dead-resource/SKILL.md` |
 | **L1-9** | Hooks integrity: `hooks.json` structure validity, every referenced command script exists | Hard fail | `tests/fixtures/bad-hooks.json` |
 | **L1-10** | Single model-resolution point: skills (except `model-strategy`) must NOT hardcode versioned model IDs (e.g., `claude-opus-4`, `claude-3-5-sonnet`). Bare tier words (`opus`, `sonnet`, `haiku`) are **allowed** (legitimate complexity-tier references to `arcus:model-strategy`) | Hard fail | `tests/fixtures/inline-model/SKILL.md` |
 | **L1-11** | Artifact-schema validation: `session-checkpoint.json` validates against `tests/schemas/session-checkpoint.schema.json` (dependency-free JSON Schema draft-07 subset), and planning artifacts (`plan.md`, `grounded-spec.md`) contain all required sections per `tests/schemas/artifacts.json` | Hard fail | `tests/fixtures/bad-checkpoint.json`, `tests/fixtures/bad-plan.md` |
 | **L1-12** | Every capability skill owns a Layer-2 eval spec: each capability must have a `tests/e2e/evals/specs/<skill>/evals.json` — there is no "hard-to-test" capability | Hard fail | (live-tree check; a capability with no spec fails) |
+| **L1-13** | Agent frontmatter completeness: every `agents/*.md` carries the required fields (`name`, `description`, `layer`, `model`) | Hard fail | `tests/fixtures/bad-agent.md` (missing `layer` + `model`) |
+| **L1-14** | Pure-agent references carry the `agent` qualifier, so the reader can tell an agent from a skill | Hard fail | `tests/fixtures/unqualified-agent-ref/SKILL.md` |
+| **L1-15** | Pure-agent **dispatch** uses the bare name, never `arcus:<name>` — that prefix is a docs token; both Claude Code and Copilot CLI register plugin agents as `arcus-plugin:<name>` | Hard fail | (planted-violation unit test: `arcus:`-prefixed dispatch) |
+| **L1-16** | No body instructs a host-specific tool (`get_errors`, `runSubagent`, `run_in_terminal`, `insert_edit_into_file`, `semantic_search`). These exist only on VS Code Copilot Chat; elsewhere the model silently skips the step, so the instruction becomes a no-op rather than an error. Instruct the **capability** ("run the repo's lint command") instead. Host-qualified matrix documentation is exempt. Also scans `agent-resources/**/*.md`, since dispatch templates are prompts too | Hard fail | (planted-violation unit test: bare `` `get_errors` ``) |
+| **L1-17** | An agent instructed to consult a skill declares a skill-loading tool (`Skill`). `tools:` is an allowlist, so omitting it leaves the agent unable to load anything — and it improvises rather than erroring. Only load-shaped references count (`… in the \`arcus:x\` skill`), not provenance prose (`runs as part of the \`arcus:x\` fan-out`) | Hard fail | (planted-violation unit test: skill consult with `tools: Read, Grep, Glob`) |
 
 **Note:** L1-6 is the **only advisory check** — it emits warnings but never sets `ok: false`. All others are **gate-hard-fail**.
 
@@ -220,7 +225,7 @@ This is the **DoD #1 guarantee**: "the check actually fails on a violation" is n
 | `bad-manifest.json` | L1-1 | Name mismatch between `plugin.json` and `marketplace.json` |
 | `bad-frontmatter/SKILL.md` | L1-2 | Name contains reserved word (`Claude`) |
 | `over-budget.md` | L1-3 | File >500 lines |
-| `write-enabled-reviewer/SKILL.md` | L1-4 | Advisory reviewer missing `disallowed-tools: [Edit, Write, MultiEdit]` |
+| `write-enabled-reviewer/SKILL.md` | L1-4 | Advisory reviewer missing `disallowedTools: [Edit, Write, MultiEdit]` |
 | `capability-with-state/SKILL.md` | L1-5 | Capability references `checkpoint.sh set-status` |
 | `prose-heavy-coordinator/SKILL.md` | L1-6 | Coordinator has ≥15 consecutive prose lines without dispatch patterns (advisory warning) |
 | `dangling-ref/SKILL.md` | L1-7 | References `arcus:does-not-exist-skill` and `arcus:another-missing-skill` |
@@ -329,7 +334,7 @@ entries; it has no runner of its own and is graded by `pnpm test:evals` like any
 
 ### Why zero-dependency for Layer 1?
 
-Layer-1 tests (L1-1 through L1-12) are **pure Node ESM with zero npm packages** for three reasons:
+Layer-1 tests (L1-1 through L1-17) are **pure Node ESM with zero npm packages** for three reasons:
 
 1. **Zero supply-chain risk** — no transitive dependencies, no `npm audit` alerts, no version conflicts with the main plugin's dependencies.
 2. **Instant cold-start** — no `npm install` latency, no `node_modules/` bloat. Tests run in <100ms even on a fresh clone.

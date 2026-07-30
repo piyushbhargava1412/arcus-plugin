@@ -6,7 +6,6 @@ description: >
   agents) after the repo overview exists.
 layer: capability
 user-invocable: false
-disable-model-invocation: true
 tools: Read, Grep, Glob, Bash, Write, Edit
 model: opus
 color: blue

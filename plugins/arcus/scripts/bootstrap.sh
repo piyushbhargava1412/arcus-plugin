@@ -8,13 +8,15 @@
 #              agent specs regardless of where the plugin is cached on disk.
 #
 # It is idempotent and MUST be run at the start of every ARCUS entry point
-# rather than relied upon as a host hook. Only Claude Code fires this as a
-# SessionStart hook; GitHub Copilot CLI reads hooks from .github/hooks/ and
-# ~/.copilot/hooks/ in its own schema, so a plugin-bundled Claude-format hook
-# never executes there. Re-running unconditionally also re-stages .arcus/bin
-# after a plugin upgrade — the staged copy is otherwise a snapshot that never
-# expires, and a repo bootstrapped by one host keeps serving that host's
-# older scripts to every other host.
+# rather than relied upon as a host hook. Only Claude Code is observed firing
+# this as a SessionStart hook; ARCUS's hooks do not fire on GitHub Copilot CLI
+# for reasons still unexplained. That is NOT a schema difference — measured
+# 2026-07-29, Copilot CLI auto-discovers a plugin's hooks/hooks.json and
+# normalizes Claude's PascalCase event names, and a sibling plugin's hook fires
+# there correctly. Running unconditionally sidesteps the question entirely.
+# It also re-stages .arcus/bin after a plugin upgrade — the staged copy is
+# otherwise a snapshot that never expires, and a repo bootstrapped by one host
+# keeps serving that host's older scripts to every other host.
 # ==============================================================================
 
 set -eu

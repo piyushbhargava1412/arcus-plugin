@@ -6,7 +6,7 @@ description: >
   performing pre-specification planning. Dispatched by arcus:kick-off
 layer: capability
 user-invocable: false
-disable-model-invocation: true
+tools: Read, Grep, Glob, Bash, Write
 model: sonnet
 color: blue
 ---

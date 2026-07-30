@@ -7,10 +7,19 @@
 #
 # WHY THIS EXISTS: .arcus/bin/ is a COPY of the plugin's scripts, and nothing
 # invalidates it. A repo bootstrapped months ago by one host keeps serving
-# those stale scripts to every later session, on every host. Worse, only
-# Claude Code fires the plugin's SessionStart hook at all — Copilot CLI reads
-# hooks from .github/hooks/ in a different schema — so on a Copilot-only
+# those stale scripts to every later session, on every host. Worse, in practice
+# only Claude Code fires the plugin's SessionStart hook, so on a Copilot-only
 # machine .arcus/bin/ is never created and every helper-script call fails.
+#
+# Do NOT infer a schema difference from that. Measured 2026-07-29: Copilot CLI
+# DOES auto-discover a plugin's hooks/hooks.json (no manifest field needed) and
+# DOES normalize Claude's PascalCase event names — a sibling plugin's PreToolUse
+# hook fires there correctly. Why ARCUS's own hooks do not is still unexplained;
+# six frontmatter/manifest variants and three install routes changed nothing.
+# The earlier ".github/hooks/ in a different schema" rationale was wrong.
+#
+# Either way this script is what makes bootstrap host-independent: it does not
+# matter which hosts fire hooks if no host has to.
 #
 # This is the chicken-and-egg breaker: it cannot live in .arcus/bin/ (which may
 # not exist yet), so ARCUS entry points invoke it from the plugin itself.

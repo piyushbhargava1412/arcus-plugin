@@ -28,9 +28,10 @@ dialogue/gates, OR it is a stateful driver that owns the user conversation.
 ## Canonical frontmatter
 
 Agent files use the **Claude Code native `agents/` frontmatter** as the canonical source of truth.
-(Copilot CLI `.agent`/`runSubagent` and VS Code `.agent.md` each have an equivalent agent primitive;
-per-surface packaging validation is a documented follow-up — the Claude Code dialect is authored here
-as canonical.)
+Both **Claude Code** and **GitHub Copilot CLI** read it directly and register the agent as
+`arcus-plugin:<name>`, enforcing its `tools:` allowlist. VS Code Copilot Chat (`.agent.md`,
+`runSubagent`) and OpenCode have equivalent primitives with different dialects; per-surface packaging
+validation is a documented follow-up.
 
 ```yaml
 ---
@@ -40,14 +41,40 @@ description: >               # REQUIRED — what it does + "use when …" dispat
   Dispatched by <caller>.
 layer: capability            # REQUIRED — role axis: capability | coordinator | orchestrator | substrate
 user-invocable: false        # agents are never user-facing (this flag is the machine-readable source of truth)
-disable-model-invocation: true
-tools: Read, Grep, Glob, Bash    # OPTIONAL allowlist of tools the agent may use
-disallowed-tools: Edit, Write, MultiEdit   # advisory/read-only agents MUST disallow these
+                             # NEVER add `disable-model-invocation` — see Field rules below
+tools: Read, Grep, Glob      # REQUIRED allowlist — the only restriction hosts enforce.
+                             #   Add Bash ONLY if the agent truly needs a shell: it grants an
+                             #   indirect write, and it suppresses Grep/Glob on Claude Code
+                             #   (but NOT on Copilot CLI — so keep Grep/Glob declared anyway).
+disallowedTools: Edit, Write, MultiEdit  # camelCase ONLY — Claude Code ignores the kebab spelling
 model: sonnet                # tier word (opus | sonnet | haiku) or `inherit` — NEVER a versioned
                              #   model string (resolve tiers via arcus:model-strategy)
 color: cyan                  # OPTIONAL UI hint
 ---
 ```
+
+### What each field is load-bearing for
+
+Measured 2026-07-29 unless marked inferred. "CI" means the repo's own test harness, which is the
+only consumer for fields no host reads.
+
+| Field | Claude Code | Copilot CLI | OpenCode | CI |
+| --- | --- | --- | --- | --- |
+| `name` | registers `arcus-plugin:<name>` | registers `arcus-plugin:<name>` | flat `<name>` | L1-13 basename match |
+| `description` | dispatch routing | dispatch routing | dispatch routing | L1-13 (present, ≤1024) |
+| `layer` | inert | inert | inert | **L1-5, L1-6, L1-12** |
+| `user-invocable` | inert | inert | → `hidden: true` | **L4-1 roster** |
+| `tools` | **enforced** | **enforced** | → `permission:` | **L1-4** |
+| `disallowedTools` | **enforced** | inferred inert | → `permission: deny` | **L1-4** |
+| `disallowed-tools` | **silently ignored** | inferred inert | read as fallback | **L1-4 rejects** |
+| `disable-model-invocation` | ignored on agents | **drops from registry** | inferred inert | **L1-13 rejects** |
+| `model` | tier word honoured | **ignored** — session model | mapped to a model id | L1-10 |
+| `color` | UI hint | inert | mapped to hex | — |
+
+Two fields to read carefully. `layer` is **inert on every host** yet drives four CI gates — it is
+not decoration. `disable-model-invocation` is the mirror image: no CI gate wanted it, and it silently
+disabled the plugin on a host. A field being ignored by your host says nothing about whether it
+matters.
 
 ### Field rules
 
@@ -63,10 +90,34 @@ color: cyan                  # OPTIONAL UI hint
   (`tests/e2e/evals/specs/<name>/evals.json`).
 - **`model`** — a **tier word** (`opus`/`sonnet`/`haiku`) or `inherit`. Never hardcode a versioned
   model id; tier→model resolution is owned solely by `arcus:model-strategy`.
+- **`disable-model-invocation`** — **never set it.** Orchestrated dispatch *is* model invocation, so
+  the flag cannot mean "orchestrator-only". Measured: Copilot CLI honours it on **both** agents and
+  skills by dropping the item from its registry (the agent then loses host-enforced `tools:`); Claude
+  Code ignores it on agents but honours it on skills. `user-invocable: false` already carries the
+  "not user-facing" intent. Rejected by `checkAgentFrontmatter` (L1-13).
+- **`tools`** — the allowlist, and the **only** restriction hosts actually enforce. Measured
+  2026-07-29: `Read, Grep, Glob` yields exactly those three on Claude Code and
+  `view, grep, glob` on Copilot CLI. Adding `Bash` to that list causes Claude Code to drop
+  `Grep`/`Glob`, so the shorter list is also the more capable one there.
+- **`Skill` must be in `tools:` if the body tells the agent to consult a skill.** The allowlist
+  omits it by default, and the failure is silent: measured on Copilot CLI, `tools: Read, Skill`
+  yields `view, skill` and loads the skill; `tools: Read, Grep, Glob` yields `view, grep, glob` and
+  the agent reports it has no way to load one — then answers anyway from whatever is already in its
+  prompt. Enforced by `checkSkillLoadCapability` (L1-17), which distinguishes a consult
+  ("the heuristics **in** the `arcus:model-strategy` **skill**") from provenance prose
+  ("runs as part of the `arcus:code-reviewer` fan-out") and only requires the tool for the former.
+- **`disallowedTools`** — **camelCase only.** Claude Code honours `disallowedTools` and silently
+  ignores kebab-case `disallowed-tools`, which ARCUS used for its entire history — so the denylist
+  never fired. It is defence-in-depth; never rely on it alone.
+- **A denylist cannot make an agent read-only if the allowlist contains `Bash`.** Measured: an agent
+  with no `Write` tool created a file with `printf x > f`. Same for a dispatch tool (`Task`/`Agent`),
+  which can spawn a writer. Enforced by `checkAdvisoryReadOnly` via `INDIRECT_WRITE_TOOLS`; the one
+  documented exception is `history-context-reviewer`, whose `git log`/`git blame` archaeology is
+  irreducibly shell-shaped and whose read-only-ness is therefore trusted, not enforced.
 - **Advisory reviewers** (`security-reviewer`, `performance-reviewer`, `code-quality-reviewer`,
   `history-context-reviewer`, `spec-compliance-reviewer`) additionally require
-  `user-invocable: false`, `disable-model-invocation: true`, and `disallowed-tools ⊇
-  [Edit, Write, MultiEdit]` (enforced by `checkAdvisoryReadOnly`).
+  `user-invocable: false`, a `tools:` allowlist naming no write-capable tool, and
+  `disallowedTools ⊇ [Edit, Write, MultiEdit]` (enforced by `checkAdvisoryReadOnly`).
 
 ## Body authoring
 
