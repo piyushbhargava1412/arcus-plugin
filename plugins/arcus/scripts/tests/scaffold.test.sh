@@ -54,6 +54,17 @@ TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 cd "$TMP"
 
+# Commit identity must be supplied explicitly: a CI runner has no global git
+# identity and cannot derive one from the account's (empty) GECOS name, so
+# `git commit` dies with "empty ident name". Every case below is built on the
+# sandbox commit, so without this the whole suite degrades into an unborn/
+# detached HEAD instead of testing branch planning. Environment variables rather
+# than `git config` so they cover every repository and worktree created here.
+export GIT_AUTHOR_NAME="ARCUS Test"
+export GIT_AUTHOR_EMAIL="test@arcus.invalid"
+export GIT_COMMITTER_NAME="ARCUS Test"
+export GIT_COMMITTER_EMAIL="test@arcus.invalid"
+
 git init -q -b main main-repo
 cd main-repo
 git commit -q --allow-empty -m init

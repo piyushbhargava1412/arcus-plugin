@@ -46,6 +46,19 @@ export HOME="$TMP/home"
 mkdir -p "$HOME"
 cd "$TMP"
 
+# Commit identity must be supplied explicitly. Redirecting HOME above also
+# discards the developer's ~/.gitconfig, and a CI runner has no global identity
+# at all — there git cannot derive one from the account's (empty) GECOS name and
+# `git commit` dies with "empty ident name". The sandbox commit below is a
+# precondition for `git worktree add`, so without this every worktree case
+# silently degrades into "directory does not exist" instead of testing anything.
+# Environment variables rather than `git config` so they cover every repository
+# and worktree created in this sandbox.
+export GIT_AUTHOR_NAME="ARCUS Test"
+export GIT_AUTHOR_EMAIL="test@arcus.invalid"
+export GIT_COMMITTER_NAME="ARCUS Test"
+export GIT_COMMITTER_EMAIL="test@arcus.invalid"
+
 # A main checkout plus a linked worktree, shared by the cases below.
 git init -q -b main main-repo
 (cd main-repo && git commit -q --allow-empty -m init && git worktree add -q ../worktree -b session-branch)
