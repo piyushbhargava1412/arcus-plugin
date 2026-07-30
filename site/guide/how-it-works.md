@@ -14,10 +14,31 @@ Every ARCUS entry point runs `scripts/locate.sh` as its first step, which finds 
    - Checkpoint read/write operations (including the `set-branch` action)
    - Story ID extraction utilities
    - The shared branch-naming library `lib/branch_name.sh` (defines the `arcus/<id>-N` convention once)
+   - The shared git-workspace library `lib/git_context.sh` (worktree detection and default-branch resolution)
 
 2. Records the `ARCUS_HOME` environment variable in `.arcus/env` for script discovery
 
 These helper scripts provide consistent, tested operations that ARCUS skills invoke throughout the pipeline. Skills call scripts from `.arcus/bin/` — re-staged at the start of every run, so an upgraded plugin takes effect immediately instead of a months-old copy lingering.
+
+### Worktrees, and why bootstrap fails loudly
+
+The bootstrap asks git whether it is in a repository (`git rev-parse --git-dir`) rather than looking for a `.git` **directory**. In a git worktree `.git` is a *file* containing a `gitdir:` pointer, so a directory test is false there — and a bootstrap that skips staging on that basis leaves every later helper-script call failing with `No such file or directory`, with nothing pointing back at the cause.
+
+For the same reason, `locate.sh` verifies the **post-condition** instead of trusting an exit code: after running the bootstrap it checks that `.arcus/bin/checkpoint.sh` and `.arcus/env` actually exist, and exits non-zero with an explanation if they do not. Reporting a healthy `ARCUS_HOME` over an unstaged workspace is a strictly worse failure than stopping.
+
+## Worktree Sessions
+
+When the workspace is a **linked git worktree** already checked out on a dedicated branch — the shape most agent-session hosts create — that branch *is* the story branch. `scaffold.sh` detects this and **adopts** it: it records the current branch as `branch_name`, resolves `base_branch` to the repository default (`origin/HEAD`, falling back to `main`/`master`), and marks the `branch` stage complete so Implementation skips branch creation entirely.
+
+This matters because the host has usually bound its PR tracking to that branch. Cutting a fresh `arcus/[STORY-ID]-N` off it would leave the story on a branch the session knows nothing about.
+
+Detection is deliberately narrow — a *linked worktree* on a *non-default* branch. A normal checkout that merely happens to sit on a feature branch is not adopted, and keeps ARCUS's usual behaviour of basing the story on wherever you currently are, so deliberate stacking still works. Two flags override the decision:
+
+| Flag | Effect |
+|---|---|
+| `--use-current-branch` (or `ARCUS_USE_CURRENT_BRANCH=1`) | Adopt the current branch anywhere, worktree or not |
+| `--new-branch` | Always plan a fresh `arcus/[STORY-ID]-N`, even inside a worktree |
+| `--base <branch>` | Set the base explicitly, overriding either path |
 
 ## Plugin Portability
 

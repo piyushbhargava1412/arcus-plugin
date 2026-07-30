@@ -17,23 +17,58 @@
 # It also re-stages .arcus/bin after a plugin upgrade — the staged copy is
 # otherwise a snapshot that never expires, and a repo bootstrapped by one host
 # keeps serving that host's older scripts to every other host.
+#
+# FAILS LOUDLY. Every caller reads exit 0 as "the toolbox is ready", so the only
+# silent exit is the deliberate "not a git repository" one. An unresolvable
+# ARCUS_HOME or an empty staging result is an error, not a no-op.
 # ==============================================================================
 
 set -eu
 
+# A candidate plugin root is only usable if it carries BOTH the scripts we stage
+# and the manifest we read the version from. Anything else is a lookalike.
+is_valid_home() {
+    [ -n "${1:-}" ] && [ -d "$1/scripts" ] && [ -f "$1/.claude-plugin/plugin.json" ]
+}
+
 # Resolve the plugin root from this script's own location. This works in every
 # host (VS Code, Copilot CLI, Claude Code) and does not depend on a plugin-root
 # token being defined.
+ENV_ARCUS_HOME="${ARCUS_HOME:-}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
 ARCUS_HOME="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-# The hook runs with the workspace as the current directory.
-WORKSPACE_ROOT="$(pwd)"
+# VALIDATE the derived root before staging anything. Deriving from BASH_SOURCE is
+# right whenever this script sits in a real install, but a COPY run from anywhere
+# else (say /tmp/bootstrap.sh) resolves ARCUS_HOME to that copy's parent — "/" in
+# the reported case — and the staging loop below then silently produces an EMPTY
+# .arcus/bin plus an .arcus/env pointing at nothing. Fall back to an explicitly
+# exported ARCUS_HOME, and refuse to run rather than stage nothing.
+if ! is_valid_home "$ARCUS_HOME"; then
+    if is_valid_home "$ENV_ARCUS_HOME"; then
+        ARCUS_HOME="$ENV_ARCUS_HOME"
+    else
+        echo "[ERROR] bootstrap.sh: cannot resolve a valid ARCUS install." >&2
+        echo "        Derived from this script: $ARCUS_HOME (no scripts/ + .claude-plugin/plugin.json)" >&2
+        echo "        Run the bootstrap from inside a real install, or export ARCUS_HOME to one." >&2
+        exit 1
+    fi
+fi
 
 # Only bootstrap inside a git repository (the ARCUS pipeline requires git).
-if [ ! -d "$WORKSPACE_ROOT/.git" ]; then
+#
+# Ask git rather than testing for a .git DIRECTORY. In a git worktree .git is a
+# FILE containing `gitdir: <path>`, so a `-d` test is false and the bootstrap
+# exits 0 having staged nothing — the silent failure that blocked every
+# worktree-backed session. `rev-parse` covers worktrees, submodules and $GIT_DIR
+# overrides in one check.
+if ! git rev-parse --git-dir >/dev/null 2>&1; then
     exit 0
 fi
+
+# Stage at the REPOSITORY ROOT, not the current directory: being invoked from a
+# subdirectory would otherwise scatter a second, unused .arcus/ tree there.
+WORKSPACE_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 
 BIN_DIR="$WORKSPACE_ROOT/.arcus/bin"
 mkdir -p "$BIN_DIR"
@@ -57,6 +92,17 @@ if [ -d "$ARCUS_HOME/scripts/lib" ]; then
         cp "$lib" "$LIB_DIR/$name"
         chmod +x "$LIB_DIR/$name"
     done
+fi
+
+# POST-CONDITION: staging must actually have produced the helper scripts. Every
+# ARCUS entry point treats a zero exit here as "the toolbox is ready", so
+# reporting success over an empty .arcus/bin just relocates the failure to the
+# first helper-script call, where it surfaces as an unexplained
+# "No such file or directory".
+if [ ! -f "$BIN_DIR/checkpoint.sh" ]; then
+    echo "[ERROR] bootstrap.sh: staging produced no helper scripts in $BIN_DIR." >&2
+    echo "        ARCUS_HOME=$ARCUS_HOME — check that its scripts/ directory is populated." >&2
+    exit 1
 fi
 
 # Record the plugin home so skills can locate bundled resources (templates,

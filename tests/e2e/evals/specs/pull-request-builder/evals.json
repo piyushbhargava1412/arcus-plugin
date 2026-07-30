@@ -1,6 +1,9 @@
 {
   "skill_name": "pull-request-builder",
-  "cost_budget": { "max_tokens": 60000, "max_seconds": 180 },
+  "cost_budget": {
+    "max_tokens": 60000,
+    "max_seconds": 180
+  },
   "evals": [
     {
       "id": "prb-summarizes-diff-accurately",
@@ -51,6 +54,48 @@
           "tier": "quality"
         }
       ]
+    },
+    {
+      "id": "prb-respects-the-length-budget",
+      "prompt": "Produce a pull request description for this change set. story: REPORT-7 \"Add a CSV export endpoint for the monthly usage report.\" change_set: the file change.diff. implementation_plan: plan.md. test_matrix: test-plan.md. spec_grounding: grounded-spec.md.",
+      "mode": "autonomous",
+      "kind": "judged",
+      "fixture": {
+        "files": {
+          "change.diff": "diff --git a/src/reports/csv.js b/src/reports/csv.js\nnew file mode 100644\n--- /dev/null\n+++ b/src/reports/csv.js\n@@\n+export function toCsv(rows) {\n+  const header = Object.keys(rows[0] || {}).join(\",\");\n+  const body = rows.map((r) => Object.values(r).join(\",\")).join(\"\\n\");\n+  return header + \"\\n\" + body;\n+}\ndiff --git a/src/reports/routes.js b/src/reports/routes.js\n--- a/src/reports/routes.js\n+++ b/src/reports/routes.js\n@@\n+router.get(\"/reports/usage.csv\", async (req, res) => {\n+  const rows = await usageRows(req.query.month);\n+  res.type(\"text/csv\").send(toCsv(rows));\n+});\ndiff --git a/test/reports/csv.test.js b/test/reports/csv.test.js\nnew file mode 100644\n--- /dev/null\n+++ b/test/reports/csv.test.js\n@@\n+test(\"renders a header row\", () => {});\n+test(\"renders each data row\", () => {});\n+test(\"handles an empty row set\", () => {});\n",
+          "plan.md": "# Implementation Plan: REPORT-7\n\n### Task 1: Add the CSV serializer\ncomplexity: light\nFiles: src/reports/csv.js\nDoD: toCsv renders a header row and one line per record.\n\n### Task 2: Wire the export route\ncomplexity: medium\nFiles: src/reports/routes.js\nDoD: GET /reports/usage.csv returns text/csv for the requested month.\n",
+          "test-plan.md": "# Test Plan: REPORT-7\n\n| # | Case | Layer | Complexity |\n|---|---|---|---|\n| 1 | header row rendered | unit | light |\n| 2 | one line per record | unit | light |\n| 3 | empty row set | unit | light |\n| 4 | route returns text/csv | integration | medium |\n| 5 | route honours the month query param | integration | medium |\n| 6 | route rejects a malformed month | integration | medium |\n| 7 | large row sets stream without buffering | integration | heavy |\n| 8 | values containing commas are quoted | unit | medium |\n| 9 | values containing newlines are quoted | unit | medium |\n| 10 | null values render empty | unit | light |\n\nAll 10 cases passing.\n",
+          "grounded-spec.md": "# Grounded Spec: REPORT-7\n\n## Decisions\n- SF-1: CSV is generated in-process rather than delegated to a library, to avoid a new dependency.\n- SF-2: The month query param uses YYYY-MM, matching the existing report endpoints.\n- SF-3: No streaming for now; usage reports are bounded to one month of rows.\n- SF-4: Content-Type is text/csv without a charset parameter, matching the existing exports.\n\n## Excluded\n- Excel/XLSX export.\n- Scheduled email delivery.\n"
+        }
+      },
+      "expectations": [
+        {
+          "text": "The description stays within the stated budget of roughly 80 lines / 4 KB — it is a summary a reviewer reads before the diff, not a document that rivals the diff in length.",
+          "tier": "critical"
+        },
+        {
+          "text": "Does not reproduce the test matrix case-by-case; test evidence is condensed to counts and an outcome, referring the reader to test-plan.md for detail.",
+          "tier": "critical"
+        },
+        {
+          "text": "Does not restate every SF decision from grounded-spec.md with full rationale; at most the one or two a reviewer might push back on.",
+          "tier": "quality"
+        },
+        {
+          "text": "Still conveys WHAT changed (an in-process CSV serializer plus a GET /reports/usage.csv route) and WHY (the REPORT-7 CSV export intent).",
+          "tier": "critical"
+        },
+        {
+          "text": "Omits pipeline narration — no per-task walkthrough, agent metrics, or token counts.",
+          "tier": "quality"
+        }
+      ],
+      "assertions": {
+        "forbidden_substrings": [
+          "Agent Metrics",
+          "Token usage"
+        ]
+      }
     }
   ]
 }

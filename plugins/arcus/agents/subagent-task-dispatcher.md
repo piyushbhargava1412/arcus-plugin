@@ -96,7 +96,19 @@ After verification passes:
 **Skip condition**: if the task `complexity` == `light`, skip this step entirely and proceed directly to Step 7 (Spec Check).
 
 Otherwise, dispatch a fresh subagent:
-- **Prompt**: the `file_set` (files modified by this task), the `test_command` (this task's TDD verify command), the task's DoD (from `plan.md`) as `acceptance_criteria`, and the instruction to read and follow the `simplify-and-verify` agent (resolve the dispatch target per **Agent Resolution** in `arcus:model-strategy`).
+- **Prompt**: pass all five inputs below, plus the instruction to read and follow the
+  `simplify-and-verify` agent (resolve the dispatch target per **Agent Resolution** in
+  `arcus:model-strategy`):
+  - `file_set` — the files modified by this task (the task's declared **Files** list from `plan.md`,
+    reconciled against what actually changed).
+  - `task_diff` — **the diff of what this task changed** (`git diff` for the uncommitted work, or the
+    task's commit range). Without it the gate treats every in-scope file as mutable wholesale and
+    will happily "simplify" pre-existing code the task never touched, folding an unrelated change
+    into this task's commit.
+  - `excluded_scope` — the **Excluded** section of `grounded-spec.md`, verbatim. This is what stops a
+    green test suite from being read as permission to edit something the story deliberately ruled out.
+  - `test_command` — this task's TDD verify command.
+  - `acceptance_criteria` — the task's DoD from `plan.md`.
 - **Description**: `"Refactor: Task N"`
 - **Model**: Resolve complexity `medium` via the `arcus:model-strategy` skill
 
@@ -105,6 +117,10 @@ Handle the return status:
 |--------|---------|--------|
 | `SIMPLIFIED` | Mutations applied, suite green | Log summary, proceed to Step 7 (Spec Check) |
 | `REVERTED` | Mutations caused test failure; rolled back | Log explanation, append `[simplifier: reverted]` to the commit message in Step 8, proceed to Step 7 (Spec Check) |
+
+Either status may carry `Deferred:` notes — simplifications the gate found **outside** the task's
+mutable region and deliberately did not apply. Surface them in your task log; do **not** act on them
+here. They are follow-up material, not this task's work.
 
 No retry for the refactor gate — `REVERTED` is not a failure; it means the code was already at a good simplicity level. The spec-check in Step 7 still runs regardless of `SIMPLIFIED` or `REVERTED`.
 
@@ -169,4 +185,3 @@ After reviews pass (or retry limit reached):
 - If implementation fails after escalation: mark as BLOCKED, stop pipeline
 - If the spec check fails after its retry: commit with `[spec: unresolved]` tag and carry the ISSUES forward to the holistic `code-reviewer`; continue pipeline
 - **Refactor gate**: No retry — `REVERTED` is not a failure state; mutations are rolled back and the gate exits cleanly. Proceed to spec-check regardless.
-
