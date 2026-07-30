@@ -37,7 +37,7 @@ Detection is deliberately narrow — a *linked worktree* on a *non-default* bran
 | Flag | Effect |
 |---|---|
 | `--use-current-branch` (or `ARCUS_USE_CURRENT_BRANCH=1`) | Adopt the current branch anywhere, worktree or not |
-| `--new-branch` | Always plan a fresh `arcus/[STORY-ID]-N`, even inside a worktree |
+| `--new-branch` (or `ARCUS_USE_CURRENT_BRANCH=0`) | Always plan a fresh `arcus/[STORY-ID]-N`, even inside a worktree |
 | `--base <branch>` | Set the base explicitly, overriding either path |
 
 ## Plugin Portability

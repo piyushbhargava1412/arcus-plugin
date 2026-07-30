@@ -123,12 +123,14 @@ assert_eq "$(field BRANCH_MODE "$OUT")" "new" "--new-branch restores the plannin
 assert_eq "$(field BRANCH_NAME "$OUT")" "arcus/WT-2-1" "--new-branch plans arcus/<STORY_ID>-1"
 assert_eq "$(jget WT-2 stages.branch)" "pending" "--new-branch leaves the branch stage pending"
 
-echo "== branch.sh no-ops on an adopted branch =="
+echo "== branch.sh no-ops when the story branch is already realized =="
 OUT="$(bash "$BRANCH" WT-1)"
-assert_eq "$(field BRANCH_MODE "$OUT")" "adopted" "branch.sh reports the adopted mode"
+assert_eq "$(field BRANCH_MODE "$OUT")" "existing" "branch.sh reports that nothing was realized"
 assert_eq "$(field BRANCH_NAME "$OUT")" "session-branch" "branch.sh echoes the adopted branch"
 assert_eq "$(git rev-parse --abbrev-ref HEAD)" "session-branch" "branch.sh did not switch branches"
 assert_eq "$(git branch --list 'arcus/WT-1-*' | wc -l | tr -d ' ')" "0" "branch.sh created no arcus/ branch"
+assert_eq "$(field BASE_BRANCH "$(bash "$BRANCH" WT-1 --base release/9.x)")" "release/9.x" \
+    "an explicit --base wins over the recorded base on the no-op path"
 
 echo "== set-tasks re-points current_stage past the pre-completed branch stage =="
 # Adoption completes `branch` BEFORE task slots exist, so current_stage advances
@@ -162,6 +164,71 @@ git worktree add -q ../legacy-wt -b legacy-session
 cd "$TMP/legacy-wt"
 OUT="$(bash "$SCAFFOLD" LEG-1)"
 assert_eq "$(field BASE_BRANCH "$OUT")" "master" "falls back to master when there is no origin/HEAD and no main"
+
+echo "== ARCUS_USE_CURRENT_BRANCH is parsed by VALUE, not presence =="
+# `${VAR:+1}` maps every non-empty value to "adopt", so =0 opted IN — and then
+# hard-failed on the base==branch guard. Run this inside the worktree, where
+# auto-detection WOULD adopt, so =0 has to actually override it.
+cd "$TMP/worktree"
+git checkout -q session-branch   # the detached-HEAD case above left it detached
+OUT="$(ARCUS_USE_CURRENT_BRANCH=0 bash "$SCAFFOLD" ENV-1)"
+assert_eq "$(field BRANCH_MODE "$OUT")" "new" "=0 disables adoption instead of forcing it"
+OUT="$(ARCUS_USE_CURRENT_BRANCH=false bash "$SCAFFOLD" ENV-2)"
+assert_eq "$(field BRANCH_MODE "$OUT")" "new" "=false disables adoption"
+OUT="$(ARCUS_USE_CURRENT_BRANCH=yes bash "$SCAFFOLD" ENV-3)"
+assert_eq "$(field BRANCH_MODE "$OUT")" "adopted" "=yes still adopts"
+set +e
+ERR="$(ARCUS_USE_CURRENT_BRANCH=maybe bash "$SCAFFOLD" ENV-4 2>&1)"
+RC=$?
+set -e
+assert_eq "$RC" "1" "an uninterpretable value is rejected, not guessed"
+if printf '%s' "$ERR" | grep -q 'ARCUS_USE_CURRENT_BRANCH'; then
+    pass "the rejection names the offending variable"
+else
+    fail "the rejection names the offending variable (got: $ERR)"
+fi
+
+echo "== an unknowable repo default does not silently disable adoption =="
+# repo_default_branch used to fall back to the CURRENT branch, making
+# `current != default` false by construction — so a worktree never auto-adopted
+# in any repo whose default is neither main nor master.
+cd "$TMP"
+git init -q -b develop odd && cd odd && git commit -q --allow-empty -m init
+git worktree add -q ../odd-wt -b odd-session
+cd "$TMP/odd-wt"
+OUT="$(bash "$SCAFFOLD" ODD-1 --base develop)"
+assert_eq "$(field BRANCH_MODE "$OUT")" "adopted" "a worktree still auto-adopts when the default is unknowable"
+assert_eq "$(field BRANCH_NAME "$OUT")" "odd-session" "adopts the session branch"
+assert_ne "$(jget ODD-1 branch_name)" "$(jget ODD-1 base_branch)" "ODD-1: base_branch != branch_name"
+# With no --base to fall back on, it must ask rather than invent one.
+set +e
+ERR="$(bash "$SCAFFOLD" ODD-2 2>&1)"
+RC=$?
+set -e
+assert_eq "$RC" "1" "an unresolvable base is an error, not a self-targeting PR"
+if printf '%s' "$ERR" | grep -q -- '--base'; then
+    pass "the error tells you to pass --base"
+else
+    fail "the error tells you to pass --base (got: $ERR)"
+fi
+
+echo "== re-running scaffold never asserts a branch it did not record =="
+# checkpoint.sh init is a no-op when the checkpoint exists, so the stored branch
+# fields are NOT ours. Completing the branch stage anyway claimed the STORED
+# branch was realized, Implementation then skipped branch.sh, and closure opened
+# a PR whose base equalled its own head.
+cd "$TMP"
+git init -q -b main reinit && cd reinit && git commit -q --allow-empty -m init
+git worktree add -q ../reinit-wt -b reinit-session
+cd "$TMP/reinit-wt"
+OUT="$(bash "$SCAFFOLD" RE-1 --new-branch)"
+assert_eq "$(field BRANCH_MODE "$OUT")" "new" "first run plans a new branch"
+OUT="$(bash "$SCAFFOLD" RE-1)"   # would auto-adopt if the checkpoint were fresh
+assert_eq "$(field BRANCH_MODE "$OUT")" "existing" "a re-run reports the stored state, not a new decision"
+assert_eq "$(field BRANCH_NAME "$OUT")" "arcus/RE-1-1" "a re-run echoes the PERSISTED branch"
+assert_eq "$(field BASE_BRANCH "$OUT")" "reinit-session" "a re-run echoes the PERSISTED base"
+assert_eq "$(jget RE-1 stages.branch)" "pending" "a re-run does not complete a branch stage it did not record"
+assert_eq "$(jget RE-1 branch_name)" "arcus/RE-1-1" "the stored branch is left untouched"
 
 echo ""
 echo "== Results =="

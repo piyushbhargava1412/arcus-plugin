@@ -63,17 +63,20 @@ if printf '%s\n' "$CHECKPOINT_OUT" | grep -q '^CHECKPOINT_EXISTS: true'; then
         "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{const o=JSON.parse(s);process.stdout.write((o.stages&&o.stages.branch)||'')}catch(e){}})")"
 fi
 
-# ADOPTED BRANCH: scaffold.sh records the current branch and pre-completes the
-# `branch` stage when it adopts a linked worktree's session branch. The branch
-# already exists and is checked out, so there is nothing to realize — creating
-# one here would detach the story from the branch the host bound its PR to.
-# implementation-runner already skips this script in that case; this guard makes
-# a direct invocation safe too.
+# ALREADY-REALIZED BRANCH: the recorded story branch is checked out and the
+# `branch` stage is complete, so there is nothing to realize. Two ways to get
+# here: scaffold.sh adopted a linked worktree's session branch (and pre-completed
+# the stage), or branch.sh already ran and created it. Either way, creating a
+# branch now would cut a redundant arcus/<id>-N off the story branch — and in the
+# adopted case detach the story from the branch the host bound its PR to.
+# implementation-runner already skips this script then; this guard makes a direct
+# invocation safe too. Base precedence matches the realize path below: an
+# explicit --base wins over the recorded one.
 if [ "$HAVE_CHECKPOINT" -eq 1 ] && [ "$BRANCH_STAGE" = "complete" ] \
    && [ -n "$PLANNED_BRANCH" ] && [ "$PLANNED_BRANCH" = "$(git rev-parse --abbrev-ref HEAD)" ]; then
     echo "BRANCH_NAME: $PLANNED_BRANCH"
-    echo "BASE_BRANCH: ${CHECKPOINT_BASE:-$BASE_BRANCH}"
-    echo "BRANCH_MODE: adopted"
+    echo "BASE_BRANCH: ${BASE_BRANCH:-$CHECKPOINT_BASE}"
+    echo "BRANCH_MODE: existing"
     exit 0
 fi
 

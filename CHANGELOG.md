@@ -67,14 +67,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Detection is narrow — a *linked worktree* on a *non-default* branch. A normal checkout that merely
   sits on a feature branch is **not** adopted and keeps basing the story on the current working
   branch, so deliberate stacking is unaffected. New overrides: `--use-current-branch` (or
-  `ARCUS_USE_CURRENT_BRANCH=1`) to adopt anywhere, `--new-branch` to always plan. `scaffold.sh` and
-  `branch.sh` now echo `BRANCH_MODE: new|adopted`.
+  `ARCUS_USE_CURRENT_BRANCH=1`) to adopt anywhere, `--new-branch` (or `ARCUS_USE_CURRENT_BRANCH=0`)
+  to always plan. `scaffold.sh` and `branch.sh` now echo `BRANCH_MODE: new|adopted|existing`.
 
 - **`scripts/lib/git_context.sh`** — a source-safe shared library defining `is_linked_worktree`,
   `repo_default_branch` and `current_branch`, following the same resolution convention as
-  `lib/branch_name.sh`.
+  `lib/branch_name.sh`. `repo_default_branch` reports **unknown** (empty, non-zero) rather than
+  falling back to the current branch: callers ask it precisely in order to compare against — or
+  avoid — the current branch, so answering "the current branch" makes them silently wrong instead of
+  visibly unknown.
 
-- **`scripts/tests/bootstrap.test.sh` and `scripts/tests/scaffold.test.sh`** — 58 new bash
+- **`scripts/tests/bootstrap.test.sh` and `scripts/tests/scaffold.test.sh`** — 75 new bash
   assertions covering worktree staging, the stray-`ARCUS_HOME` trap, subdirectory invocation,
   loud-failure paths, both branch modes, every override flag, the default-branch fallback chain, and
   the invariant that an adopted branch is never its own base.

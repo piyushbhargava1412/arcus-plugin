@@ -56,8 +56,17 @@ current_branch() {
 #   Echoes the repository's default branch. Tries, in order:
 #     1. origin/HEAD  — authoritative when set, but frequently absent on clones
 #                       made with --single-branch and on `git init` repos;
-#     2. a local or remote `main`, then `master`;
-#     3. the current branch, as a last resort so callers always get a name.
+#     2. a local or remote `main`, then `master`.
+#
+#   Echoes NOTHING and returns 1 when the default is genuinely unknowable
+#   (`git init -b develop`, a remote wired up by hand with `git remote add`
+#   rather than `git clone`, any repo whose default is not main/master).
+#
+#   It deliberately does NOT fall back to the current branch. Callers ask this
+#   question precisely to compare the current branch against the default or to
+#   pick a base that is not the current branch; answering "the current branch"
+#   makes both of those silently wrong instead of visibly unknown. Callers must
+#   handle the empty answer explicitly.
 repo_default_branch() {
     local ref candidate
     ref="$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null || true)"
@@ -72,5 +81,5 @@ repo_default_branch() {
             return 0
         fi
     done
-    current_branch
+    return 1
 }

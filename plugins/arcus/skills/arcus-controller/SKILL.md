@@ -124,7 +124,7 @@ After it has run, `.arcus/bin/` is authoritative and `.arcus/env` carries `ARCUS
 |--------|-------|---------|
 | `"$ARCUS_HOME"/scripts/locate.sh` | Prints the resolved `ARCUS_HOME` | **Run first, every run.** Finds the newest install, re-stages `.arcus/bin/`, writes `.arcus/env` |
 | `.arcus/bin/extract_story_id.sh <story.md>` | Outputs `STORY_ID: xxx` | Extract story identifier |
-| `.arcus/bin/scaffold.sh <story.md> [--mode afk] [--use-current-branch\|--new-branch] [--base <b>]` | Creates folder + `story.md` + inits checkpoint | Workspace scaffold; records the **planned** branch and echoes `BRANCH_MODE: new\|adopted` |
+| `.arcus/bin/scaffold.sh <story.md> [--mode afk] [--use-current-branch\|--new-branch] [--base <b>]` | Creates folder + `story.md` + inits checkpoint | Workspace scaffold; records the **planned** branch and echoes `BRANCH_MODE: new\|adopted\|existing` |
 | `.arcus/bin/branch.sh <story-id>` | Creates the git branch from the planned name | Deferred branch realization (called by `implementation-runner`, not by Stage 0); a **no-op** when the branch was adopted |
 | `.arcus/bin/commit.sh <story-id> <message>` | Stages + commits | Conventional commit |
 | `.arcus/bin/pr.sh <story-id>` | Push + create PR (or update if one already exists for the branch) | Closure |
@@ -174,7 +174,7 @@ gate is pending a "yes"/"proceed", distinct from a stage genuinely being incompl
    **not re-inferred** on resume; if scaffold cannot set it, call
    `.arcus/bin/checkpoint.sh set-mode <STORY_ID> <gated|afk>`.)
 
-   `BRANCH_MODE` tells you which of two things just happened:
+   `BRANCH_MODE` tells you which of three things just happened:
    - **`new`** (the default) — a branch name was *planned* and **no git branch created**. Realization
      is deferred to the `branch` stage at the start of Implementation.
    - **`adopted`** — the workspace is a linked git **worktree** already checked out on a dedicated
@@ -182,9 +182,15 @@ gate is pending a "yes"/"proceed", distinct from a stage genuinely being incompl
      resolves to the repo default, and the `branch` stage is already `complete`. Nothing to create.
      Do not plan around a `branch` stage here — cutting a second branch off the session branch would
      strand the work from the PR the host bound to it.
+   - **`existing`** — a checkpoint for this story was already on disk, so scaffold wrote nothing and
+     the `BRANCH_NAME`/`BASE_BRANCH` it echoed are the **stored** ones, not a fresh decision. You
+     should not normally see this: an existing checkpoint means resume, so follow the Resumption
+     Protocol rather than treating this as a scaffold.
 
    Override the detection with `--new-branch` (always plan a fresh `arcus/<id>-N`) or
    `--use-current-branch` (adopt even outside a worktree). Neither is needed in normal operation.
+   If the repository default cannot be resolved (no `origin/HEAD`, no `main`/`master`), the adopt
+   path **fails** and asks for `--base` rather than guessing a base that equals the branch.
 5. **Mark scaffold complete**: `.arcus/bin/checkpoint.sh complete <STORY_ID> scaffold`.
 6. **Output**: in autonomous mode emit `[AFK] Story: <STORY_ID>`; in interactive mode emit
    `Story: <STORY_ID> (interactive)`. Then flow into the Brainstorm stage.

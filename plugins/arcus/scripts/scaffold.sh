@@ -13,6 +13,11 @@
 #              that case the current branch IS the story branch: it is recorded
 #              as branch_name and the `branch` stage is pre-completed, so
 #              Implementation skips branch.sh entirely.
+#
+#              Reports its decision as BRANCH_MODE: new | adopted | existing.
+#              `existing` means a checkpoint was already on disk, so nothing was
+#              decided or written and the echoed branch fields are the STORED
+#              ones — that is a resume, not a scaffold.
 # USAGE: scripts/scaffold.sh <STORY_FILE|STORY_ID> [--base <branch>] [--mode <gated|afk>]
 #                            [--use-current-branch | --new-branch]
 # ==============================================================================
@@ -23,9 +28,19 @@ ARG1="$1"
 BASE_BRANCH=""
 MODE=""
 # "" = auto-detect (adopt only inside a linked worktree), 1 = always adopt,
-# 0 = never adopt. ARCUS_USE_CURRENT_BRANCH=1 is the env-var equivalent of the
-# --use-current-branch flag, for callers that cannot pass argv.
-ADOPT="${ARCUS_USE_CURRENT_BRANCH:+1}"
+# 0 = never adopt. ARCUS_USE_CURRENT_BRANCH is the env-var equivalent of the
+# --use-current-branch / --new-branch flags, for callers that cannot pass argv.
+# Its VALUE is parsed, not merely its presence: `=0` must mean "never adopt",
+# not "adopt", or opting out via the env var would do the opposite of what it says.
+case "${ARCUS_USE_CURRENT_BRANCH:-}" in
+    1|true|yes|TRUE|YES) ADOPT=1 ;;
+    0|false|no|FALSE|NO) ADOPT=0 ;;
+    "")                  ADOPT="" ;;
+    *)
+        echo "[ERROR] ARCUS_USE_CURRENT_BRANCH must be 1/true/yes or 0/false/no (got '$ARCUS_USE_CURRENT_BRANCH')." >&2
+        exit 1
+        ;;
+esac
 
 if [ -z "$ARG1" ]; then
     echo "[ERROR] Usage: scaffold.sh <STORY_FILE|STORY_ID> [--base <branch>] [--mode <gated|afk>] [--use-current-branch|--new-branch]" >&2
@@ -88,10 +103,17 @@ fi
 # merely happens to sit on a feature branch is NOT adopted; say so explicitly
 # with --use-current-branch if that is what you want.
 CURRENT_BRANCH="$(current_branch)"
-DEFAULT_BRANCH="$(repo_default_branch)"
+# May be empty: the default is not always knowable (no origin/HEAD, no
+# main/master). Empty means UNKNOWN, never "the current branch" — see the lib.
+DEFAULT_BRANCH="$(repo_default_branch || true)"
 
 if [ -z "$ADOPT" ]; then
-    if [ -n "$CURRENT_BRANCH" ] && [ "$CURRENT_BRANCH" != "$DEFAULT_BRANCH" ] && is_linked_worktree; then
+    # An unknown default cannot rule adoption out: the whole point of the check
+    # is "is this branch incidental?", and if we cannot name the default branch
+    # we fall back to the linked-worktree signal alone, which is the strong one.
+    if [ -n "$CURRENT_BRANCH" ] \
+    && { [ -z "$DEFAULT_BRANCH" ] || [ "$CURRENT_BRANCH" != "$DEFAULT_BRANCH" ]; } \
+    && is_linked_worktree; then
         ADOPT=1
     else
         ADOPT=0
@@ -112,6 +134,13 @@ if [ "$ADOPT" = "1" ]; then
     # the repo default rather than the current HEAD used by the planning path.
     if [ -z "$BASE_BRANCH" ]; then
         BASE_BRANCH="${ARCUS_BASE_BRANCH:-$DEFAULT_BRANCH}"
+    fi
+    if [ -z "$BASE_BRANCH" ]; then
+        echo "[ERROR] Cannot resolve a base branch for adopted branch '$BRANCH_NAME'." >&2
+        echo "        origin/HEAD is unset and neither main nor master exists, so the" >&2
+        echo "        repository default is unknown. Pass --base <branch> (or set" >&2
+        echo "        ARCUS_BASE_BRANCH) to name the branch this PR should target." >&2
+        exit 1
     fi
     if [ "$BASE_BRANCH" = "$BRANCH_NAME" ]; then
         echo "[ERROR] Adopted branch '$BRANCH_NAME' cannot also be its own base branch." >&2
@@ -153,13 +182,37 @@ if ! grep -q "^\.arcus" .gitignore 2>/dev/null; then
 fi
 
 # Initialize the checkpoint with the PLANNED branch fields (creates NO branch).
-bash "$_checkpoint" init "$STORY_ID" "$BRANCH_NAME" "$BASE_BRANCH" "$MODE"
+# `init` is a no-op when the checkpoint already exists — it prints the stored
+# document instead of writing ours — so capture the result rather than assuming
+# our computed fields were persisted.
+INIT_OUT="$(bash "$_checkpoint" init "$STORY_ID" "$BRANCH_NAME" "$BASE_BRANCH" "$MODE")"
+printf '%s\n' "$INIT_OUT"
 
-# On the adopt path the branch already exists and is checked out, so the `branch`
-# stage has nothing left to do — pre-complete it. This is what keeps branch.sh
-# from cutting a second branch off the session branch during Implementation.
-if [ "$BRANCH_MODE" = "adopted" ]; then
-    bash "$_checkpoint" complete "$STORY_ID" branch >/dev/null
+if printf '%s\n' "$INIT_OUT" | grep -q '^CHECKPOINT_EXISTS: true'; then
+    # The stored checkpoint wins: nothing we computed above was written. Echoing
+    # our values would describe a state that does not exist, and pre-completing
+    # the `branch` stage would assert that the STORED branch_name was realized
+    # when it may name a branch that was never created — Implementation would
+    # then skip branch.sh and closure would open a PR against a branch equal to
+    # its own head. Report what is actually persisted and touch nothing.
+    _persisted() {
+        printf '%s\n' "$INIT_OUT" \
+            | sed -n "s/.*\"$1\"[[:space:]]*:[[:space:]]*\"\([^\"]*\)\".*/\1/p" \
+            | head -1
+    }
+    STORED_BRANCH="$(_persisted branch_name)"
+    STORED_BASE="$(_persisted base_branch)"
+    [ -n "$STORED_BRANCH" ] && BRANCH_NAME="$STORED_BRANCH"
+    [ -n "$STORED_BASE" ] && BASE_BRANCH="$STORED_BASE"
+    BRANCH_MODE="existing"
+else
+    # On the adopt path the branch already exists and is checked out, so the
+    # `branch` stage has nothing left to do — pre-complete it. This is what keeps
+    # branch.sh from cutting a second branch off the session branch during
+    # Implementation. Only reachable when init actually wrote our branch fields.
+    if [ "$BRANCH_MODE" = "adopted" ]; then
+        bash "$_checkpoint" complete "$STORY_ID" branch >/dev/null
+    fi
 fi
 
 # Output for the calling agent to parse.

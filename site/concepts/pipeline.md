@@ -517,12 +517,15 @@ instead of planning one:
 
 - `branch_name` = the current branch;
 - `base_branch` = the repository default (`origin/HEAD`, falling back to `main` then `master`) — the
-  adopted branch cannot be its own base without producing a self-targeting PR;
+  adopted branch cannot be its own base without producing a self-targeting PR. If none of those
+  resolve, scaffold **fails and asks for `--base`** rather than inventing one;
 - the `branch` stage is marked `complete`, so Implementation skips `branch.sh` entirely (and
   `branch.sh` no-ops if called directly anyway).
 
 `scaffold.sh` reports which path it took as `BRANCH_MODE: new|adopted`. Override with `--new-branch`
-to force planning, or `--use-current-branch` to force adoption outside a worktree.
+to force planning, or `--use-current-branch` to force adoption outside a worktree. A third value,
+`existing`, means a checkpoint was already on disk so scaffold decided nothing and echoed the stored
+branch fields — that is a resume, not a scaffold.
 
 ---
 
