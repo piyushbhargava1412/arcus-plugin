@@ -48,6 +48,8 @@ found, original code preserved."
 |-------|----------|------|-------------|
 | `file_set` / `change_set` | yes | list of file paths or diff | The changed files to simplify |
 | `test_command` | yes | command string | How to verify — the command that must stay green before and after mutation |
+| `task_diff` | no | git diff | What **this task** changed. When supplied it, not `file_set`, defines the mutable region: only code inside these hunks (and the symbols enclosing them) may be touched |
+| `excluded_scope` | no | markdown or text | The grounded spec's **Excluded** section — files, symbols or behaviours the story explicitly put out of scope |
 | `repo_conventions` | no | text / artifact refs | Simplicity/style conventions; read from repository convention artifacts at runtime if not supplied |
 | `acceptance_criteria` | no | markdown or text | The DoD the simplification must not violate (guards test pruning) |
 
@@ -69,14 +71,42 @@ found, original code preserved."
   where to write; pipeline callers set the path. When dispatched by the coordinator, the result is
   returned inline (no artifact required).
 
+## Mutable Region
+
+**A file being in `file_set` does not make all of it mutable.** `file_set` names the files this task
+*touched*; almost every one of them also contains code that predates the task. Simplifying that
+pre-existing code is out of scope even though the tests stay green — it silently widens the blast
+radius of a commit scoped to something else, and buries an unrelated change in an unrelated commit's
+audit trail.
+
+The mutable region is therefore the **intersection** of:
+
+1. the files in `file_set`, **and**
+2. the code this task **added or modified** — the hunks in `task_diff` and the enclosing symbols
+   (function / method / class) of those hunks. When `task_diff` is not supplied, derive it from the
+   task's own uncommitted or just-committed changes; if you cannot establish it, treat only code you
+   can positively attribute to this task as mutable and leave the rest alone.
+
+Everything else is **read-only context**: read it to understand the change, never edit it.
+
+`excluded_scope` narrows the region further. Anything it names — a file, a class, a method, a
+behaviour — is off-limits **even when it sits inside the mutable region**. The story author put it
+out of scope deliberately; a passing test suite is not evidence that they were wrong.
+
+When you spot a genuine simplification outside the mutable region, **report it, do not apply it**:
+add a `Deferred:` note to your summary line naming the location and the opportunity. That preserves
+the signal for a follow-up story without contaminating this task's commit.
+
 ## Simplification Rules
 
-Apply simplifications that **reduce cognitive complexity without changing observable behaviour**:
+Apply simplifications that **reduce cognitive complexity without changing observable behaviour**,
+confined to the **Mutable Region** defined above:
 
 - Extract repeated logic into well-named helpers.
 - Flatten unnecessary nesting (e.g., early returns, guard clauses).
 - Improve naming for clarity and consistency with surrounding code.
-- Remove dead code that is provably unreachable or unused within the changed scope.
+- Remove dead code that is provably unreachable or unused **and that this task added or modified** —
+  not pre-existing dead code that merely happens to live in a touched file.
 - Consolidate related logic that is artificially split across multiple locations.
 
 **Convention adherence:** follow repository-specific conventions sourced at runtime from
@@ -96,16 +126,22 @@ or framework.
 - Change observable behaviour, public interfaces, or return values.
 - Add new features or expand scope beyond what the change set implemented.
 - Modify files outside the provided `file_set`.
+- Modify code **inside** an in-scope file that this task did not add or modify (see **Mutable Region**).
+- Modify anything named in `excluded_scope`, under any circumstances. Green tests do not override an
+  explicit spec exclusion.
 
 ## Mechanics — Simplify → Verify → SIMPLIFIED/REVERTED
 
 **Step 1 — Read inputs**
-Load the `file_set` files. Read conventions from `repo_conventions` (or repository artifacts if not
-supplied). Load `acceptance_criteria` if provided.
+Load the `file_set` files. Establish the **Mutable Region** from `task_diff` (or, if absent, from the
+task's own changes) and note anything `excluded_scope` puts off-limits. Read conventions from
+`repo_conventions` (or repository artifacts if not supplied). Load `acceptance_criteria` if provided.
 
 **Step 2 — Identify opportunities**
 List simplification candidates briefly (one line each) before applying any mutations. Do not apply
 changes that cannot be justified against a rule in **Simplification Rules** above.
+Then **filter by region**: drop every candidate that falls outside the Mutable Region or touches
+`excluded_scope`, and carry the dropped ones forward as `Deferred:` notes for the summary line.
 If **no** candidate survives this filter, this is a **no-op**: make no edits, skip Steps 3–6, and end
 your response with a final line beginning `REVERTED` and the canonical reason
 `no simplification candidates identified; code left unchanged.`
@@ -136,4 +172,6 @@ the final line — automated callers parse it.
 - **No self-certification of spec compliance** — spec compliance is owned by a separate spec-compliance step.
 - **Read conventions at runtime** — never hard-code language or framework rules.
 - **Atomic revert** — on RED, every mutation is rolled back; the working tree is left untouched.
-- **Scope-bound** — only the provided `file_set` may be modified.
+- **Scope-bound** — only the **Mutable Region** may be modified: in-scope files *and* code this task
+  added or modified, minus anything in `excluded_scope`. Out-of-region opportunities are reported as
+  `Deferred:` notes, never applied.

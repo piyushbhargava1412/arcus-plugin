@@ -156,8 +156,36 @@ assert_eq "$ORDER" \
     "scaffold context_pack spec_finalizer plan test_plan branch task_1 task_2 task_3 code_review context_sync closure" \
     "task_1..N are spliced between branch and code_review, not appended after closure"
 
+echo "== set-tasks re-points current_stage at the spliced-in work =="
+# Task slots are seeded only after the plan is compiled, so until then `complete`
+# advances current_stage over a stage list that has no task_N keys in it. When the
+# `branch` stage is completed early — which scaffold.sh does whenever it adopts the
+# session branch of a linked worktree — current_stage lands on `code_review` before a
+# single task exists. Splicing tasks in has to pull it back, or the checkpoint claims
+# the pipeline is at review while every task is still pending.
+rm -rf .arcus
+bash "$CHECKPOINT" init "$STORY_ID" "arcus/$STORY_ID-1" "main" >/dev/null
+for stage in scaffold context_pack spec_finalizer plan test_plan branch; do
+    bash "$CHECKPOINT" complete "$STORY_ID" "$stage" >/dev/null
+done
+assert_eq "$(jget current_stage)" "code_review" "current_stage overshoots to code_review before tasks are seeded"
+bash "$CHECKPOINT" set-tasks "$STORY_ID" 2 >/dev/null
+assert_eq "$(jget current_stage)" "task_1" "set-tasks re-points current_stage at the first task"
+assert_eq "$(jget current_status)" "IN_PROGRESS" "set-tasks leaves current_status IN_PROGRESS"
+
+# Re-seeding must not disturb a checkpoint that has genuinely moved past the tasks.
+bash "$CHECKPOINT" complete "$STORY_ID" task_1 >/dev/null
+bash "$CHECKPOINT" complete "$STORY_ID" task_2 >/dev/null
+bash "$CHECKPOINT" set-tasks "$STORY_ID" 2 >/dev/null
+assert_eq "$(jget current_stage)" "code_review" "set-tasks leaves current_stage alone when every task is complete"
+
 echo "== complete advances current_stage to the next incomplete stage =="
 # current_stage means "where the pipeline IS", never "what just finished".
+# Restore the precondition the block above consumed: a fresh checkpoint carrying
+# three seeded task slots.
+rm -rf .arcus
+bash "$CHECKPOINT" init "$STORY_ID" "arcus/$STORY_ID-1" "main" >/dev/null
+bash "$CHECKPOINT" set-tasks "$STORY_ID" 3 >/dev/null
 bash "$CHECKPOINT" complete "$STORY_ID" scaffold >/dev/null
 assert_eq "$(jget current_stage)" "context_pack" "completing scaffold advances current_stage to context_pack"
 bash "$CHECKPOINT" complete "$STORY_ID" context_pack >/dev/null

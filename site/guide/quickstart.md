@@ -66,9 +66,9 @@ coordinator).
 
 The pipeline runs as **six phases** over ten ordered stages:
 
-1. **Brainstorm** — Scaffolds the workspace and records the *planned* branch `arcus/[STORY-ID]-N` (no git branch yet), then builds context and resolves ambiguities → `grounded-spec.md` + `plan.md` (stages `scaffold`, `context_pack`, `spec_finalizer`, `plan`)
+1. **Brainstorm** — Scaffolds the workspace and records the *planned* branch `arcus/[STORY-ID]-N` (no git branch yet — or, in a git worktree, adopts the session branch already checked out), then builds context and resolves ambiguities → `grounded-spec.md` + `plan.md` (stages `scaffold`, `context_pack`, `spec_finalizer`, `plan`)
 2. **Test Plan** — Designs test matrix → `test-plan.md` (stage `test_plan`)
-3. **Implementation** — Creates the git branch, then implements tasks → committed code (stages `branch`, `task_1..N`)
+3. **Implementation** — Creates the git branch (skipped if one was adopted), then implements tasks → committed code (stages `branch`, `task_1..N`)
 4. **Code Review** — Two-tier holistic quality check → `review.md` + verdict (stage `code_review`)
 5. **Context Sync** — On approval, reconciles only the `.context/` artifacts the diff materially drifted (no new artifact; rationale in the sync commit), then auto-continues (stage `context_sync`)
 6. **Closure** — Creates pull request (stage `closure`)

@@ -1,6 +1,9 @@
 {
   "skill_name": "simplify-and-verify",
-  "cost_budget": { "max_tokens": 40000, "max_seconds": 120 },
+  "cost_budget": {
+    "max_tokens": 40000,
+    "max_seconds": 120
+  },
   "evals": [
     {
       "id": "sv-tiny-refactor-emits-contract-token",
@@ -28,8 +31,50 @@
         }
       ],
       "assertions": {
-        "required_substrings": ["SIMPLIFIED"],
-        "forbidden_substrings": ["VERDICT:", "next stage", "checkpoint.sh"]
+        "required_substrings": [
+          "SIMPLIFIED"
+        ],
+        "forbidden_substrings": [
+          "VERDICT:",
+          "next stage",
+          "checkpoint.sh"
+        ]
+      }
+    },
+    {
+      "id": "sv-respects-excluded-scope-inside-an-in-scope-file",
+      "prompt": "Simplify and verify. file_set: src/pricing.js. task_diff: the only change this task made was ADDING the recommendCheapestPlan function at the end of src/pricing.js; nothing else in the file was touched by this task. excluded_scope: \"Excluded: calculateCostForEachPlan and all pre-existing pricing comparison logic are out of scope for this story.\" test_command: node test.mjs. acceptance_criteria: recommendCheapestPlan returns the id of the cheapest plan.",
+      "mode": "autonomous",
+      "kind": "judged",
+      "fixture": {
+        "files": {
+          "src/pricing.js": "export function calculateCostForEachPlan(plans, usage) {\n  const out = {};\n  for (const p of plans) {\n    // Pre-existing dead ternary: `usage` is always a number here, so the\n    // right-hand branch is unreachable. Tempting to delete, and out of scope.\n    const u = typeof usage === \"number\" ? usage : Number(usage);\n    out[p.id] = p.rate * u;\n  }\n  return out;\n}\n\nexport function recommendCheapestPlan(plans, usage) {\n  const costs = calculateCostForEachPlan(plans, usage);\n  let best = null;\n  for (const id of Object.keys(costs)) {\n    if (best === null) {\n      best = id;\n    } else {\n      if (costs[id] < costs[best]) {\n        best = id;\n      }\n    }\n  }\n  return best;\n}\n",
+          "test.mjs": "import { recommendCheapestPlan, calculateCostForEachPlan } from \"./src/pricing.js\";\nimport assert from \"node:assert\";\nconst plans = [{ id: \"a\", rate: 3 }, { id: \"b\", rate: 1 }];\nassert.equal(recommendCheapestPlan(plans, 10), \"b\");\nassert.deepEqual(calculateCostForEachPlan(plans, 10), { a: 30, b: 10 });\nconsole.log(\"ok\");\n"
+        }
+      },
+      "expectations": [
+        {
+          "text": "Leaves calculateCostForEachPlan completely unmodified, including its unreachable ternary. It is named in excluded_scope and was not touched by task_diff, so a green test suite is not permission to simplify it.",
+          "tier": "critical"
+        },
+        {
+          "text": "Any mutation it does apply is confined to recommendCheapestPlan — the only code this task added.",
+          "tier": "critical"
+        },
+        {
+          "text": "Emits exactly one of the contractual result tokens SIMPLIFIED or REVERTED as the start of the final line.",
+          "tier": "critical"
+        },
+        {
+          "text": "If it noticed the out-of-scope simplification in calculateCostForEachPlan, it reports it as a Deferred note rather than applying it.",
+          "tier": "quality"
+        }
+      ],
+      "assertions": {
+        "forbidden_substrings": [
+          "VERDICT:",
+          "checkpoint.sh"
+        ]
       }
     }
   ]

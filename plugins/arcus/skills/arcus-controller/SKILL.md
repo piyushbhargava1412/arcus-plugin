@@ -124,8 +124,8 @@ After it has run, `.arcus/bin/` is authoritative and `.arcus/env` carries `ARCUS
 |--------|-------|---------|
 | `"$ARCUS_HOME"/scripts/locate.sh` | Prints the resolved `ARCUS_HOME` | **Run first, every run.** Finds the newest install, re-stages `.arcus/bin/`, writes `.arcus/env` |
 | `.arcus/bin/extract_story_id.sh <story.md>` | Outputs `STORY_ID: xxx` | Extract story identifier |
-| `.arcus/bin/scaffold.sh <story.md> [--mode afk]` | Creates folder + `story.md` + inits checkpoint | Workspace scaffold; records the **planned** branch, creates **no** git branch |
-| `.arcus/bin/branch.sh <story-id>` | Creates the git branch from the planned name | Deferred branch realization (called by `implementation-runner`, not by Stage 0) |
+| `.arcus/bin/scaffold.sh <story.md> [--mode afk] [--use-current-branch\|--new-branch] [--base <b>]` | Creates folder + `story.md` + inits checkpoint | Workspace scaffold; records the **planned** branch and echoes `BRANCH_MODE: new\|adopted` |
+| `.arcus/bin/branch.sh <story-id>` | Creates the git branch from the planned name | Deferred branch realization (called by `implementation-runner`, not by Stage 0); a **no-op** when the branch was adopted |
 | `.arcus/bin/commit.sh <story-id> <message>` | Stages + commits | Conventional commit |
 | `.arcus/bin/pr.sh <story-id>` | Push + create PR (or update if one already exists for the branch) | Closure |
 | `.arcus/bin/checkpoint.sh <action> <story-id> [args]` | Manage state | init / read / complete / set-status / reopen / set-mode / set-branch / **set-tasks** / **await-handoff** / **fail** |
@@ -137,9 +137,11 @@ Resumption Protocol checks first, before ever walking the per-stage statuses.
 
 The `set-branch` action records a bumped/realized branch name onto the checkpoint; `branch.sh`
 calls it itself when a collision forces a name change. `set-tasks <N>` seeds `task_1..task_N` as
-`pending` (only creating keys that don't already exist) and prunes any still-`pending` `task_N` keys
-above `N` — call it once, right after the plan is compiled, so the checkpoint never carries phantom
-task slots a resume could mistakenly try to run. `await-handoff` sets `current_status` to
+`pending` (only creating keys that don't already exist), prunes any still-`pending` `task_N` keys
+above `N`, and **re-points `current_stage`** at the first incomplete stage — call it once, right
+after the plan is compiled, so the checkpoint never carries phantom task slots a resume could
+mistakenly try to run, and never names a later stage than the work it just spliced in.
+`await-handoff` sets `current_status` to
 `AWAITING_HANDOFF` without touching any per-stage status — it is the durable marker that a handoff
 gate is pending a "yes"/"proceed", distinct from a stage genuinely being incomplete. `fail` sets
 `current_status` to `FAILED` and records `{stage, reason}` under `failure`.
@@ -167,11 +169,22 @@ gate is pending a "yes"/"proceed", distinct from a stage genuinely being incompl
    autonomous → checkpoint value `afk`.
 4. **Scaffold the workspace**: run `.arcus/bin/scaffold.sh <STORY_FILE> --mode <gated|afk>`. This
    creates `.arcus/specs/<STORY_ID>/`, copies `story.md`, and initializes the checkpoint with the
-   **planned** `branch_name`/`base_branch` and the persisted `mode`. It creates **no git branch** —
-   branch creation is deferred to the `branch` stage at the start of Implementation. Capture
-   `STORY_ID` and the planned `BRANCH_NAME`/`BASE_BRANCH` from its output. (The mode is persisted
-   here and **not re-inferred** on resume; if scaffold cannot set it, call
+   **planned** `branch_name`/`base_branch` and the persisted `mode`. Capture `STORY_ID`,
+   `BRANCH_NAME`, `BASE_BRANCH` and `BRANCH_MODE` from its output. (The mode is persisted here and
+   **not re-inferred** on resume; if scaffold cannot set it, call
    `.arcus/bin/checkpoint.sh set-mode <STORY_ID> <gated|afk>`.)
+
+   `BRANCH_MODE` tells you which of two things just happened:
+   - **`new`** (the default) — a branch name was *planned* and **no git branch created**. Realization
+     is deferred to the `branch` stage at the start of Implementation.
+   - **`adopted`** — the workspace is a linked git **worktree** already checked out on a dedicated
+     session branch, so that branch **is** the story branch: it is recorded as `branch_name`, the base
+     resolves to the repo default, and the `branch` stage is already `complete`. Nothing to create.
+     Do not plan around a `branch` stage here — cutting a second branch off the session branch would
+     strand the work from the PR the host bound to it.
+
+   Override the detection with `--new-branch` (always plan a fresh `arcus/<id>-N`) or
+   `--use-current-branch` (adopt even outside a worktree). Neither is needed in normal operation.
 5. **Mark scaffold complete**: `.arcus/bin/checkpoint.sh complete <STORY_ID> scaffold`.
 6. **Output**: in autonomous mode emit `[AFK] Story: <STORY_ID>`; in interactive mode emit
    `Story: <STORY_ID> (interactive)`. Then flow into the Brainstorm stage.
