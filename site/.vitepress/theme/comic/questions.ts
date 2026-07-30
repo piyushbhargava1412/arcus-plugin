@@ -81,7 +81,7 @@ export const QUIZ: QuizQuestion[] = [
     a: 1, w: 'Happy-path functional coverage, boundary/edge conditions, and validation/exception error paths.' },
   { d: 'medium', q: 'Exactly when is the real git branch created?',
     o: ['On day one, before Brainstorm', 'At the start of Implementation, not on day one', 'At Code Review, once approved', 'At Closure, right before the PR'],
-    a: 1, w: 'Deferred branch creation: day one only plans the name; Lucie realizes it at the start of Implementation, re-checking for collisions.' },
+    a: 1, w: 'Deferred branch creation: day one only plans the name; Lucie realizes it at the start of Implementation, re-checking for collisions. The one exception is a git worktree — there the session branch already exists, so day one adopts it and the branch stage is done before Implementation begins.' },
   { d: 'medium', q: 'What happens to the per-ticket spec-compliance check while Diana is implementing?',
     o: ['It hard-blocks the ticket immediately', 'It is advisory only — unresolved issues carry forward to Steffi’s review', 'It is skipped entirely', 'It replaces Steffi’s review'],
     a: 1, w: 'Per-ticket spec compliance is lightweight and advisory; it does not hard-block, unlike the holistic review pass.' },

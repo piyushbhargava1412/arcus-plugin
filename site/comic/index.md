@@ -504,7 +504,7 @@ layout: page
     </svg>
   </template>
   <template #talk>
-    <TalkBubble who="Lucie">Day one only <em>planned</em> the branch name — no git branch existed yet. Only now, at the start of Implementation, do I actually create <code>arcus/&lt;STORY&gt;-N</code>, re-checking for name collisions since day one. Planning stays entirely on the base branch; we only branch once there's real code to commit.</TalkBubble>
+    <TalkBubble who="Lucie">Day one only <em>planned</em> the branch name — no git branch existed yet. Only now, at the start of Implementation, do I actually create <code>arcus/&lt;STORY&gt;-N</code>, re-checking for name collisions since day one. Planning stays entirely on the base branch; we only branch once there's real code to commit. Unless the room I woke up in already <em>had</em> a door — see the card below.</TalkBubble>
   </template>
 </ComicPanel>
 
@@ -537,6 +537,10 @@ layout: page
 
 <FactCard :span="12" tip=".5deg" tease="If no room reviews a ticket's code quality, who does?">
   <strong>Nobody — on purpose, not yet.</strong> Per-ticket work only gets one <em>advisory</em> spec-compliance pass; unresolved issues carry forward rather than hard-blocking. Full quality is owned <strong>holistically</strong> by Steffi, over the <em>whole</em> branch diff — because the Dianas never saw each other's work, only the finished change can be judged as a whole.
+</FactCard>
+
+<FactCard :span="12" tip="-.4deg" tease="What if the room already has a door?">
+  <strong>Then Lucie uses it instead of cutting a new one.</strong> A <em>git worktree</em> is a workspace your session host already checked out on a dedicated branch — and it has usually bound the pull request to that branch. Installing <code>arcus/&lt;STORY&gt;-N</code> next to it would leave the story in a room nobody is watching. So on day one Lucie <strong>adopts</strong> the branch she woke up on, points the base at the repo default (a door can't open onto itself), and marks the branch stage done before Implementation ever starts. <code>--new-branch</code> overrides her if you really did want a new door.
 </FactCard>
 
 </ComicStrip>

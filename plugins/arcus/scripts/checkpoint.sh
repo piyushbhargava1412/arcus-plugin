@@ -26,8 +26,10 @@
 #
 # `current_stage` is the stage the pipeline is AT — never the last one that finished.
 # `complete` advances it to the next stage still to be done; `set-status` points it at
-# whatever stage it just touched. Key order in `stages` IS the pipeline order, which is
-# why `set-tasks` splices task_1..N in at their canonical position rather than appending.
+# whatever stage it just touched; `set-tasks` recomputes it, since splicing task slots in
+# can insert work BEFORE the stage it currently names. Key order in `stages` IS the
+# pipeline order, which is why `set-tasks` splices task_1..N in at their canonical
+# position rather than appending.
 # ==============================================================================
 
 set -eo pipefail
@@ -167,6 +169,21 @@ run_mutation() {
                 }
                 if (!inserted) Object.assign(rebuilt, tasks); // no code_review key (legacy)
                 cp.stages = rebuilt;
+
+                // Re-point `current_stage`. Task slots are seeded AFTER the plan
+                // is compiled, so before this call the stages object had no
+                // task_N keys at all — and a `branch` stage completed earlier
+                // (which scaffold.sh does whenever it adopts the session branch
+                // of a linked worktree) would have advanced current_stage
+                // straight past them to `code_review`. Splicing the tasks in
+                // without recomputing leaves the checkpoint claiming the
+                // pipeline is at review before a single task exists.
+                const keys = Object.keys(cp.stages);
+                const next = keys.find(k => cp.stages[k] !== "complete");
+                cp.current_stage = next || keys[keys.length - 1];
+                if (cp.current_status !== "FAILED" && cp.current_status !== "AWAITING_HANDOFF") {
+                    cp.current_status = next ? "IN_PROGRESS" : "COMPLETE";
+                }
                 break;
             }
             case "fail": {

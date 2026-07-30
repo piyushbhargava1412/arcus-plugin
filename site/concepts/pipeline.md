@@ -110,6 +110,7 @@ end-to-end.
         <li>Copies story file to the workspace</li>
         <li>Initializes <code>session-checkpoint.json</code> recording the <strong>planned</strong> <code>branch_name</code> / <code>base_branch</code></li>
         <li><strong>No git branch is created</strong> — branch creation is deferred to the <code>branch</code> stage at the start of Implementation. See [Deferred Branch Creation](#deferred-branch-creation)</li>
+        <li><strong>Exception — linked worktrees:</strong> if the workspace is a git worktree already on a dedicated session branch, that branch is <em>adopted</em> as the story branch (base resolves to the repo default) and the <code>branch</code> stage is pre-completed</li>
       </ul>
     </td>
     <td>
@@ -261,7 +262,7 @@ end-to-end.
   <tr>
     <td>
       <ul>
-        <li><strong>Branch stage (<code>branch</code>):</strong> realizes the git branch that was only <em>planned</em> at scaffold — <code>branch.sh</code> creates <code>arcus/[STORY-ID]-N</code> from the base, bumps the index on collision, and calls <code>checkpoint.sh set-branch</code> if the realized name differs from the plan</li>
+        <li><strong>Branch stage (<code>branch</code>):</strong> realizes the git branch that was only <em>planned</em> at scaffold — <code>branch.sh</code> creates <code>arcus/[STORY-ID]-N</code> from the base, bumps the index on collision, and calls <code>checkpoint.sh set-branch</code> if the realized name differs from the plan. <strong>Skipped</strong> when scaffold adopted a worktree's session branch (the stage is already <code>complete</code>)</li>
         <li>Parses <code>### Task N:</code> headings from <code>plan.md</code> (stage keys <code>task_1</code>..<code>task_N</code>)</li>
         <li>Dispatches each task to an isolated subagent. Each task includes:
           <ul>
@@ -503,6 +504,28 @@ ARCUS creates the git branch **late** — at the start of Implementation, not du
    `checkpoint.sh set-branch` if the realized name differs from the plan.
 
 This keeps planning entirely on the base branch and only branches once there is actual code to commit.
+
+### Exception: adopted branches in a worktree
+
+Deferred creation assumes ARCUS gets to choose the branch. In a **linked git worktree** it does not —
+the host already checked the workspace out on a dedicated session branch and, typically, bound its
+pull-request tracking to it. Creating `arcus/<STORY-ID>-N` off that branch would leave the story
+somewhere the session cannot see.
+
+So when `scaffold.sh` finds a linked worktree on a non-default branch, it **adopts** that branch
+instead of planning one:
+
+- `branch_name` = the current branch;
+- `base_branch` = the repository default (`origin/HEAD`, falling back to `main` then `master`) — the
+  adopted branch cannot be its own base without producing a self-targeting PR. If none of those
+  resolve, scaffold **fails and asks for `--base`** rather than inventing one;
+- the `branch` stage is marked `complete`, so Implementation skips `branch.sh` entirely (and
+  `branch.sh` no-ops if called directly anyway).
+
+`scaffold.sh` reports which path it took as `BRANCH_MODE: new|adopted`. Override with `--new-branch`
+to force planning, or `--use-current-branch` to force adoption outside a worktree. A third value,
+`existing`, means a checkpoint was already on disk so scaffold decided nothing and echoed the stored
+branch fields — that is a resume, not a scaffold.
 
 ---
 

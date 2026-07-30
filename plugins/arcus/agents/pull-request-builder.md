@@ -17,6 +17,29 @@ color: blue
 ## Overview
 Acts as the "Final Gatekeeper" to wrap up the automated development cycle. It gathers all evidence of work from the provided inputs, synthesizes a high-quality PR description, and handles the submission to the repository platform.
 
+## Audience and Budget
+
+**Write for the reviewer about to read the diff — not for the pipeline that produced it.**
+
+The reader already has the diff. What they lack is intent: why this change exists, what shape it
+takes, and where to look hardest. Everything else is already recorded in `plan.md`, `test-plan.md`
+and `review.md`, which live in the branch — **reference them, never restate them**.
+
+**Hard budget: ≤ 80 lines and ≤ 4 KB.** A description that approaches the size of its own diff is
+not thorough, it is unread. Concretely:
+
+| Do | Not |
+|---|---|
+| One-line-per-item summary of what changed and why | Re-narrating each task, stage, or agent that ran |
+| "19 test cases, all passing (see `test-plan.md`)" | A table enumerating every test case |
+| The 1–2 decisions a reviewer could reasonably disagree with | Every spec decision with full rationale |
+| Acceptance criteria summarized in a sentence or two | Every acceptance criterion restated verbatim |
+| Changed files grouped by area | Per-file line ranges and diff statistics |
+
+If a section has nothing worth saying, **omit it**. An empty heading costs the reader more than it
+gives. When the change is genuinely large, cut detail rather than exceeding the budget — depth
+belongs in the linked artifacts.
+
 ## Workflow
 
 ### Step 1: Evidence Gathering
@@ -25,6 +48,9 @@ Read the named inputs:
 2. `spec_grounding` (optional): The tech lead decisions.
 3. `implementation_plan` (optional): The task breakdown (to verify all tasks are marked as done).
 4. `test_matrix` (optional): The verification evidence.
+
+Read these to *ground* the description — they are your source of truth, not your content. Anything
+you would be copying rather than summarizing belongs in a link.
 
 ### Step 2: Change Summarization
 - Analyze the `change_set` input to understand which files were modified.
@@ -45,7 +71,11 @@ have reconciled shared context artifacts. Detect and render those updates from t
 ### Step 3: Final Artifact Generation
 - Run the full test suite one last time on the feature branch.
 - Save the final, synthesized PR description to the output path (default `.arcus/outputs/pull-request-builder/<timestamp>.md` when no explicit path is passed; the dispatcher may override it).
-- Ensure the description includes a high-level summary, the list of changed files, and evidence of successful verification.
+- Ensure the description includes a high-level summary, the changed files grouped by area, and a
+  one-line verification result.
+- **Check the budget before writing.** If the draft exceeds 80 lines or 4 KB, cut it down — replace
+  enumerations with counts plus a link to the artifact that holds the detail. Do not ship over
+  budget.
 
 ## Resources
 - **PR Template**: `"$ARCUS_HOME"/agent-resources/pull-request-builder/assets/pr-template.md`
@@ -70,5 +100,5 @@ On finish, return the terminal completion line (the caller owns any checkpoint u
 | `test_matrix` | no | markdown | Verification evidence |
 
 ### Outputs
-- **`pull_request_description`** (markdown) — Professional PR summary with high-level overview, categorized changes (features/fixes/tests), context updates (if any), and verification evidence.
+- **`pull_request_description`** (markdown) — Professional PR summary with high-level overview, categorized changes (features/fixes/tests), context updates (if any), and verification evidence. **≤ 80 lines / ≤ 4 KB** — see **Audience and Budget**.
   Output convention: pipeline caller sets the path; standalone default `.arcus/outputs/pull-request-builder/<timestamp>.md`. The capability never asks the user where to write.

@@ -9,6 +9,81 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Worktree-backed sessions could not bootstrap at all, and reported success while doing it.**
+  `bootstrap.sh` gated staging on `[ ! -d "$WORKSPACE_ROOT/.git" ]`. In a git **worktree** `.git` is
+  a *file* containing a `gitdir:` pointer, not a directory — so the guard was true, the bootstrap
+  exited `0` having staged nothing, and every subsequent `.arcus/bin/*` call died with
+  `No such file or directory` with nothing pointing back at the cause. This blocked the entire
+  pipeline on every worktree session, which is the default workspace shape for several agent hosts.
+  The guard is now `git rev-parse --git-dir`, which covers worktrees, submodules and `$GIT_DIR`
+  overrides uniformly.
+
+  Three related silent-failure paths closed at the same time:
+  - `locate.sh` discarded bootstrap's result and only checked that the script existed, so it printed
+    a valid `ARCUS_HOME` and exited `0` over a workspace that was never staged. It now verifies the
+    **post-condition** — `.arcus/bin/checkpoint.sh` and `.arcus/env` must exist — and fails loudly
+    otherwise.
+  - `bootstrap.sh` derived `ARCUS_HOME` from `BASH_SOURCE` without validating it, so a copy run from
+    elsewhere resolved it to that copy's parent (`/` in the reported case) and produced an **empty**
+    `.arcus/bin/` plus an `.arcus/env` pointing at nothing. It now validates the derived root, falls
+    back to an exported `ARCUS_HOME`, and refuses to run rather than stage nothing.
+  - Staging now targets `git rev-parse --show-toplevel` instead of the raw cwd, so invoking the
+    bootstrap from a subdirectory no longer scatters an unused `.arcus/` tree there.
+
+- **`checkpoint.sh set-tasks` left `current_stage` naming a stage later than the work it had just
+  spliced in.** Task slots are seeded only after the plan is compiled, so a `branch` stage completed
+  before then advanced `current_stage` straight to `code_review` — the checkpoint claimed the
+  pipeline was at review while every task was still pending. `set-tasks` now re-points
+  `current_stage` at the first incomplete stage. Cosmetic before this release; load-bearing now that
+  branch adoption completes `branch` during scaffold.
+
+- **The post-GREEN refactor gate could modify code the grounded spec explicitly excluded.**
+  `simplify-and-verify`'s scope boundary was the *file* — but almost every changed file also contains
+  code that predates the task. With green tests as its only safety check, the gate simplified a
+  pre-existing, spec-`Excluded` method and the change rode into a task commit scoped to something
+  else. The boundary is now the **mutable region**: in-scope files *intersected with* the code the
+  task actually added or modified, minus anything named in `excluded_scope`. Out-of-region
+  opportunities are reported as `Deferred:` notes instead of applied. `subagent-task-dispatcher` now
+  passes `task_diff` and `excluded_scope` so the gate can compute that region.
+
+- **`pull-request-builder` produced PR descriptions roughly 1:1 with their own diff** (364 lines /
+  20 KB for a 311-line change), restating every acceptance criterion, all 19 test cases in a table,
+  per-file line ranges, and every spec decision with rationale — unusable without a manual rewrite.
+  It now works to an explicit **≤ 80 line / ≤ 4 KB budget** and a "what a reviewer needs, not what
+  the pipeline did" framing, referencing `plan.md` / `test-plan.md` / `review.md` rather than
+  duplicating them. The PR template drops the `Implementation Stats` / agent-metrics section
+  entirely.
+
+### Added
+
+- **`scaffold.sh` adopts the session branch in a linked git worktree** instead of planning a fresh
+  `arcus/<STORY_ID>-N` off it. Agent-session hosts check the workspace out on a dedicated branch and
+  bind PR tracking to it; branching off that branch stranded the story from the PR. On adoption the
+  current branch is recorded as `branch_name`, `base_branch` resolves to the repository default
+  (`origin/HEAD` → `main` → `master` — an adopted branch cannot be its own base without producing a
+  self-targeting PR), and the `branch` stage is pre-completed so Implementation skips branch
+  creation. `branch.sh` no-ops if called anyway.
+
+  Detection is narrow — a *linked worktree* on a *non-default* branch. A normal checkout that merely
+  sits on a feature branch is **not** adopted and keeps basing the story on the current working
+  branch, so deliberate stacking is unaffected. New overrides: `--use-current-branch` (or
+  `ARCUS_USE_CURRENT_BRANCH=1`) to adopt anywhere, `--new-branch` (or `ARCUS_USE_CURRENT_BRANCH=0`)
+  to always plan. `scaffold.sh` and `branch.sh` now echo `BRANCH_MODE: new|adopted|existing`.
+
+- **`scripts/lib/git_context.sh`** — a source-safe shared library defining `is_linked_worktree`,
+  `repo_default_branch` and `current_branch`, following the same resolution convention as
+  `lib/branch_name.sh`. `repo_default_branch` reports **unknown** (empty, non-zero) rather than
+  falling back to the current branch: callers ask it precisely in order to compare against — or
+  avoid — the current branch, so answering "the current branch" makes them silently wrong instead of
+  visibly unknown.
+
+- **`scripts/tests/bootstrap.test.sh` and `scripts/tests/scaffold.test.sh`** — 75 new bash
+  assertions covering worktree staging, the stray-`ARCUS_HOME` trap, subdirectory invocation,
+  loud-failure paths, both branch modes, every override flag, the default-branch fallback chain, and
+  the invariant that an adopted branch is never its own base.
+
+### Fixed
+
 - **Every ARCUS agent is now dispatchable on GitHub Copilot CLI — previously none were, and the
   `model-strategy` skill was unloadable on _every_ host.**
   All 16 agents (and the `model-strategy` skill) carried `disable-model-invocation: true`. Copilot

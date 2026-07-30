@@ -42,17 +42,12 @@ _lib="$_SCRIPT_DIR/lib/branch_name.sh"
 # shellcheck source=/dev/null
 . "$_lib"
 
-# Safety: refuse to proceed with a dirty working tree.
-if [ -n "$(git status --porcelain)" ]; then
-    echo "[ERROR] Uncommitted changes present. Please stash or commit first." >&2
-    exit 1
-fi
-
 # Read the PLANNED branch_name/base_branch from the checkpoint. The checkpoint
 # may not exist if branch.sh is invoked directly without scaffolding first;
 # handle that gracefully by falling back to computed values.
 PLANNED_BRANCH=""
 CHECKPOINT_BASE=""
+BRANCH_STAGE=""
 HAVE_CHECKPOINT=0
 
 CHECKPOINT_OUT="$(bash "$_checkpoint" read "$STORY_ID" 2>/dev/null || true)"
@@ -64,6 +59,33 @@ if printf '%s\n' "$CHECKPOINT_OUT" | grep -q '^CHECKPOINT_EXISTS: true'; then
         "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{const o=JSON.parse(s);process.stdout.write(o.branch_name||'')}catch(e){}})")"
     CHECKPOINT_BASE="$(printf '%s' "$CHECKPOINT_JSON" | node -e \
         "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{const o=JSON.parse(s);process.stdout.write(o.base_branch||'')}catch(e){}})")"
+    BRANCH_STAGE="$(printf '%s' "$CHECKPOINT_JSON" | node -e \
+        "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{const o=JSON.parse(s);process.stdout.write((o.stages&&o.stages.branch)||'')}catch(e){}})")"
+fi
+
+# ALREADY-REALIZED BRANCH: the recorded story branch is checked out and the
+# `branch` stage is complete, so there is nothing to realize. Two ways to get
+# here: scaffold.sh adopted a linked worktree's session branch (and pre-completed
+# the stage), or branch.sh already ran and created it. Either way, creating a
+# branch now would cut a redundant arcus/<id>-N off the story branch — and in the
+# adopted case detach the story from the branch the host bound its PR to.
+# implementation-runner already skips this script then; this guard makes a direct
+# invocation safe too. Base precedence matches the realize path below: an
+# explicit --base wins over the recorded one.
+if [ "$HAVE_CHECKPOINT" -eq 1 ] && [ "$BRANCH_STAGE" = "complete" ] \
+   && [ -n "$PLANNED_BRANCH" ] && [ "$PLANNED_BRANCH" = "$(git rev-parse --abbrev-ref HEAD)" ]; then
+    echo "BRANCH_NAME: $PLANNED_BRANCH"
+    echo "BASE_BRANCH: ${BASE_BRANCH:-$CHECKPOINT_BASE}"
+    echo "BRANCH_MODE: existing"
+    exit 0
+fi
+
+# Safety: refuse to proceed with a dirty working tree. Checked only on the path
+# that actually creates a branch — the adopted-branch no-op above touches
+# nothing, so requiring a clean tree there would be a gratuitous hard stop.
+if [ -n "$(git status --porcelain)" ]; then
+    echo "[ERROR] Uncommitted changes present. Please stash or commit first." >&2
+    exit 1
 fi
 
 # Determine base: --base wins, then checkpoint base, then env/current HEAD.
@@ -97,3 +119,4 @@ fi
 # Output for the calling agent to parse.
 echo "BRANCH_NAME: $REALIZED"
 echo "BASE_BRANCH: $BASE_BRANCH"
+echo "BRANCH_MODE: new"

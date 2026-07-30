@@ -29,9 +29,29 @@
 
 set -eu
 
+# Assert the post-condition rather than trusting bootstrap's exit code: the whole
+# point of this script is that callers can then treat .arcus/bin/ as present.
+# Reporting a valid ARCUS_HOME over a workspace that was never staged just defers
+# the failure to the first helper-script call, where it surfaces as an
+# unexplained "No such file or directory" with no trace back to here.
+verify_staged() {
+    local home="$1"
+    local root
+    root="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+    if [ ! -f "$root/.arcus/bin/checkpoint.sh" ] || [ ! -f "$root/.arcus/env" ]; then
+        echo "[ERROR] locate.sh: bootstrap ran from $home but $root/.arcus/bin/ was not staged." >&2
+        echo "        Is $root inside a git repository? Run 'git rev-parse --git-dir' to check." >&2
+        exit 1
+    fi
+}
+
 # 1. An explicit ARCUS_HOME wins — covers `--plugin-dir`, CI, and dev checkouts.
 if [ -n "${ARCUS_HOME:-}" ] && [ -f "$ARCUS_HOME/scripts/bootstrap.sh" ]; then
+    # stdout is suppressed (the caller parses only the resolved path from this
+    # script); stderr is NOT — a bootstrap diagnostic is the one thing worth
+    # seeing when staging goes wrong.
     bash "$ARCUS_HOME/scripts/bootstrap.sh" >/dev/null
+    verify_staged "$ARCUS_HOME"
     echo "$ARCUS_HOME"
     exit 0
 fi
@@ -84,4 +104,5 @@ if [ -z "$RESOLVED" ]; then
 fi
 
 bash "$RESOLVED/scripts/bootstrap.sh" >/dev/null
+verify_staged "$RESOLVED"
 echo "$RESOLVED"

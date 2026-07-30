@@ -105,7 +105,9 @@ on disk yet:
 2. Mark the branch stage complete: `<BIN>/checkpoint.sh complete <STORY_ID> branch`.
 
 > On a **resume**, if the `branch` stage is already `complete`, skip this step — the branch is
-> already checked out.
+> already checked out. This is also the steady state in a linked git **worktree**: `scaffold.sh`
+> adopts the session branch the host already created and pre-completes the stage, because cutting a
+> second branch off it would strand the story from the PR bound to that branch.
 
 ### Step 4: Parse tasks
 
