@@ -92,9 +92,12 @@ Two traps worth authoring around:
 
 - **Unknown names are dropped silently.** A misspelled or host-specific name narrows the agent's real
   toolset with no error anywhere.
-- **Listing `Bash` alongside `Grep`/`Glob` costs you those two on Claude Code.** `Read, Grep, Glob`
-  yields all three; `Read, Grep, Glob, Bash` yields only `Read, Bash`. The shorter list is the more
-  capable one there.
+- **Listing `Bash` alongside `Grep`/`Glob` costs you those two on Claude Code — and only there.**
+  Claude Code yields all three for `Read, Grep, Glob`, but only `Read, Bash` for
+  `Read, Grep, Glob, Bash`; the shorter list is the more capable one there. Copilot CLI yields
+  `view, grep, glob, bash` (+ the `read_bash`/`stop_bash`/`list_bash` siblings) for that same line.
+  Because the hosts disagree, keep `Grep`/`Glob` declared even next to `Bash`: they are live on
+  Copilot CLI and merely inert on Claude Code, so removing them trades real capability for tidiness.
 
 ::: warning `Bash` is a write tool
 A denylist over `Edit`/`Write`/`MultiEdit` does not make an agent read-only if the allowlist contains

@@ -494,12 +494,16 @@ section('L1-16: No body instructs a host-specific tool');
 section('L1-17: Agents told to consult a skill can load one');
 {
   const agents = walkAgents();
+  // Only SKILL references need `Skill`; an agent reference needs a dispatch tool,
+  // which is L1-15's concern.
+  const skillNamesForLoad = new Set(walkSkills().map(s => s.name));
   let loadFailures = 0;
   for (const agent of agents) {
     const result = checkSkillLoadCapability({
       name: agent.name,
       body: agent.body,
-      tools: agent.frontmatter.tools
+      tools: agent.frontmatter.tools,
+      skillNames: skillNamesForLoad
     });
     if (!result.ok) {
       loadFailures++;

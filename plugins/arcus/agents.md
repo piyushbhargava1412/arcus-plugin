@@ -44,7 +44,8 @@ user-invocable: false        # agents are never user-facing (this flag is the ma
                              # NEVER add `disable-model-invocation` — see Field rules below
 tools: Read, Grep, Glob      # REQUIRED allowlist — the only restriction hosts enforce.
                              #   Add Bash ONLY if the agent truly needs a shell: it grants an
-                             #   indirect write, and it suppresses Grep/Glob on Claude Code.
+                             #   indirect write, and it suppresses Grep/Glob on Claude Code
+                             #   (but NOT on Copilot CLI — so keep Grep/Glob declared anyway).
 disallowedTools: Edit, Write, MultiEdit  # camelCase ONLY — Claude Code ignores the kebab spelling
 model: sonnet                # tier word (opus | sonnet | haiku) or `inherit` — NEVER a versioned
                              #   model string (resolve tiers via arcus:model-strategy)

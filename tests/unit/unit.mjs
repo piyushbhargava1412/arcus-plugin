@@ -578,12 +578,15 @@ section('L1-4..L1-7');
     assert(qualified.ok === true,
            `checkNoHostSpecificTools allows host-qualified documentation (got ${qualified.errors?.join('; ') || 'ok'})`);
 
-    // Negative control 2: unquoted prose is not an instruction.
+    // Negative control: the bare token unquoted is prose, not an instruction. This
+    // fixture deliberately CONTAINS `get_errors` so the backtick narrowing is what
+    // makes the test pass — a fixture without the token would pass even if the
+    // anchors were deleted, proving nothing.
     const unquoted = checkNoHostSpecificTools({
       name: 'prose',
-      body: 'The runner should get errors from the build before proceeding.'
+      body: 'Historically this step called get_errors; it no longer does.'
     });
-    assert(unquoted.ok === true, 'checkNoHostSpecificTools ignores unquoted prose');
+    assert(unquoted.ok === true, 'checkNoHostSpecificTools ignores the bare token outside backticks');
 
     // The capability-shaped replacement is what E1 substituted in, and it must pass.
     const capabilityShaped = checkNoHostSpecificTools({
@@ -629,6 +632,42 @@ section('L1-4..L1-7');
       tools: ['Read', 'Grep', 'Glob']
     });
     assert(provenance.ok === true, 'checkSkillLoadCapability ignores provenance prose');
+
+    // The dispatch boilerplate copy-pasted across ARCUS ends with a section
+    // pointer, not the word "skill". An earlier version of this gate missed it
+    // entirely — exactly the shape it was written to catch.
+    const boilerplate = checkSkillLoadCapability({
+      name: 'boilerplate',
+      body: '> Full rule:\n> `arcus:model-strategy` § Agent Resolution.',
+      tools: ['Read', 'Grep', 'Glob']
+    });
+    assert(boilerplate.ok === false, 'checkSkillLoadCapability catches the `§` section-pointer boilerplate');
+
+    for (const verb of ['Consult', 'See', 'Refer to']) {
+      const r = checkSkillLoadCapability({
+        name: verb,
+        body: `${verb} \`arcus:model-strategy\` for the mapping.`,
+        tools: ['Read']
+      });
+      assert(r.ok === false, `checkSkillLoadCapability catches the "${verb}" phrasing`);
+    }
+
+    // "built-in" must not be read as the introducer "in".
+    const hyphenated = checkSkillLoadCapability({
+      name: 'hyphen',
+      body: 'This is a built-in `arcus:model-strategy` behaviour.',
+      tools: ['Read']
+    });
+    assert(hyphenated.ok === true, 'checkSkillLoadCapability does not read "built-in" as the introducer "in"');
+
+    // With a skill list, an AGENT reference needs a dispatch tool, not `Skill`.
+    const agentRef = checkSkillLoadCapability({
+      name: 'agentref',
+      body: 'Severity comes from the heuristics in `arcus:security-reviewer`.',
+      tools: ['Read'],
+      skillNames: new Set(['model-strategy'])
+    });
+    assert(agentRef.ok === true, 'checkSkillLoadCapability ignores agent references when given a skill list');
 
     // No allowlist means no restriction, so there is nothing to enforce.
     const unrestricted = checkSkillLoadCapability({
@@ -1232,7 +1271,7 @@ section('OpenCode adapter (build-bundle)');
 {
   try {
     const { buildPermission, TIER_TO_MODEL, stripArcusNamespace } =
-      await import('../../plugins/arcus-opencode/scripts/build-bundle.mjs');
+      await import('../../plugins/arcus-opencode/scripts/lib/convert.mjs');
     const { walkAgents } = await import('../lib/skills.mjs');
     const { ADVISORY_REVIEWERS } = await import('../lib/skills.mjs');
 

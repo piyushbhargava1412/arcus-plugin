@@ -1013,17 +1013,26 @@ const SKILL_LOAD_TOOLS = new Set(['Skill']);
  * Only LOAD-SHAPED references count. ARCUS bodies also carry provenance prose
  * ("it runs as part of the `arcus:code-reviewer` fan-out") which names a skill
  * without instructing anything, and must not be flagged. A reference is treated
- * as load-shaped when it is immediately followed by the word "skill", or
- * introduced by `in` / `per` / `via` / `from` — the phrasings ARCUS actually uses
- * to send a reader somewhere.
+ * as load-shaped when it is:
+ *   - followed by the word "skill"  ("the `arcus:model-strategy` skill");
+ *   - followed by a section pointer ("`arcus:model-strategy` § Agent Resolution"),
+ *     which is the shape of the dispatch boilerplate copy-pasted across ARCUS; or
+ *   - introduced by in / per / via / from / consult / see / refer to.
+ *
+ * The introducer must start at a non-word, non-hyphen boundary, so "built-in
+ * `arcus:x`" is not read as "in `arcus:x`".
+ *
+ * When `skillNames` is supplied, only references to actual SKILLS are considered.
+ * A reference to an agent needs a dispatch tool, not `Skill`, and is L1-15's job.
  *
  * @param {Object} input
  * @param {string} input.name - Agent name
  * @param {string} input.body - Agent body text
  * @param {string[]|string} input.tools - Declared `tools:` allowlist
+ * @param {Set<string>} [input.skillNames] - Known skill names; when given, agents are ignored
  * @returns {{ ok: boolean, errors: string[] }}
  */
-function checkSkillLoadCapability({ name, body, tools }) {
+function checkSkillLoadCapability({ name, body, tools, skillNames }) {
   const errors = [];
   const declared = Array.isArray(tools)
     ? tools
@@ -1033,13 +1042,20 @@ function checkSkillLoadCapability({ name, body, tools }) {
   if (declared.length === 0) return { ok: true, errors };
   if (declared.some(t => SKILL_LOAD_TOOLS.has(t))) return { ok: true, errors };
 
-  const followedBySkill = /`arcus:([a-z0-9-]+)`\s+skill\b/g;
-  const introduced = /\b(?:in|per|via|from)\s+(?:the\s+)?`arcus:([a-z0-9-]+)`/g;
+  const patterns = [
+    /`arcus:([a-z0-9-]+)`\s+skill\b/g,
+    /`arcus:([a-z0-9-]+)`\s*§/g,
+    /(?:^|[^\w-])(?:in|per|via|from|consult|see|refer\s+to)\s+(?:the\s+)?`arcus:([a-z0-9-]+)`/gim
+  ];
 
   const found = new Set();
-  for (const re of [followedBySkill, introduced]) {
+  for (const re of patterns) {
+    re.lastIndex = 0;
     let m;
-    while ((m = re.exec(body)) !== null) found.add(m[1]);
+    while ((m = re.exec(body)) !== null) {
+      if (skillNames && !skillNames.has(m[1])) continue;
+      found.add(m[1]);
+    }
   }
 
   for (const target of found) {

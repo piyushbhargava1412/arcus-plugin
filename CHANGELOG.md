@@ -68,7 +68,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`Skill` added to the measured tool-name mapping table**, and route 2's restricted-tools case now
   records that ARCUS prevents it by construction via L1-17 rather than leaving it as a live hazard.
 
+- **The OpenCode bundler no longer silently ships an empty tarball when the repo is reached through
+  a symlink.** `build-bundle.mjs` guarded its `main()` call with an `isMain` check comparing
+  `import.meta.url` against `process.argv[1]`; those two strings disagree whenever any path segment
+  is a symlink (a `/tmp` build, a pnpm store, a macOS `/var` path), so `prepack` ran the module,
+  built nothing, and **exited 0**. Fixed structurally rather than patched: the pure converters moved
+  to `plugins/arcus-opencode/scripts/lib/convert.mjs` so the unit tests can import them without
+  triggering a build, and the entrypoint now calls `main()` unconditionally with no guard to get
+  wrong. Verified from both a normal and a symlinked path.
+
+- **L1-17 no longer misses the exact phrasing it was written to catch.** The gate only fired when a
+  skill reference was followed by the literal word "skill", but ARCUS's own dispatch boilerplate ends
+  with a section pointer — `` `arcus:model-strategy` § Agent Resolution`` — and so slipped through,
+  as did "consult", "see" and "refer to". It also mis-read the hyphen in `built-in` as the
+  introducer "in". The gate now recognises all four shapes, is anchored so `built-in` cannot match,
+  and accepts an optional skill-name set so *agent* references (L1-15's job, which needs a dispatch
+  tool rather than `Skill`) are no longer swept in.
+
+- **The L1-16 negative control was vacuous.** Its fixture contained no host-specific tool name at
+  all, so it passed for the wrong reason and would have kept passing if the backtick anchor were
+  deleted. The fixture now carries the bare token `get_errors` in prose, making the anchor
+  load-bearing; verified by mutation — removing the anchor now fails exactly that assertion.
+
 ### Changed
+
+- **The `Bash` / `Grep` / `Glob` interaction is now measured on both hosts, not just one.** A review
+  flagged the five agents that pair `Bash` with `Grep`/`Glob` as carrying dead allowlist entries,
+  since Claude Code resolves `Read, Grep, Glob, Bash` to only `Read, Bash`. Probing Copilot CLI with
+  the identical frontmatter returned `bash, read_bash, stop_bash, list_bash, view, grep, glob` — all
+  of them. The entries are therefore **live on Copilot CLI and inert only on Claude Code**, and
+  removing them would have stripped real capability on one host to tidy a no-op on the other. Kept,
+  with the host asymmetry now documented in `model-strategy`, `agents.md` and the cross-host page.
 
 - **New docs page: `site/concepts/cross-host.md` ("Running Across Hosts").** Collects the measured
   cross-host record in one place: the per-field × per-host enforcement table, agent/skill namespacing,

@@ -118,8 +118,12 @@ Two behaviours to author around:
 
 - **Unknown names are dropped silently.** A misspelled or host-specific tool narrows the agent's real
   toolset with no error anywhere. Prefer these names.
-- **Listing `Bash` alongside `Grep`/`Glob` costs you those two on Claude Code.** `Read, Grep, Glob`
-  gives all three; `Read, Grep, Glob, Bash` gives only `Read, Bash`.
+- **Listing `Bash` alongside `Grep`/`Glob` costs you those two on Claude Code — but only there.**
+  Claude Code resolves `Read, Grep, Glob` to all three, and `Read, Grep, Glob, Bash` to just
+  `Read, Bash`. Copilot CLI resolves that same line to all of `view, grep, glob, bash` (plus the
+  `read_bash`/`stop_bash`/`list_bash` siblings). So keep `Grep`/`Glob` in the allowlist even when
+  `Bash` is present: they are load-bearing on Copilot CLI and merely inert on Claude Code. Dropping
+  them to "clean up" would remove real capability on one host to tidy a no-op on the other.
 
 **`Bash` is a write tool.** A denylist of `Edit`/`Write`/`MultiEdit` does not make an agent
 read-only if the allowlist contains a shell — `printf x > f` writes, `git commit` rewrites history,
