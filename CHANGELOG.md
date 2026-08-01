@@ -16,10 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `site/concepts/cross-host.md`, `plugins/arcus/agents.md`, and the `tests/lib/checks.mjs` L1-17
   comment.
 
-- **`model-strategy/SKILL.md` falsely claimed that on Copilot CLI `Skill`/`sql` are auto-granted
-  regardless of the `tools:` allowlist (C3).** The claim was accurate; the correction removes it from
-  the skill file (where it does not belong as authoring guidance) and retains it in its canonical
-  home, `site/concepts/cross-host.md`. The `tests/lib/checks.mjs` comment is updated to match.
+- **`model-strategy/SKILL.md` carried authoring-time guidance about Copilot CLI `Skill`/`sql` auto-grants (C3).** While this guidance is accurate, it belongs in authoring-time documentation, not in a runtime substrate skill. The correction relocates it to its canonical home, `site/concepts/cross-host.md`, and updates the `tests/lib/checks.mjs` comment to match.
 
 - **`model-strategy/SKILL.md` was 221 lines of mixed authoring-time and runtime content.** The file
   is now 94 lines, focused on the runtime decision a model needs to make. Authoring-time tables,
