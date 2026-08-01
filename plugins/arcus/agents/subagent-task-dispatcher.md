@@ -67,7 +67,7 @@ Invoke the subagent using the platform's spawner, passing the resolved model str
 With:
 - **prompt**: The constructed prompt from Step 2
 - **description**: `"Task N: <short task title>"`
-- **model**: The resolved platform model string (Claude Code: `"opus"`/`"sonnet"`/`"haiku"`; Copilot CLI: a slug id, e.g. `"claude-sonnet-4.6"`; VS Code: e.g. `"Claude Sonnet 4.6 (copilot)"`). Passing this is what makes a `light` task run on `haiku` and a `medium` task on `sonnet` instead of the session default — omitting it forfeits the savings. **On Copilot CLI it is the only signal that works**: tier words in the agent's `model:` frontmatter are ignored there.
+- **model**: The resolved platform model string (Claude Code: `"opus"`/`"sonnet"`/`"haiku"`; Copilot CLI: a slug id, e.g. `"claude-sonnet-4.6"`; VS Code: e.g. `"Claude Sonnet 4.6 (copilot)"`). Passing this is what makes a `light` task run on `haiku` and a `medium` task on `sonnet` instead of the session default — omitting it forfeits the savings. **On Copilot CLI it is the only signal that works**: Copilot CLI does not resolve tier words — it warns visibly and falls back to the session model; a valid slug is honoured. Passing the model slug at dispatch is mandatory to achieve tier selection on Copilot CLI.
 
 ### Step 4: Handle Response
 
@@ -181,7 +181,7 @@ After reviews pass (or retry limit reached):
 - **Implementation retries**: Max 2 retries per task (Step 4 BLOCKED/verification failures)
 - **Spec-check retry**: Max 1 retry for the per-task spec check (Step 7)
 - Each retry includes the error/issue output from the previous attempt
-- **Escalation rule**: If implementation fails after 2 retries at the current complexity, promote complexity one level (light → medium → heavy), re-resolve the model via the `arcus:model-strategy` skill, and re-dispatch with the higher-tier model. Max 1 escalation per task.
+- **Escalation rule**: If implementation fails after 2 retries at the current complexity, promote complexity one level (light → medium → heavy), re-resolve the model via the `arcus:model-strategy` skill, and re-dispatch with the higher-tier model. Max 1 escalation per task. On a spawner that ignores the `model` parameter (e.g. a legacy dispatch tool with no per-call model override), escalation falls back to the session model instead of actually running on the higher tier.
 - If implementation fails after escalation: mark as BLOCKED, stop pipeline
 - If the spec check fails after its retry: commit with `[spec: unresolved]` tag and carry the ISSUES forward to the holistic `code-reviewer`; continue pipeline
 - **Refactor gate**: No retry — `REVERTED` is not a failure state; mutations are rolled back and the gate exits cleanly. Proceed to spec-check regardless.

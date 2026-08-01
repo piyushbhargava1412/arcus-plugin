@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`model-strategy/SKILL.md` falsely claimed Copilot CLI silently ignores the `model:` frontmatter
+  field (C2).** Copilot CLI does not silently ignore it — it warns visibly and falls back when a tier
+  word is used instead of a valid slug. The narrower, accurate rule is now documented: tier words
+  fail loudly; a valid slug is honoured. Corrected in `plugins/arcus/skills/model-strategy/SKILL.md`,
+  `site/concepts/cross-host.md`, `plugins/arcus/agents.md`, and the `tests/lib/checks.mjs` L1-17
+  comment.
+
+- **`model-strategy/SKILL.md` carried authoring-time guidance about Copilot CLI `Skill`/`sql` auto-grants (C3).** While this guidance is accurate, it belongs in authoring-time documentation, not in a runtime substrate skill. The correction relocates it to its canonical home, `site/concepts/cross-host.md`, and updates the `tests/lib/checks.mjs` comment to match.
+
+- **`model-strategy/SKILL.md` was 221 lines of mixed authoring-time and runtime content.** The file
+  is now 94 lines, focused on the runtime decision a model needs to make. Authoring-time tables,
+  platform-specific traps, and cross-host tool-name mappings were relocated to their canonical homes
+  (`site/concepts/cross-host.md`, `plugins/arcus/agents.md`) — nothing was deleted outright.
+
 - **Worktree-backed sessions could not bootstrap at all, and reported success while doing it.**
   `bootstrap.sh` gated staging on `[ ! -d "$WORKSPACE_ROOT/.git" ]`. In a git **worktree** `.git` is
   a *file* containing a `gitdir:` pointer, not a directory — so the guard was true, the bootstrap

@@ -68,7 +68,7 @@ only consumer for fields no host reads.
 | `disallowedTools` | **enforced** | inferred inert | → `permission: deny` | **L1-4** |
 | `disallowed-tools` | **silently ignored** | inferred inert | read as fallback | **L1-4 rejects** |
 | `disable-model-invocation` | ignored on agents | **drops from registry** | inferred inert | **L1-13 rejects** |
-| `model` | tier word honoured | **ignored** — session model | mapped to a model id | L1-10 |
+| `model` | tier word honoured | **does not resolve tier words** — warns visibly and falls back; a valid slug is honoured | mapped to a model id | L1-10 |
 | `color` | UI hint | inert | mapped to hex | — |
 
 Two fields to read carefully. `layer` is **inert on every host** yet drives four CI gates — it is
@@ -89,7 +89,9 @@ matters.
   remain state-free (no checkpoint/branch ops) and own a Layer-2 eval spec
   (`tests/e2e/evals/specs/<name>/evals.json`).
 - **`model`** — a **tier word** (`opus`/`sonnet`/`haiku`) or `inherit`. Never hardcode a versioned
-  model id; tier→model resolution is owned solely by `arcus:model-strategy`.
+  model id; tier→model resolution is owned solely by `arcus:model-strategy`. Note: Copilot CLI
+  does not resolve tier words in frontmatter — it warns visibly and falls back; tier selection
+  there must be passed as a slug at dispatch (see `arcus:model-strategy` § Tier-to-Platform).
 - **`disable-model-invocation`** — **never set it.** Orchestrated dispatch *is* model invocation, so
   the flag cannot mean "orchestrator-only". Measured: Copilot CLI honours it on **both** agents and
   skills by dropping the item from its registry (the agent then loses host-enforced `tools:`); Claude
@@ -97,7 +99,8 @@ matters.
   "not user-facing" intent. Rejected by `checkAgentFrontmatter` (L1-13).
 - **`tools`** — the allowlist, and the **only** restriction hosts actually enforce. Measured
   2026-07-29: `Read, Grep, Glob` yields exactly those three on Claude Code and
-  `view, grep, glob` on Copilot CLI. Adding `Bash` to that list causes Claude Code to drop
+  `view, grep, glob` on Copilot CLI (where `skill` and `sql` are auto-granted, yielding
+  `view, grep, glob, skill, sql` total). Adding `Bash` to that list causes Claude Code to drop
   `Grep`/`Glob`, so the shorter list is also the more capable one there.
 - **`Skill` must be in `tools:` if the body tells the agent to consult a skill.** The allowlist
   omits it by default, and the failure is silent: measured on Copilot CLI, `tools: Read, Skill`
@@ -106,6 +109,8 @@ matters.
   prompt. Enforced by `checkSkillLoadCapability` (L1-17), which distinguishes a consult
   ("the heuristics **in** the `arcus:model-strategy` **skill**") from provenance prose
   ("runs as part of the `arcus:code-reviewer` fan-out") and only requires the tool for the former.
+  On Copilot CLI, `skill` (and `sql`) are auto-granted regardless of the allowlist, but gate L1-17
+  enforces the requirement for Claude Code and route-2 correctness.
 - **`disallowedTools`** — **camelCase only.** Claude Code honours `disallowedTools` and silently
   ignores kebab-case `disallowed-tools`, which ARCUS used for its entire history — so the denylist
   never fired. It is defence-in-depth; never rely on it alone.

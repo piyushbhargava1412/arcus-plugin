@@ -44,7 +44,7 @@ developed against, **none of them were visible**.
 | `tools:` (allowlist) | **enforced** | **enforced** | translated to `permission:` | enforced |
 | `disallowedTools:` | honoured (camelCase **only**) | inferred inert (unmeasured) | translated to `permission: deny` | — |
 | `disallowed-tools:` (kebab) | **silently ignored** | silently ignored | read with fallback by the adapter | — |
-| `model:` tier word | **enforced** | **silently ignored** — falls back to the session model | pinned per agent at build time | via `runSubagent` `model` param |
+| `model:` tier word | **enforced** | **does not resolve tier words** — warns visibly and falls back; a valid slug is honoured | pinned per agent at build time | via `runSubagent` `model` param |
 | `disable-model-invocation:` | ignored on agents, **honoured on skills** | **honoured on both** — removes the item entirely | — | — |
 | `layer:` | inert | inert | inert | inert |
 
@@ -87,8 +87,13 @@ instruction is "match the name against your registry", never "rewrite the prefix
 | `Edit` / `Write` | `Edit` / `Write` | `edit` |
 | `Task` / `Agent` | `Agent` | `task` |
 | `Skill` | `Skill` | `skill` |
+| `Sql` | — | `sql` |
 
 Two traps worth authoring around:
+
+- **On Copilot CLI, `skill` and `sql` are auto-granted** regardless of the `tools:` allowlist.
+  A declared allowlist is not the agent's whole toolset there: e.g. `tools: Read, Grep, Glob` yields
+  `view, grep, glob, skill, sql` total. Neither auto-granted tool can write to the repository.
 
 - **Unknown names are dropped silently.** A misspelled or host-specific name narrows the agent's real
   toolset with no error anywhere.
@@ -141,6 +146,8 @@ silently fallen back to route 2 as having lost its read-only guarantees.
 OpenCode does not read ARCUS's authoring format directly. `plugins/arcus-opencode` bundles a
 converted copy: `arcus:` prefixes are stripped, tier words are resolved to `provider/model-id` and
 pinned per agent, and `tools:` / `disallowedTools:` become a `permission:` block.
+
+The default provider column is **GitHub Copilot** (enterprise license, flat cost). An **Amazon Bedrock** alternative (anthropic via `AWS_BEARER_TOKEN_BEDROCK`) resolves opus → `amazon-bedrock/anthropic.claude-opus-4-8`, sonnet → `amazon-bedrock/anthropic.claude-sonnet-4-6`, haiku → `amazon-bedrock/anthropic.claude-haiku-4-5-20251001-v1:0` (prefix a region inference profile, e.g. `eu.`/`global.`, if your account requires one).
 
 ::: warning An absent permission key means *allowed*
 This is the OpenCode-shaped version of the same silent failure. The adapter therefore emits the
