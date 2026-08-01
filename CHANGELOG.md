@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Relicensed from MIT to Apache-2.0.** MIT granted anyone the right to fork, rebrand, and resell
+  ARCUS with no obligation and — critically — said nothing about the name. Apache-2.0 keeps ARCUS
+  fully open and OSI-approved (so enterprise legal and curated marketplaces still clear it) while
+  adding an express patent grant, a patent-retaliation clause, mandatory `NOTICE` propagation, and
+  §6, which explicitly withholds trademark rights. The `license` field is now `Apache-2.0` in
+  `plugins/arcus/.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, and
+  `plugins/arcus-opencode/package.json`.
+  Releases up to and including **v2.9.1 remain MIT** on their original terms; Apache-2.0 applies
+  from v2.9.2 onward.
+
+### Added
+
+- **`NOTICE`** — the Apache-2.0 §4(d) attribution notice that downstream redistributions must carry,
+  recording the copyright, the trademark reservation, and the MIT status of prior releases.
+- **`TRADEMARK.md`** — policy for the **ARCUS** name and logo. Nominative use, compatibility claims
+  ("works with ARCUS"), and unmodified redistribution are all explicitly permitted; naming a fork or
+  a modified build "ARCUS" is not. Forking and commercial use stay unrestricted — under your own name.
+- **The `arcus-opencode` tarball now ships `LICENSE` and `NOTICE`.** `build-bundle.mjs` stages both
+  from the repo root into the package root (git-ignored derived output, listed in `files`), so the
+  OpenCode redistribution satisfies Apache-2.0 §4(a) and §4(d) instead of shipping bare.
+- **Docs-site footer** (`site/.vitepress/config.ts`) now states the Apache-2.0 license, the copyright,
+  and links the trademark policy, so the licensing terms are visible where users actually read.
+
 ### Fixed
 
 - **`model-strategy/SKILL.md` falsely claimed Copilot CLI silently ignores the `model:` frontmatter

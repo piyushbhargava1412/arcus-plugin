@@ -1,0 +1,47 @@
+ARCUS
+Copyright (c) 2025 Krill
+
+This product includes software developed by Krill
+(https://github.com/piyushbhargava1412/arcus-plugin).
+
+Licensed under the Apache License, Version 2.0 (the "License"); you may not use
+this software except in compliance with the License. You may obtain a copy of
+the License in the LICENSE file distributed with this work, or at:
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software distributed
+under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+CONDITIONS OF ANY KIND, either express or implied. See the License for the
+specific language governing permissions and limitations under the License.
+
+--------------------------------------------------------------------------------
+
+ATTRIBUTION REQUIREMENT
+
+Section 4(d) of the Apache License, Version 2.0 requires that any Derivative
+Works you distribute carry the attribution notices contained in this NOTICE
+file. If you redistribute ARCUS, in whole or in part, modified or unmodified,
+you must include a readable copy of this NOTICE alongside the LICENSE file.
+
+You may add your own attribution notices within Derivative Works, provided they
+do not modify, remove, or obscure the notices above.
+
+--------------------------------------------------------------------------------
+
+TRADEMARKS
+
+Section 6 of the Apache License, Version 2.0 grants no rights to use the trade
+names, trademarks, service marks, or product names of the licensor. "ARCUS" and
+the ARCUS logo are marks of Krill and are NOT licensed under the Apache License.
+
+See TRADEMARK.md for what is and is not permitted.
+
+--------------------------------------------------------------------------------
+
+PRIOR VERSIONS
+
+Versions of ARCUS distributed up to and including v2.9.1 were licensed under the
+MIT License. Those releases remain available under the MIT License on their
+original terms. The Apache License, Version 2.0 and this NOTICE apply to v2.9.2
+and all subsequent releases.

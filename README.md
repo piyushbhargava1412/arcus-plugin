@@ -341,16 +341,26 @@ plugins/arcus/
   .claude-plugin/plugin.json             # Plugin manifest (version authority)
   hooks/hooks.json                       # SessionStart bootstrap hook
   scripts/                               # Helper scripts + bootstrap.sh
-  skills/                                # User+model invocable skills (16, /arcus:<name>)
-  agents/                                # Model-only dispatched agents (13, flat <name>.md)
+  skills/                                # User+model invocable skills (13, /arcus:<name>)
+  agents/                                # Model-only dispatched agents (16, flat <name>.md)
 CHANGELOG.md
-LICENSE
+LICENSE                                  # Apache-2.0
+NOTICE                                   # Attribution notice (propagate downstream)
+TRADEMARK.md                             # "ARCUS" name & logo policy
 ```
 
 ---
 
 ## License
 
-[MIT](LICENSE) © Krill
+[Apache-2.0](LICENSE) © Krill
+
+See [`NOTICE`](NOTICE) for the attribution notice you must propagate when you
+redistribute ARCUS, and [`TRADEMARK.md`](TRADEMARK.md) for use of the **ARCUS**
+name and logo — Apache-2.0 §6 grants no trademark rights. In short: fork it,
+modify it, ship it commercially — just do it under your own name.
+
+Releases up to and including v2.9.1 were published under the MIT License and
+remain available on those terms.
 
 

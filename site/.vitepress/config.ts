@@ -40,7 +40,13 @@ export default withMermaid({
     },
     socialLinks: [
       { icon: 'github', link: 'https://github.com/piyushbhargava1412/arcus-plugin' }
-    ]
+    ],
+    footer: {
+      message:
+        'Released under the <a href="https://github.com/piyushbhargava1412/arcus-plugin/blob/main/LICENSE">Apache-2.0 License</a>. ' +
+        '"ARCUS" and the ARCUS logo are marks of Krill — see the <a href="https://github.com/piyushbhargava1412/arcus-plugin/blob/main/TRADEMARK.md">trademark policy</a>.',
+      copyright: 'Copyright © 2025 Krill'
+    }
   },
   mermaid: {
     flowchart: {

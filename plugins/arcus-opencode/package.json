@@ -3,7 +3,7 @@
   "version": "2.7.3",
   "description": "ARCUS (Spec → Code → Pull Request pipeline) as an OpenCode plugin. Bundles the ARCUS skills, agents, and helper scripts and stages them into the target repository at session start.",
   "type": "module",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "author": "Krill",
   "homepage": "https://github.com/piyushbhargava1412/arcus-plugin/tree/main/plugins/arcus-opencode",
   "repository": {
@@ -36,7 +36,9 @@
   "files": [
     "dist",
     "src",
-    "bundled"
+    "bundled",
+    "LICENSE",
+    "NOTICE"
   ],
   "publishConfig": {
     "access": "public"

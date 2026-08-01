@@ -29,6 +29,7 @@ import { fileURLToPath } from "node:url"
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const pkgRoot = join(__dirname, "..") // plugins/arcus-opencode
 const arcusSource = join(pkgRoot, "..", "arcus") // plugins/arcus (authoring source)
+const repoRoot = join(pkgRoot, "..", "..") // repository root (LICENSE / NOTICE live here)
 const bundled = join(pkgRoot, "bundled")
 
 import {
@@ -152,6 +153,18 @@ async function buildAgents() {
   return n
 }
 
+// Apache-2.0 §4(a)/(d): every redistribution must carry the License and the
+// NOTICE file. The tarball is a redistribution, so stage both from the repo root
+// into the package root (derived output, git-ignored like bundled/).
+async function buildLegal() {
+  for (const name of ["LICENSE", "NOTICE"]) {
+    const src = join(repoRoot, name)
+    if (!existsSync(src)) throw new Error(`missing ${name} at repo root: ${src}`)
+    await cp(src, join(pkgRoot, name), { force: true })
+  }
+  return 2
+}
+
 async function main() {
   if (!existsSync(arcusSource)) {
     console.error(`[build] authoring source not found: ${arcusSource}`)
@@ -164,10 +177,11 @@ async function main() {
   await buildAgentResources()
   await buildSchemas()
   const agents = await buildAgents()
+  await buildLegal()
 
   console.log(
     `[build] bundled: ${skills} skills, ${agents} agents ` +
-      `(+ scripts, agent-resources, schemas) → ${bundled}`,
+      `(+ scripts, agent-resources, schemas, LICENSE, NOTICE) → ${bundled}`,
   )
 }
 

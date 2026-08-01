@@ -39,11 +39,17 @@ replay_pid*
 # Root opencode.json is user/project config — not repo content
 opencode.json
 
+# --- generated public distribution tree (scripts/build-dist.mjs) ---
+dist/
+
 # --- arcus-opencode npm package: derived build output ---
 plugins/arcus-opencode/bundled/
 plugins/arcus-opencode/dist/
 plugins/arcus-opencode/node_modules/
 plugins/arcus-opencode/*.tgz
+# Apache-2.0 §4(a)/(d) files staged into the tarball from the repo root at build time
+plugins/arcus-opencode/LICENSE
+plugins/arcus-opencode/NOTICE
 
 .github/agents
 .github/prompts
