@@ -67,7 +67,7 @@ Invoke the subagent using the platform's spawner, passing the resolved model str
 With:
 - **prompt**: The constructed prompt from Step 2
 - **description**: `"Task N: <short task title>"`
-- **model**: The resolved platform model string (Claude Code: `"opus"`/`"sonnet"`/`"haiku"`; Copilot CLI: a slug id, e.g. `"claude-sonnet-4.6"`; VS Code: e.g. `"Claude Sonnet 4.6 (copilot)"`). Passing this is what makes a `light` task run on `haiku` and a `medium` task on `sonnet` instead of the session default — omitting it forfeits the savings. **On Copilot CLI it is the only signal that works**: tier words in the agent's `model:` frontmatter are ignored there.
+- **model**: The resolved platform model string (Claude Code: `"opus"`/`"sonnet"`/`"haiku"`; Copilot CLI: a slug id, e.g. `"claude-sonnet-4.6"`; VS Code: e.g. `"Claude Sonnet 4.6 (copilot)"`). Passing this is what makes a `light` task run on `haiku` and a `medium` task on `sonnet` instead of the session default — omitting it forfeits the savings. **On Copilot CLI it is the only signal that works**: Copilot CLI does not resolve tier words — it warns visibly and falls back to the session model; a valid slug is honoured. Passing the model slug at dispatch is mandatory to achieve tier selection on Copilot CLI.
 
 ### Step 4: Handle Response
 
