@@ -222,6 +222,26 @@ Only bump the version and push when you're ready to cut a release that installed
 
 ---
 
+## Contributing
+
+**This repository is generated.** Its contents are built from a private source repo by
+`build-dist.mjs` and pushed here by CI on every release. A pull request opened against it
+would be overwritten by the next publish without ever being merged — so please don't send
+one here.
+
+What to do instead:
+
+- **Bugs, feature requests, questions** → [open an issue](https://github.com/piyushbhargava1412/arcus-plugin/issues).
+  Issues are read and are the right place for everything.
+- **Code contributions** → open an issue first describing the change. Patches are welcome;
+  they just have to land upstream, and we'll sort out the mechanics there.
+
+The withheld half is only development scaffolding — the test suite, eval specs, the trigger
+corpus, and internal working notes. Everything the plugin actually *runs* is here, in the
+open, under Apache-2.0: every skill prompt, every agent, every helper script.
+
+---
+
 ## Usage
 
 ### 1. Build repository context (once per repo)
@@ -327,9 +347,16 @@ install location.
 Release flow:
 
 1. Bump `version` in `plugin.json` and promote `[Unreleased]` → `[x.y.z] - <date>` in `CHANGELOG.md`.
-2. Merge to `main` — CI (`release-opencode-plugin` workflow) automatically builds the `arcus-opencode` tarball and publishes it as a GitHub Release tagged `arcus-opencode-v<version>`.
+2. Merge upstream — CI builds this distribution, verifies it against the full test suite, and
+   pushes it here. That push then triggers the `version-tags` and `release-opencode-plugin`
+   workflows, which tag `v<x.y.z>` (moving the floating `v<major>`) and publish the
+   `arcus-opencode` tarball as a GitHub Release tagged `arcus-opencode-v<version>`.
 3. **Claude / Copilot / VS Code** consumers run `/plugin marketplace update arcus` to pull the new version.
 4. **OpenCode** consumers re-run the installer (`curl … | sh`) to fetch the new tarball from the GitHub Release.
+
+A release can never ship changed content under an unchanged `version`: consumers refresh by
+comparing their cached version against this one, so an unbumped publish would be a silent no-op
+that strands every already-installed user. CI blocks it.
 
 ---
 

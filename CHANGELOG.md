@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **The public `arcus-plugin` repo is now a generated distribution**, built from a private source
+  repo and pushed by CI. `README.md` gained a **Contributing** section saying so plainly, because
+  the repo is public and Apache-2.0 — silently overwriting a stranger's pull request on the next
+  publish would be a hostile way to find that out. Issues are the route in. The Local-development
+  and Versioning sections were corrected to describe the flow that actually runs; they still
+  described editing and releasing straight from this repo.
+  The withheld half is development scaffolding only (test suite, eval specs, trigger corpus,
+  internal notes) — every skill prompt, agent, and helper script the plugin *runs* still ships.
+
 - **Relicensed from MIT to Apache-2.0.** MIT granted anyone the right to fork, rebrand, and resell
   ARCUS with no obligation and — critically — said nothing about the name. Apache-2.0 keeps ARCUS
   fully open and OSI-approved (so enterprise legal and curated marketplaces still clear it) while
