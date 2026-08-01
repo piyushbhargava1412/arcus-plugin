@@ -147,6 +147,8 @@ OpenCode does not read ARCUS's authoring format directly. `plugins/arcus-opencod
 converted copy: `arcus:` prefixes are stripped, tier words are resolved to `provider/model-id` and
 pinned per agent, and `tools:` / `disallowedTools:` become a `permission:` block.
 
+The default provider column is **GitHub Copilot** (enterprise license, flat cost). An **Amazon Bedrock** alternative (anthropic via `AWS_BEARER_TOKEN_BEDROCK`) resolves opus → `amazon-bedrock/anthropic.claude-opus-4-8`, sonnet → `amazon-bedrock/anthropic.claude-sonnet-4-6`, haiku → `amazon-bedrock/anthropic.claude-haiku-4-5-20251001-v1:0` (prefix a region inference profile, e.g. `eu.`/`global.`, if your account requires one).
+
 ::: warning An absent permission key means *allowed*
 This is the OpenCode-shaped version of the same silent failure. The adapter therefore emits the
 permission block **deny-by-default**: the allowlist is authoritative, every key ARCUS knows about is
