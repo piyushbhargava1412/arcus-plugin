@@ -999,11 +999,15 @@ const SKILL_LOAD_TOOLS = new Set(['Skill']);
 /**
  * L1-17: An agent instructed to consult a skill must be able to load one.
  *
- * `tools:` is an allowlist, so an agent that omits `Skill` has no skill-loading
- * capability at all — and the failure is silent in the usual way: the agent does
- * not error, it improvises from whatever is already in its prompt. Measured on
- * Copilot CLI, a `tools: Read, Grep, Glob` agent asked to load a skill replies
- * that it has no tool for it and continues anyway.
+ * This gate is Claude-Code-driven and enforced for route-2 dispatch paths to
+ * ensure agents can follow instructions that reference skills. The requirement
+ * holds: `tools:` is an allowlist, so an agent that omits `Skill` cannot load
+ * a skill it is instructed to consult.
+ *
+ * Copilot CLI auto-grants `skill` and `sql` tools regardless of the `tools:`
+ * allowlist, so the gate is not *needed* there. However, host auto-grants are
+ * not a contract — different hosts have different tool models. The gate must
+ * hold regardless, to ensure correctness on platforms without auto-grants.
  *
  * This mattered concretely: `test-spec-compiler` was told to "use the guardrail
  * heuristics in the `arcus:model-strategy` skill" and `subagent-task-dispatcher`
@@ -1032,6 +1036,7 @@ const SKILL_LOAD_TOOLS = new Set(['Skill']);
  * @param {Set<string>} [input.skillNames] - Known skill names; when given, agents are ignored
  * @returns {{ ok: boolean, errors: string[] }}
  */
+
 function checkSkillLoadCapability({ name, body, tools, skillNames }) {
   const errors = [];
   const declared = Array.isArray(tools)
