@@ -87,8 +87,13 @@ instruction is "match the name against your registry", never "rewrite the prefix
 | `Edit` / `Write` | `Edit` / `Write` | `edit` |
 | `Task` / `Agent` | `Agent` | `task` |
 | `Skill` | `Skill` | `skill` |
+| `Sql` | — | `sql` |
 
 Two traps worth authoring around:
+
+- **On Copilot CLI, `skill` and `sql` are auto-granted** regardless of the `tools:` allowlist.
+  A declared allowlist is not the agent's whole toolset there: e.g. `tools: Read, Grep, Glob` yields
+  `view, grep, glob, skill, sql` total. Neither auto-granted tool can write to the repository.
 
 - **Unknown names are dropped silently.** A misspelled or host-specific name narrows the agent's real
   toolset with no error anywhere.
