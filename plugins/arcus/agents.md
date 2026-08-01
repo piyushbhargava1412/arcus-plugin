@@ -68,7 +68,7 @@ only consumer for fields no host reads.
 | `disallowedTools` | **enforced** | inferred inert | → `permission: deny` | **L1-4** |
 | `disallowed-tools` | **silently ignored** | inferred inert | read as fallback | **L1-4 rejects** |
 | `disable-model-invocation` | ignored on agents | **drops from registry** | inferred inert | **L1-13 rejects** |
-| `model` | tier word honoured | **ignored** — session model | mapped to a model id | L1-10 |
+| `model` | tier word honoured | **does not resolve tier words** — warns visibly and falls back; a valid slug is honoured | mapped to a model id | L1-10 |
 | `color` | UI hint | inert | mapped to hex | — |
 
 Two fields to read carefully. `layer` is **inert on every host** yet drives four CI gates — it is
@@ -89,7 +89,9 @@ matters.
   remain state-free (no checkpoint/branch ops) and own a Layer-2 eval spec
   (`tests/e2e/evals/specs/<name>/evals.json`).
 - **`model`** — a **tier word** (`opus`/`sonnet`/`haiku`) or `inherit`. Never hardcode a versioned
-  model id; tier→model resolution is owned solely by `arcus:model-strategy`.
+  model id; tier→model resolution is owned solely by `arcus:model-strategy`. Note: Copilot CLI
+  does not resolve tier words in frontmatter — it warns visibly and falls back; tier selection
+  there must be passed as a slug at dispatch (see `arcus:model-strategy` § Tier-to-Platform).
 - **`disable-model-invocation`** — **never set it.** Orchestrated dispatch *is* model invocation, so
   the flag cannot mean "orchestrator-only". Measured: Copilot CLI honours it on **both** agents and
   skills by dropping the item from its registry (the agent then loses host-enforced `tools:`); Claude

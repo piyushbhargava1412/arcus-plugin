@@ -44,7 +44,7 @@ developed against, **none of them were visible**.
 | `tools:` (allowlist) | **enforced** | **enforced** | translated to `permission:` | enforced |
 | `disallowedTools:` | honoured (camelCase **only**) | inferred inert (unmeasured) | translated to `permission: deny` | — |
 | `disallowed-tools:` (kebab) | **silently ignored** | silently ignored | read with fallback by the adapter | — |
-| `model:` tier word | **enforced** | **silently ignored** — falls back to the session model | pinned per agent at build time | via `runSubagent` `model` param |
+| `model:` tier word | **enforced** | **does not resolve tier words** — warns visibly and falls back; a valid slug is honoured | pinned per agent at build time | via `runSubagent` `model` param |
 | `disable-model-invocation:` | ignored on agents, **honoured on skills** | **honoured on both** — removes the item entirely | — | — |
 | `layer:` | inert | inert | inert | inert |
 

@@ -53,9 +53,10 @@ different surfaces with different model-string formats** — do not treat them a
 
 **GitHub Copilot CLI**: Dispatch with the **`task` tool**, which accepts a per-dispatch `model`
 parameter taking a **slug id** (not a tier word, not a display name). **Passing it is mandatory
-here**: Copilot CLI *ignores* tier words in an agent's `model:` frontmatter and silently falls back
-to the session model, so a `model: opus` reviewer will quietly run on whatever the session uses
-unless the dispatch overrides it. `reasoning_effort` and `context_tier` are also accepted.
+here**: Copilot CLI does not resolve tier words — it warns visibly when the `model:` value is not
+a recognized model slug, then falls back; a valid slug (e.g. `claude-haiku-4.5`) is honoured. A
+`model: opus` reviewer will therefore run on the session model unless the dispatch passes a valid
+slug. `reasoning_effort` and `context_tier` are also accepted.
 
 **VS Code Copilot Chat**: A different surface — the `runSubagent` tool, whose `model` parameter takes
 `"Model Name (Vendor)"` format. Pass the resolved string directly.
