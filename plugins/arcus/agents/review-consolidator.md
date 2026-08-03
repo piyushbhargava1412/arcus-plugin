@@ -12,7 +12,6 @@ model: sonnet
 color: cyan
 metadata:
   version: "1.0.0"
-  team: krill
   type:
     - agents
     - qa

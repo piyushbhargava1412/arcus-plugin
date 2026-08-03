@@ -2,7 +2,7 @@
   "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
   "name": "arcus",
   "owner": {
-    "name": "Krill"
+    "name": "Piyush Bhargava"
   },
   "description": "ARCUS (Any Repository Can Use Spec-driven development) — Marketplace for Spec Driven Development tools and skills compatible with GitHub Copilot, Claude Code, and VS Code.",
   "plugins": [
@@ -11,7 +11,7 @@
       "source": "./plugins/arcus",
       "description": "Spec → Code + Pull Request pipeline plus a one-shot repository agentifier. Bundles orchestrator skills (arcus-controller, repo-agentifier), their supporting skills and dispatched agents (skills/ vs agents/ surfaces), helper scripts, and a session bootstrap hook.",
       "author": {
-        "name": "Krill"
+        "name": "Piyush Bhargava"
       },
       "homepage": "https://github.com/piyushbhargava1412/arcus-plugin",
       "repository": "https://github.com/piyushbhargava1412/arcus-plugin",

@@ -1,7 +1,7 @@
 /* Shared color tokens for the comic page — a warm, classic-cartoon palette
-   (cream title cards, deep red accent, brass secondary) distinct from the
-   rest of the ARCUS site, the same way krill's ocean comic didn't match its
-   docs either. Light values are the default; dark values apply only via
+   (cream title cards, deep red accent, brass secondary) deliberately distinct
+   from the rest of the ARCUS site: the comic is its own visual world.
+   Light values are the default; dark values apply only via
    VitePress's own .dark class (toggled by the site's manual light/dark
    switch), so the switch stays authoritative. */
 :root {

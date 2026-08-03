@@ -42,6 +42,6 @@ Agent model tiers resolve to GitHub Copilot models by default (`claude-opus-4.8`
 
 ## License
 
-Apache-2.0 © Krill. See the bundled `LICENSE` and `NOTICE`, and the
+Apache-2.0 © Piyush Bhargava. See the bundled `LICENSE` and `NOTICE`, and the
 [trademark policy](https://github.com/piyushbhargava1412/arcus-plugin/blob/main/TRADEMARK.md)
 for use of the **ARCUS** name and logo.

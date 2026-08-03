@@ -1,6 +1,6 @@
 # ARCUS Trademark Policy
 
-**"ARCUS" and the ARCUS logo are marks of Krill.** They are *not* licensed under the
+**"ARCUS" and the ARCUS logo are marks of Piyush Bhargava.** They are *not* licensed under the
 Apache License, Version 2.0.
 
 [Section 6 of the Apache License](LICENSE) is explicit about this:
@@ -39,7 +39,7 @@ You do **not** need permission for any of the following.
   - ✅ "a fork of ARCUS"
 - **Unmodified redistribution** — redistributing ARCUS *unmodified*, under the name ARCUS, with
   the `LICENSE` and `NOTICE` files intact, and without implying that you are the origin of the
-  project or that it is endorsed by Krill.
+  project or that it is endorsed by Piyush Bhargava.
 - **Reproducing the NOTICE file**, exactly as the Apache License requires.
 - **Attribution and links** back to this project.
 
@@ -55,7 +55,7 @@ You do **not** need permission for any of the following.
 - Using ARCUS in a **domain name, package name, npm scope, marketplace listing, repository name,
   social handle, or company name** in a way that suggests it is the official project.
 - Offering a **paid, hosted, or commercial service under the ARCUS name**, or otherwise implying
-  that Krill sponsors, endorses, provides, or supports your offering.
+  that Piyush Bhargava sponsors, endorses, provides, or supports your offering.
 - **Registering** ARCUS or a confusingly similar mark as a trademark in any jurisdiction.
 
 The Apache License lets you fork, modify, and commercialize the code, including for profit.
@@ -86,7 +86,7 @@ is generally welcome; the point of this policy is to stop confusion, not partici
 
 ## Changes
 
-Krill may update this policy. Updates apply prospectively and do not retroactively revoke uses
+Piyush Bhargava may update this policy. Updates apply prospectively and do not retroactively revoke uses
 that were permitted when made.
 
 *This policy governs trademark use only. It does not restrict, and must not be read as

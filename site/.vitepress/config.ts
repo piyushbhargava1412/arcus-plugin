@@ -44,8 +44,8 @@ export default withMermaid({
     footer: {
       message:
         'Released under the <a href="https://github.com/piyushbhargava1412/arcus-plugin/blob/main/LICENSE">Apache-2.0 License</a>. ' +
-        '"ARCUS" and the ARCUS logo are marks of Krill — see the <a href="https://github.com/piyushbhargava1412/arcus-plugin/blob/main/TRADEMARK.md">trademark policy</a>.',
-      copyright: 'Copyright © 2025 Krill'
+        '"ARCUS" and the ARCUS logo are marks of Piyush Bhargava — see the <a href="https://github.com/piyushbhargava1412/arcus-plugin/blob/main/TRADEMARK.md">trademark policy</a>.',
+      copyright: 'Copyright © 2025 Piyush Bhargava'
     }
   },
   mermaid: {

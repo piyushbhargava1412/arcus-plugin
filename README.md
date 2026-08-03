@@ -380,7 +380,7 @@ TRADEMARK.md                             # "ARCUS" name & logo policy
 
 ## License
 
-[Apache-2.0](LICENSE) © Krill
+[Apache-2.0](LICENSE) © Piyush Bhargava
 
 See [`NOTICE`](NOTICE) for the attribution notice you must propagate when you
 redistribute ARCUS, and [`TRADEMARK.md`](TRADEMARK.md) for use of the **ARCUS**

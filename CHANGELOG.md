@@ -9,6 +9,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Copyright and trademark ownership corrected to Piyush Bhargava.** The `LICENSE` appendix,
+  `NOTICE`, `TRADEMARK.md`, the docs footer, and the `author`/`owner` fields surfaced in plugin
+  UIs all carried a stale attribution naming a party unrelated to this project. That is exactly
+  the attribution the Apache-2.0 §6 trademark reservation depends on being correct, so it is
+  fixed everywhere it appears. Also removed vestigial `metadata.team` frontmatter from
+  `simplify-and-verify` and `review-consolidator` (read by nothing; only 2 of 16 agents carried
+  it) and stale cross-project references in two `site/` theme source comments.
+
+- **Split the README in two.** `README.md` and the public repo's README were the same file, so
+  the private source repo shipped install instructions and told its own maintainer that "this
+  repository is generated" — false where it was being read. `README.dist.md` is now the source
+  of the public `README.md` (install, usage, uninstall, contributing), and `README.md` is
+  private and dev-facing: the split, the dist pipeline, the deploy key, the versioning contract,
+  and why the prompts cannot be withheld. Same `to:` relocation mechanism `dist-workflows/`
+  already uses, for the same reason — whoever opens `README.md` in either repo gets the one
+  written for that repo.
+
 - **The public `arcus-plugin` repo is now a generated distribution**, built from a private source
   repo and pushed by CI. `README.md` gained a **Contributing** section saying so plainly, because
   the repo is public and Apache-2.0 — silently overwriting a stranger's pull request on the next
@@ -27,6 +44,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `plugins/arcus-opencode/package.json`.
   Releases up to and including **v2.9.1 remain MIT** on their original terms; Apache-2.0 applies
   from v2.9.2 onward.
+
+### Fixed
+
+- **A docs-only change could deadlock the release pipeline.** The publish-time version guard
+  required a bump whenever *any* dist content differed from what was published, but the PR-time
+  guard only fires on `plugins/arcus/**`. A `site/`-only pull request therefore merged green and
+  then failed at publish, blocking `main` until someone pushed an unrelated bump. The publish
+  guard is now scoped to the **installed** surface (`plugins/`), which is what `version` actually
+  governs — `site/`, `README.md`, `CHANGELOG.md`, and `LICENSE` live at the dist root and are
+  never copied into a plugin cache, and the docs deploy from the public repo's own Pages workflow
+  independently of `version`. Bumping is still mandatory for anything users install, and a
+  backwards version is still rejected either way.
 
 ### Added
 
@@ -735,9 +764,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   capability/coordinator/orchestrator tier vocabulary, in favor of a plain-language team hierarchy
   ("who hands back one result vs. who holds the whole roadmap"). Superseded an initial Tom &
   Jerry-themed pass after user feedback that the chase metaphor obscured more than it clarified.
-  Built as VitePress components (`site/.vitepress/theme/components/comic/`) reusing the same
-  pattern the krill-agent-plugin sibling project's comic already proved out, retinted to its own
-  warm studio palette. Linked from the site nav, sidebar, and homepage hero.
+  Built as VitePress components (`site/.vitepress/theme/components/comic/`) in a warm studio
+  palette of its own. Linked from the site nav, sidebar, and homepage hero.
 
 ### Changed
 
@@ -926,7 +954,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `history-context-reviewer`, `review-consolidator`, `code-simplifier`, `simplify-and-verify`,
   `context-pack-builder`, `context-drift-sync`. Bundled resources are co-located in sibling
   `agents/<name>/` dirs; advisory reviewers keep their read-only guards.
-- **`test-spec-compiler` and `pull-request-builder` krill-split** into a thin `layer: coordinator`
+- **`test-spec-compiler` and `pull-request-builder` split** into a thin `layer: coordinator`
   **skill wrapper** (owns the user trigger + dispatch) and a same-named `layer: capability`
   **execution agent** (owns the workflow + assets). Their Layer-2 eval specs are unchanged.
 - **Test harness is agent-aware.** `tests/lib/skills.mjs` gains `walkAgents()` + `walkAll()`; every L1
@@ -1267,8 +1295,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Initial release of the **agent-forge** plugin, distributed through the
-  `krill-afk` marketplace (`.claude-plugin/marketplace.json`).
+- Initial release of the **agent-forge** plugin, distributed through its
+  marketplace (`.claude-plugin/marketplace.json`).
 - Plugin manifest at `plugins/agent-forge/.claude-plugin/plugin.json` (semver
   `version` is the release authority).
 - Two orchestrator meta-skills:

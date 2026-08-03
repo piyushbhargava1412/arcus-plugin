@@ -12,7 +12,6 @@ model: sonnet
 color: teal
 metadata:
   version: "1.0.0"
-  team: krill
   type:
     - agents
     - refactor

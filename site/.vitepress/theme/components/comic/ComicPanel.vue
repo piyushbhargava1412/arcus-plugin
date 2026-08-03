@@ -29,9 +29,8 @@ withDefaults(defineProps<{
   margin: 0;
   border: 3.5px solid var(--comic-panel-border);
   border-radius: 4px;
-  /* A warm studio glow — amber light sinking into shadow, replacing
-     krill's ocean teal. Hardcoded like the original: this is a deliberate
-     scene backdrop, not a themeable token. */
+  /* A warm studio glow — amber light sinking into shadow. Hardcoded on
+     purpose: this is a deliberate scene backdrop, not a themeable token. */
   background: linear-gradient(180deg, #c8763a 0%, #8a4a2a 55%, #4a2818 100%);
   box-shadow: 5px 5px 0 rgba(0, 0, 0, .25);
   display: flex;
