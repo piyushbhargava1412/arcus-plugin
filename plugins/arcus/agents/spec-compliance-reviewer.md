@@ -30,7 +30,7 @@ Verifies that an implementation matches its specification — nothing more, noth
 | **holistic** | `code-reviewer` coordinator | The whole branch diff vs. the full implementation plan + grounded spec | Severity-tagged findings (canonical taxonomy below) |
 
 The **per-task** pass is an early, advisory correctness check (one retry, then commit-and-carry-forward
-— see the dispatcher's Step 6), focused on catching gamed/missing tests and `[EXTRA]` scope creep while
+— see the dispatcher's Step 7), focused on catching gamed/missing tests and `[EXTRA]` scope creep while
 the task context is fresh. Stay strictly on correctness-vs-spec here; never flag style or quality —
 those are reviewed separately.
 
@@ -110,7 +110,7 @@ ISSUES:
 |-------|----------|------|-------------|
 | `acceptance_criteria` | yes | markdown or text | Definition of Done for the task being verified |
 | `claimed_files` | yes | list of file paths | Files the implementer reports as modified |
-| `change_set` | yes | git diff or file contents | The actual code changes to review |
+| `change_set` | yes | git diff or file contents | The actual code changes to review, delivered by value (inline in the prompt when ≤ 1500 lines, else as the `change.diff` path with paged-`Read` instructions) |
 
 ### Outputs
 - **`compliance_verdict`** (structured text) — Binary verdict (PASS or FAIL) with issue list categorized as MISSING, EXTRA, or WRONG requirements; each issue includes file:line references.

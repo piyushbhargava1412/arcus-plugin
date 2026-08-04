@@ -153,6 +153,11 @@ gate is pending a "yes"/"proceed", distinct from a stage genuinely being incompl
 > whose prompt opens *"Read and follow the agent spec at `$ARCUS_HOME/agents/<name>.md`"*, on hosts
 > with no registry — there the tool restrictions are only advisory. Full rule:
 > `arcus:model-strategy` § Agent Resolution.
+>
+> **Route (2) constraint**: expand `$ARCUS_HOME` to its absolute path before embedding it in the
+> child's prompt — never hand a subagent the literal `$ARCUS_HOME` string. A spawned child has
+> neither the variable nor a `.arcus/env` instruction of its own, so a literal reference is exactly
+> how an unresolvable path (and the filesystem-wide `find` it invites) gets improvised.
 
 ## Execution Pipeline
 
@@ -226,7 +231,8 @@ gate is pending a "yes"/"proceed", distinct from a stage genuinely being incompl
 ### Test Plan (one-shot)
 
 1. **Compile test spec** — dispatch a subagent:
-   - **Prompt**: "Read and follow the `arcus:test-spec-compiler` skill. Story ID: `<STORY_ID>`. Produce `.arcus/specs/<STORY_ID>/test-plan.md`."
+   - **Agent**: `test-spec-compiler`, resolved per **Agent Resolution** in `arcus:model-strategy`.
+   - **Prompt**: "Story ID: `<STORY_ID>`. Produce `.arcus/specs/<STORY_ID>/test-plan.md`."
    - **Description**: "TestPlan: test-spec-compiler"
    - **Model**: resolve complexity `medium` via the `arcus:model-strategy` skill.
    - Verify the file exists, then `.arcus/bin/checkpoint.sh complete <STORY_ID> test_plan`.
@@ -275,7 +281,8 @@ shared `.context/` artifact that the approved change set materially drifted.
 ### Closure (one-shot + script, terminal)
 
 1. **Build PR description** — dispatch a subagent:
-   - **Prompt**: "Read and follow the `arcus:pull-request-builder` skill. Story ID: `<STORY_ID>`. Produce `.arcus/specs/<STORY_ID>/PR_DESCRIPTION.md`."
+   - **Agent**: `pull-request-builder`, resolved per **Agent Resolution** in `arcus:model-strategy`.
+   - **Prompt**: "Story ID: `<STORY_ID>`. Produce `.arcus/specs/<STORY_ID>/PR_DESCRIPTION.md`."
    - **Description**: "Closure: pull-request-builder"
    - **Model**: resolve complexity `light` via the `arcus:model-strategy` skill.
    - Verify the file exists.

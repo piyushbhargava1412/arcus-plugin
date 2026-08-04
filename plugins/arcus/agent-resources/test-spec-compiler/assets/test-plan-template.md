@@ -13,17 +13,21 @@
 
 ## Detailed Test Matrix
 
-### 1. Functional (Happy Path)
-[Detailed breakdown of success scenarios, mapped to Task IDs.]
+One `### Task N: <title>` subsection per plan task, each with a case table below. This is the
+deterministic anchor — the `### Task N:` subsection of `## Detailed Test Matrix` — that
+`subagent-task-dispatcher` Step 1 extracts per task, rather than a grep over prose. Close with a
+terminal `### All Tasks` subsection for cross-cutting regression cases that are not tied to a
+single task.
 
-### 2. Validation & Edge Cases
-[Detailed breakdown of boundary conditions, mapped to Task IDs.]
+### Task N: <title>
+| Test Case | Category | Complexity | Expected Result |
+| :--- | :--- | :--- | :--- |
+| [Scenario description] | Happy Path / Edge Case / Error Case / Regression | light/medium/heavy | [Expected outcome] |
 
-### 3. Error Handling & Recovery
-[Scenarios for timeouts, 4xx/5xx responses, mapped to Task IDs.]
-
-### 4. Regression / Integration
-[Existing flows that must remain green — from the flows linked in context-pack.md's Relevant Flows section.]
+### All Tasks
+| Test Case | Category | Complexity | Expected Result |
+| :--- | :--- | :--- | :--- |
+| [Existing flow that must remain green — from the flows linked in context-pack.md's Relevant Flows section] | Regression | light | [Expected outcome] |
 
 ## Test Implementation Assets
 - **Test Framework**: [e.g. JUnit 5 / Mockito]

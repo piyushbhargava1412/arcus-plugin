@@ -18,7 +18,7 @@ color: blue
 ### Inputs
 | Input | Required | Type | Description |
 |-------|----------|------|-------------|
-| `change_set` | yes | git diff | The branch diff with all files changed by this story |
+| `change_set` | yes | git diff | The branch diff with all files changed by this story, delivered by value (inline in the prompt when ≤ 1500 lines, else as the `change.diff` path with paged-`Read` instructions) |
 | `acceptance_criteria` | yes | markdown | Definition of Done for the tasks in this story |
 | `repo_conventions` | no | markdown | Architecture, design/coding conventions, testing patterns, repo guidelines (context-pack + `.context/`) |
 

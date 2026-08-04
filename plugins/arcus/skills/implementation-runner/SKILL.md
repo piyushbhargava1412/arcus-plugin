@@ -72,6 +72,11 @@ Stage status values: `pending | in_progress | awaiting_handoff | complete | need
 > whose prompt opens *"Read and follow the agent spec at `$ARCUS_HOME/agents/<name>.md`"*, on hosts
 > with no registry — there the tool restrictions are only advisory. Full rule:
 > `arcus:model-strategy` § Agent Resolution.
+>
+> **Route (2) constraint**: expand `$ARCUS_HOME` to its absolute path before embedding it in the
+> child's prompt — never hand a subagent the literal `$ARCUS_HOME` string. A spawned child has
+> neither the variable nor a `.arcus/env` instruction of its own, so a literal reference is exactly
+> how an unresolvable path (and the filesystem-wide `find` it invites) gets improvised.
 
 ## Protocol
 

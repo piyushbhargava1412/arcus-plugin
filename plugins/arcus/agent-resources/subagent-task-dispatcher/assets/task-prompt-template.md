@@ -13,10 +13,15 @@ Follow test-driven development: write tests first, then implement, then verify.
 ## Repository Context
 
 {{ARCHITECTURE_SUMMARY}}
-- Language: {{LANGUAGE}}
-- Framework: {{FRAMEWORK}}
 - Test framework: {{TEST_FRAMEWORK}}
 - Key patterns: {{PATTERNS}}
+
+### Likely Working Areas
+
+The context pack already located the files this story touches, with entry points, reuse
+points and line numbers. Start here rather than searching the repository for them:
+
+{{WORKING_AREAS}}
 
 ## Your Task
 
@@ -81,11 +86,10 @@ TDD: add or adjust a test that would have caught the issue (RED), then fix it (G
 
 | Variable | Source | Example |
 |----------|--------|---------|
-| `{{ARCHITECTURE_SUMMARY}}` | `context-pack.md` → Architecture section (first 2-3 paragraphs) | "Spring Boot 3.x REST API with JPA persistence..." |
-| `{{LANGUAGE}}` | `context-pack.md` → repo_scope | "Java 17" |
-| `{{FRAMEWORK}}` | `context-pack.md` → repo_scope | "Spring Boot 3.2" |
-| `{{TEST_FRAMEWORK}}` | `context-pack.md` → testing patterns | "JUnit 5 + Mockito" |
-| `{{PATTERNS}}` | `context-pack.md` → key patterns | "Repository pattern, DTOs, MapStruct mappers" |
+| `{{ARCHITECTURE_SUMMARY}}` | `context-pack.md` → `Scope` | The packages/modules this story touches, as the pack states them |
+| `{{WORKING_AREAS}}` | `context-pack.md` → `Likely Working Areas` — **verbatim, do not summarize** | The per-file bullets naming entry points, reuse points and line numbers |
+| `{{TEST_FRAMEWORK}}` | `context-pack.md` → `Testing Patterns` | The repo's test framework and runner, as the pack states them |
+| `{{PATTERNS}}` | `context-pack.md` → `Design & Coding Patterns` | The conventions and "Avoid" rules that constrain this task |
 | `{{TASK_DEFINITION}}` | `plan.md` → `### Task N:` full section | The complete task heading + body |
 | `{{FILE_LIST}}` | `plan.md` → task's "Files" subsection | "src/main/java/com/example/OrderService.java" |
 | `{{DOD}}` | `plan.md` → task's "Definition of Done" | "- OrderService.createOrder() handles validation..." |

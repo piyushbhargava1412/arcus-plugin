@@ -90,7 +90,31 @@ function parseAgentFrontmatter(fm) {
  *
  * So: every key ARCUS knows about is emitted explicitly, allow or deny. An
  * explicit `disallowedTools` entry always wins, so the two can never contradict.
+ *
+ * `Task`/`Skill` (ARC-0308 Task 10): VERIFIED against `@opencode-ai/sdk@1.17.11`
+ * — the exact version `plugins/arcus-opencode/pnpm-lock.yaml` pins for this
+ * package — whose generated `dist/gen/types.gen.d.ts` types both the global
+ * `Config.permission` and the per-agent `AgentConfig.permission` as a CLOSED
+ * object with exactly five keys: `edit`, `bash`, `webfetch`, `doom_loop`,
+ * `external_directory`. There is no `task` or `skill` key anywhere in the
+ * schema — subagent dispatch and skill loading are not gated through this
+ * ask/allow/deny block at all on OpenCode (the closest analog is the separate,
+ * unemitted `tools: {name: boolean}` map, which is out of this function's
+ * scope). So a declared `Task`/`Skill` grant is not merely UNVERIFIED, it is
+ * CONFIRMED ABSENT: inventing a `task`/`skill` key here would not close a hole,
+ * it would write a key OpenCode's own schema does not recognize. Per the
+ * grounded decision (SF-12 → Option A: verify first, else fail-closed), that
+ * forecloses extending `toolMap` and requires the fail-closed fallback below —
+ * NO_PERMISSION_EQUIVALENT names the confirmed exception, and every other
+ * unrecognized declared tool still fails the build loudly rather than
+ * vanishing silently.
  */
+
+// Declared Claude tools with a CONFIRMED-ABSENT OpenCode permission-schema
+// equivalent (see doc-comment above). Deliberately, evidence-backed omitted
+// from the emitted `permission:` block — never silently guessed.
+const NO_PERMISSION_EQUIVALENT = new Set(["Task", "Skill"])
+
 function buildPermission(fields) {
   // Accept either spelling and either shape: this script's own parser yields
   // comma-separated strings, while the test harness's parser yields arrays.
@@ -124,7 +148,32 @@ function buildPermission(fields) {
   // AskUserQuestion has no OpenCode tool; the analog is the `question` permission.
   if (disallowed.includes("AskUserQuestion")) perms.question = "deny"
 
+  // Fail-closed safety net (ARC-0308 Task 10): a declared tool that is neither a
+  // known mapping above nor a confirmed no-equivalent case (NO_PERMISSION_EQUIVALENT)
+  // must fail the build loudly instead of silently vanishing from the emitted
+  // permission block — the doctrine this module's own comment forbids violating.
+  const mappedTools = new Set([...Object.keys(toolMap), "Write", "Edit"])
+  const unmapped = tools.filter((t) => !mappedTools.has(t) && !NO_PERMISSION_EQUIVALENT.has(t))
+  if (unmapped.length > 0) {
+    throw new Error(
+      `buildPermission: declared tool(s) [${unmapped.join(", ")}] on agent ` +
+        `"${fields.name || "unknown"}" have no OpenCode permission-key mapping and ` +
+        `are not a confirmed no-equivalent case. Refusing to silently default them ` +
+        `to allowed — verify the OpenCode permission key name and extend toolMap, ` +
+        `or add the tool to NO_PERMISSION_EQUIVALENT with evidence, before shipping ` +
+        `this agent to OpenCode.`,
+    )
+  }
+
   return perms
 }
 
-export { buildPermission, parseAgentFrontmatter, stripArcusNamespace, TIER_TO_MODEL, COLOR_TO_HEX, FRONTMATTER_RE }
+export {
+  buildPermission,
+  parseAgentFrontmatter,
+  stripArcusNamespace,
+  TIER_TO_MODEL,
+  COLOR_TO_HEX,
+  FRONTMATTER_RE,
+  NO_PERMISSION_EQUIVALENT,
+}

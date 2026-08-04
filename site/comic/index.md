@@ -464,18 +464,20 @@ layout: page
 <ComicPanel :span="12" tilt="r">
   <template #caption>Before a single line of code — the test matrix</template>
   <template #scene>
-    <svg class="scene" viewBox="0 0 800 130" role="img" aria-label="Quinn sorts three labeled piles: functional, edge case, and error handling">
+    <svg class="scene" viewBox="0 0 800 130" role="img" aria-label="Quinn tags every case under its task section: happy path, edge case, error case, or regression">
       <path d="M0 108 Q200 92 400 106 T800 104 L800 130 L0 130 Z" fill="#2a160c"/>
       <CastIcon name="quinn" x="30" y="6" width="120" height="120" />
       <g font-family="Arial Narrow, Impact" font-weight="800" font-size="11" fill="#241a10">
-        <rect x="200" y="30" width="150" height="30" rx="4" fill="#d3f2df" stroke="#241a10" stroke-width="2"/>
-        <text x="275" y="50" text-anchor="middle">FUNCTIONAL</text>
-        <rect x="370" y="30" width="150" height="30" rx="4" fill="#fdeec2" stroke="#241a10" stroke-width="2"/>
-        <text x="445" y="50" text-anchor="middle">EDGE CASE</text>
-        <rect x="540" y="30" width="150" height="30" rx="4" fill="#ffd8d1" stroke="#241a10" stroke-width="2"/>
-        <text x="615" y="50" text-anchor="middle">ERROR HANDLING</text>
+        <rect x="185" y="30" width="130" height="30" rx="4" fill="#d3f2df" stroke="#241a10" stroke-width="2"/>
+        <text x="250" y="50" text-anchor="middle">HAPPY PATH</text>
+        <rect x="325" y="30" width="130" height="30" rx="4" fill="#fdeec2" stroke="#241a10" stroke-width="2"/>
+        <text x="390" y="50" text-anchor="middle">EDGE CASE</text>
+        <rect x="465" y="30" width="130" height="30" rx="4" fill="#ffd8d1" stroke="#241a10" stroke-width="2"/>
+        <text x="530" y="50" text-anchor="middle">ERROR CASE</text>
+        <rect x="605" y="30" width="130" height="30" rx="4" fill="#e0d8f7" stroke="#241a10" stroke-width="2"/>
+        <text x="670" y="50" text-anchor="middle">REGRESSION</text>
       </g>
-      <text x="415" y="90" text-anchor="middle" font-family="Comic Sans MS" font-size="12" fill="#f3e6cd">→ test-plan.md, every case mapped to a plan.md task</text>
+      <text x="415" y="90" text-anchor="middle" font-family="Comic Sans MS" font-size="12" fill="#f3e6cd">→ test-plan.md, every case under its ### Task N: section</text>
     </svg>
   </template>
   <template #talk>

@@ -26,7 +26,7 @@ concretely dangerous** — not theoretical, defense-in-depth wishlist items.
 ### Inputs
 | Input | Required | Type | Description |
 |-------|----------|------|-------------|
-| `change_set` | yes | git diff | The branch diff with changed files and hunks |
+| `change_set` | yes | git diff | The branch diff with changed files and hunks, delivered by value (inline in the prompt when ≤ 1500 lines, else as the `change.diff` path with paged-`Read` instructions) |
 | `repo_conventions` | no | markdown | Architecture patterns, security guardrails, coding conventions (relevant context-pack section) |
 
 ### Outputs

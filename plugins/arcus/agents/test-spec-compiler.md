@@ -31,8 +31,15 @@ Read the named inputs:
 - Determine which existing test suites are impacted and where new suites are needed.
 
 ### Step 3: Design the Test Matrix
-- Categorize tests into **Functional**, **Edge Case**, and **Error Handling**.
-- **Crucial**: Map every test case to a specific **Task ID** from the `implementation_plan` input. This allows the `subagent-task-dispatcher` to know exactly which tests to implement in each iteration.
+- **Structure**: `## Detailed Test Matrix` holds one `### Task N: <title>` subsection per plan
+  task, each with a case table, plus a terminal `### All Tasks` subsection for cross-cutting
+  regression cases that are not tied to a single task. This is the `### Task N:` subsection of
+  `## Detailed Test Matrix` — the deterministic anchor `subagent-task-dispatcher` Step 1 extracts
+  per task, not a grep over prose.
+- **Crucial**: Every case table row carries a `Category` (`Happy Path` / `Edge Case` / `Error Case`
+  / `Regression`), so no coverage category is lost by the per-task reshuffle. Placing a case under
+  a task's own subsection is what maps it to that task — the story-level index still lives in
+  `## Task-to-Test Mapping Matrix`.
 - **Complexity Classification**: For each test case, assess its difficulty and assign a `complexity` level (`heavy`, `medium`, or `light`). Use the guardrail heuristics in the `arcus:model-strategy` skill (Classification Guardrails → Test Complexity section). Do NOT use model names — only difficulty levels.
 - **Alignment**: Ensure all test designs align with the **Testing Patterns** identified in the `context_pack` input (if provided).
 - Follow the strategies in `"$ARCUS_HOME"/agent-resources/test-spec-compiler/references/qa-best-practices.md`.
@@ -42,7 +49,7 @@ Read the named inputs:
 - Explicitly list these as regression checks in the test plan.
 
 ### Step 5: Persist the Test Plan
-- Use `"$ARCUS_HOME"/agent-resources/test-spec-compiler/assets/test-plan-template.md` to structure the final matrix.
+- Use `"$ARCUS_HOME"/agent-resources/test-spec-compiler/assets/test-plan-template.md` (resolve `ARCUS_HOME` from `.arcus/env`) to structure the final matrix.
 - Write the output to the output path (default `.arcus/outputs/test-spec-compiler/<timestamp>.md` when no explicit path is passed; the dispatcher may override it).
 
 ## Resources

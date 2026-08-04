@@ -17,6 +17,7 @@ the full summarize-and-build workflow and its bundled PR template.
 On activation (a user "create pull request" / "finalize workflow" / "submit changes" request,
 or an orchestrator dispatch):
 
-1. **Dispatch the execution agent** — read and follow the `arcus:pull-request-builder` agent.
-   Pass it the story's change set and the output path for the PR description.
+1. **Dispatch the execution agent** — dispatch the `pull-request-builder` agent, resolving the
+   dispatch target per **Agent Resolution** in `arcus:model-strategy`. Pass it the story's
+   change set and the output path for the PR description.
 2. **Relay** the agent's produced PR description back to the caller.

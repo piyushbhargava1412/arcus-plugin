@@ -81,6 +81,9 @@ severity calibration and the verdict are owned by `arcus:review-consolidator`.
 3. Drop noise files before review: lock files (`*.lock`, `package-lock.json`, `go.sum`, etc.),
    minified/generated assets (`*.min.*`, `*.map`, `// @generated`), and vendored directories.
    **Never** drop database migrations even if marked generated.
+4. After the noise filter has run, write the surviving diff — `git diff <base_branch>...HEAD` over the
+   noise-filtered file set — to `<STORY_DIR>/change.diff`. This is the by-value payload Step 3 hands to
+   the specialists.
 
 ### Step 2: Deterministic Gate (run the tooling — fail fast)
 
@@ -121,24 +124,35 @@ Mechanical churn must not consume a loopback round. Only lint errors with **no**
 > whose prompt opens *"Read and follow the agent spec at `$ARCUS_HOME/agents/<name>.md`"*, on hosts
 > with no registry — there the tool restrictions are only advisory. Full rule:
 > `arcus:model-strategy` § Agent Resolution.
+>
+> **Route (2) constraint**: expand `$ARCUS_HOME` to its absolute path before embedding it in the
+> child's prompt — never hand a subagent the literal `$ARCUS_HOME` string. A spawned child has
+> neither the variable nor a `.arcus/env` instruction of its own, so a literal reference is exactly
+> how an unresolvable path (and the filesystem-wide `find` it invites) gets improvised.
 
 ## Step 3: Fan out to reviewers
 
 Spawn the specialists as subagents, in parallel where the platform allows. This coordinator runs
 **in the thread that invoked it** (the main chat thread, or the controller that loaded it) and the
 specialists are capabilities (leaves) — so the spawned subagents here are the only level, never
-nested behind another subagent. Each specialist receives only the changed files plus the relevant
-spec section — not the full conversation. Resolve each model **and each agent's dispatch target**
-via the `arcus:model-strategy` skill (see its **Agent Resolution** section — an agent is addressed
-by the host's registered subagent type, never as `arcus:<name>`).
+nested behind another subagent. Each specialist receives the diff **by value**, never a bare filename
+list: when `<STORY_DIR>/change.diff` is **≤ 1500 lines**, inline its content directly in the
+specialist's prompt; when it is **> 1500 lines**, pass the `change.diff` path, the changed-file list,
+and an explicit instruction to read it in `offset`/`limit` pages of ≤ 1500 lines each until EOF — 1500
+is a deliberate margin under `Read`'s 2000-line truncation. Either branch also carries the relevant
+spec section, not the full conversation. Specialists **keep** permission to open source files directly
+when a hunk needs surrounding context — the diff is the starting payload, not a prohibition;
+`history-context-reviewer` keeps its `Bash`/git access for blame/log lookups. Resolve each model **and
+each agent's dispatch target** via the `arcus:model-strategy` skill (see its **Agent Resolution**
+section — an agent is addressed by the host's registered subagent type, never as `arcus:<name>`).
 
-| Reviewer | Agent | Complexity | Scope |
-|----------|-------|------------|-------|
-| Spec compliance | `spec-compliance-reviewer` (holistic mode) | medium | Whole diff vs. plan DoD + grounded spec |
-| Code quality | `code-quality-reviewer` | medium | Whole diff vs. repo patterns, incl. **test proportionality** (excessive/over-engineered tests, slow integration tests that bloat the build) |
-| Security | `security-reviewer` | medium | Whole diff |
-| Performance | `performance-reviewer` | medium | Whole diff |
-| History/Context | `history-context-reviewer` | medium | Whole diff vs. git blame/log — flags load-bearing complexity removals, silently-reverted fixes, and re-added reverted code |
+| Reviewer | Agent | Complexity | Effort | Scope |
+|----------|-------|------------|--------|-------|
+| Spec compliance | `spec-compliance-reviewer` (holistic mode) | medium | low | Whole diff vs. plan DoD + grounded spec |
+| Code quality | `code-quality-reviewer` | medium | low | Whole diff vs. repo patterns, incl. **test proportionality** (excessive/over-engineered tests, slow integration tests that bloat the build) |
+| Security | `security-reviewer` | medium | medium | Whole diff |
+| Performance | `performance-reviewer` | medium | low | Whole diff |
+| History/Context | `history-context-reviewer` | medium | low | Whole diff vs. git blame/log — flags load-bearing complexity removals, silently-reverted fixes, and re-added reverted code |
 
 Each specialist returns findings as a list of `severity | file:line | description` plus a one-line
 summary. Tell each reviewer to read source files as needed to verify before flagging. Reviewers focus
@@ -200,7 +214,7 @@ the consolidated semantic findings.
 
 On finish, this skill marks its own checkpoint key complete:
 `<BIN>/checkpoint.sh complete <STORY_ID> code_review` (resolve `<BIN>` as `.arcus/bin/` →
-`$ARCUS_HOME/scripts/`). This is a **decision gate** — its successor depends on the `VERDICT`, so it
+`$ARCUS_HOME/scripts/`; resolve `ARCUS_HOME` from `.arcus/env`). This is a **decision gate** — its successor depends on the `VERDICT`, so it
 names **only its immediate successor on each branch**. It does **NOT** enumerate the full pipeline;
 that lives only in the afk `arcus:arcus-controller`.
 

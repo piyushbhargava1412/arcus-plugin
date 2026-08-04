@@ -43,7 +43,7 @@ export const QUIZ: QuizQuestion[] = [
     a: 2, w: 'Interactive is Lucie’s default — no flag needed. forge/afk/run afk on are the autonomous triggers.' },
   { d: 'easy', q: 'Which teammate designs the test matrix before any code is written?',
     o: ['Angelina', 'Quinn', 'Diana', 'Steffi'],
-    a: 1, w: 'Quinn (QA) sorts functional, edge-case, and error-handling tests before Diana ever touches a ticket.' },
+    a: 1, w: 'Quinn (QA) organizes cases by plan.md task (Happy Path / Edge Case / Error Case / Regression) before Diana ever touches a ticket.' },
   { d: 'easy', q: 'Which teammate is the deterministic gate — zero nuance, hard stop?',
     o: ['Lucie', 'Steffi', 'Benny', 'Genie'],
     a: 2, w: 'Any hard block (typecheck, tests, build, secrets) skips Steffi’s review and returns changes_requested immediately — no judgment call, exactly like Benny.' },
@@ -76,9 +76,9 @@ export const QUIZ: QuizQuestion[] = [
     a: 2, w: 'Lucie is the only one who carries the checkpoint and the branch across the entire story.' },
 
   // ---------- medium ----------
-  { d: 'medium', q: 'What are the three categories Quinn designs test cases across?',
-    o: ['Unit / Integration / E2E', 'Functional / Edge Case / Error Handling', 'Smoke / Regression / Load', 'Manual / Automated / Exploratory'],
-    a: 1, w: 'Happy-path functional coverage, boundary/edge conditions, and validation/exception error paths.' },
+  { d: 'medium', q: 'What are the categories Quinn tags each test case with, inside every task-keyed section?',
+    o: ['Unit / Integration / E2E', 'Happy Path / Edge Case / Error Case / Regression', 'Smoke / Regression / Load', 'Manual / Automated / Exploratory'],
+    a: 1, w: 'Every case lives under its `### Task N:` section and carries a Category — happy-path, boundary/edge, validation/exception error, or regression.' },
   { d: 'medium', q: 'Exactly when is the real git branch created?',
     o: ['On day one, before Brainstorm', 'At the start of Implementation, not on day one', 'At Code Review, once approved', 'At Closure, right before the PR'],
     a: 1, w: 'Deferred branch creation: day one only plans the name; Lucie realizes it at the start of Implementation, re-checking for collisions. The one exception is a git worktree — there the session branch already exists, so day one adopts it and the branch stage is done before Implementation begins.' },

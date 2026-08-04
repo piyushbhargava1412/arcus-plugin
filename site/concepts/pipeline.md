@@ -210,14 +210,17 @@ end-to-end.
     <td>
       <ul>
         <li>Reviews the task list in <code>plan.md</code> and the grounded decisions in <code>grounded-spec.md</code></li>
-        <li>Designs test cases across three categories:
+        <li>Organizes cases into one <code>### Task N:</code> subsection per plan task (plus a closing
+          <code>### All Tasks</code> subsection for cross-cutting regression), each case tagged with a
+          <strong>Category</strong>:
           <ul>
-            <li><strong>Functional:</strong> Happy path verification</li>
-            <li><strong>Edge Case:</strong> Boundary conditions, null handling</li>
-            <li><strong>Error Handling:</strong> Validation failures, exception paths</li>
+            <li><strong>Happy Path:</strong> functional verification</li>
+            <li><strong>Edge Case:</strong> boundary conditions, null handling</li>
+            <li><strong>Error Case:</strong> validation failures, exception paths</li>
+            <li><strong>Regression:</strong> existing flows that must stay green</li>
           </ul>
         </li>
-        <li>Maps each test to <code>plan.md</code> task IDs</li>
+        <li>Indexes every case in a <code>Task-to-Test Mapping Matrix</code>, keyed to <code>plan.md</code> task IDs</li>
         <li>Follows patterns from <code>.context/testing-patterns.md</code></li>
       </ul>
     </td>
@@ -228,7 +231,7 @@ end-to-end.
     </td>
     <td>
       <ul>
-        <li><code>test-plan.md</code> — Test matrix with functional/edge/error categories</li>
+        <li><code>test-plan.md</code> — Task-keyed test matrix (<code>### Task N:</code> subsections), each case categorized Happy Path / Edge Case / Error Case / Regression</li>
       </ul>
     </td>
   </tr>

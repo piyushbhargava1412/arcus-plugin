@@ -7,6 +7,135 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Test Plan and Closure dispatched the wrapper skill instead of the sibling agent, so the agent's
+  narrower `tools:` allowlist never bound — and the gate meant to catch this couldn't see it either.**
+  `arcus-controller/SKILL.md`'s Test Plan (`:229`) and Closure (`:278`) stages read "Read and follow
+  the `arcus:<name>` skill…", routing through `test-spec-compiler`/`pull-request-builder`'s wrapper
+  instead of the registered agent, so the agent's declared `tools: Read, Grep, Glob, Write, Skill`
+  never took effect and the stage ran with the parent's full toolset. Both stages now use the
+  `**Agent**: <name>, resolved per **Agent Resolution** in `arcus:model-strategy`` form already
+  correct at Context Sync (`:266`); the wrapper skills' own bodies (`skills/test-spec-compiler/SKILL.md`,
+  `skills/pull-request-builder/SKILL.md`) stop contradicting themselves — "read and follow the
+  `arcus:<name>` agent" now dispatches by bare name, mirroring `context-drift-sync`'s correct wording.
+  The wrappers stay organically invocable; `corpus.json`'s five positive trigger cases are untouched.
+
+  Separately, **L1-14/L1-15 missed exactly this class of dispatch for the three dual-surface wrapper
+  agents** (`test-spec-compiler`, `pull-request-builder`, `context-drift-sync`): `pureAgentNames`
+  excluded them so a **skill** reference stayed legal, but the same filter also hid an **imperative
+  agent dispatch** of the twin as `arcus:<name>`. The input set passed to `checkAgentRefQualified` /
+  `checkAgentDispatchPortable` is now the full `walkAgents()` name set (both checks fire only on an
+  imperative lead-in, so prose stays unflagged), derived once in a new `tests/lib/skills.mjs` helper
+  and consumed by `unit.mjs` and the two previously-duplicated sites in `integration.mjs`.
+
+- **`$ARCUS_HOME` was unresolved wherever a dispatched subagent's prompt cited it, and nothing caught
+  it.** Three agent bodies and four skills referenced `"$ARCUS_HOME"/…` with no resolution
+  instruction, and the shared "Dispatching an ARCUS agent" block told the *parent* to embed the
+  literal variable in a *child* prompt — a spawned subagent has no such variable and no `.arcus/env`
+  instruction, which is exactly how an agent ends up improvising a filesystem-wide `find /`. The
+  canonical `.arcus/env` resolution clause is now added to
+  `agents/{test-spec-compiler,pull-request-builder,subagent-task-dispatcher}.md` and
+  `skills/{code-reviewer,kick-off,context-drift-sync,repo-agentifier}/SKILL.md`, and the shared
+  dispatch block now requires expanding `$ARCUS_HOME` to an absolute path before it reaches a child
+  prompt.
+
+  New **L1-19 `checkArcusHomeResolvable`** makes the omission structural rather than reliant on the
+  next author remembering it, flagging any body mentioning `$ARCUS_HOME` without the resolution
+  clause. Wired with the repo's two-assertion pattern (planted-bad fixture plus live-tree sweep) and
+  folds into the planted-violation coverage map, now `L1-1`..`L1-19`.
+
+- **OpenCode's converter silently dropped `Task`/`Skill` grants instead of failing.** `buildPermission`
+  mapped only `{Read, Grep, Glob, Bash, Write, Edit}`; `subagent-task-dispatcher.md` declares `Task,
+  Skill` too, and those two grants vanished from the bundled `permission:` block with no warning.
+  Verified against the exact pinned `@opencode-ai/sdk@1.17.11`: both `Config.permission` and
+  `AgentConfig.permission` are a closed five-key schema (`edit`, `bash`, `webfetch`, `doom_loop`,
+  `external_directory`) with no `task`/`skill` key at all — a **confirmed-absent** equivalent, not
+  merely an unverified one. `buildPermission` now throws on any declared tool with no known mapping,
+  and a new `NO_PERMISSION_EQUIVALENT` set names `Task`/`Skill` as the one evidence-backed, deliberate
+  omission. First dedicated unit coverage added for `buildPermission`.
+
+- **`authoring-style.md` claimed the dispatch tree "stays depth-1", which the hot path already
+  contradicts** — `implementation-runner` dispatches `subagent-task-dispatcher`, itself an
+  orchestrator holding `Task`. Corrected to "depth ≤ 2, with `subagent-task-dispatcher` as the single
+  sanctioned second level", and swept into `.context/design-and-coding-patterns.md` so the claim
+  isn't split across files (`AGENTS.md` carries no depth claim, so nothing there needed changing).
+  The surrounding anti-pattern guidance against nesting further is unchanged.
+
+- **`agents/spec-compliance-reviewer.md` cited "the dispatcher's Step 6" for the per-task spec check;
+  the per-task check is Step 7 (Step 6 is the Refactor Gate).** Corrected the off-by-one reference.
+
+### Changed
+
+- **`code-reviewer`'s branch diff now reaches its five specialists by value, with an explicit paging
+  rule for large diffs.** Step 1 additionally writes the noise-filtered unified diff to
+  `<STORY_DIR>/change.diff` (after the existing noise-drop rules, never dropping migrations); Step 3
+  inlines it in each specialist's prompt when ≤ 1500 lines, else passes the path plus the changed-file
+  list with an instruction to page it in ≤ 1500-line `Read` chunks until EOF — a deliberate margin
+  under `Read`'s 2000-line truncation. This is not the previously-dropped "diff by reference":
+  reviewers still receive the diff itself, never a bare filename list. Each of the five reviewer agent
+  bodies gains an additive `change_set` Inputs line documenting the by-value contract; no
+  `tools:`/`disallowedTools:` changed.
+
+- **Deleted `## Architecture & Safety` from the plan template.** Its three bullets (Design Patterns,
+  Security Considerations, Cleanup/Technical Debt) duplicated `.context/design-and-coding-patterns.md`
+  and were never a required section per `tests/schemas/artifacts.json` (`checkArtifactSections` is
+  unaffected). `implementation-planner/SKILL.md:67`'s dangling cross-reference to the section is
+  reworded to stand on its own four scoring axes; security coverage is unchanged —
+  `security-reviewer` already reviews the branch diff at Code Review.
+
+- **`test-plan.md`'s Detailed Test Matrix is now task-keyed instead of category-keyed.** The four
+  category subsections (`### 1. Functional (Happy Path)` … `### 4. Regression / Integration`) are
+  replaced by one `### Task N: <title>` subsection per plan task (plus a closing `### All Tasks` for
+  cross-cutting regression), each carrying a case table with a `Category` column (`Happy Path` /
+  `Edge Case` / `Error Case` / `Regression`) so no coverage class is lost. `## Objective`,
+  `## Task-to-Test Mapping Matrix` and `## Test Implementation Assets` keep their names and roles —
+  `artifacts.json` is unchanged. `subagent-task-dispatcher.md`'s per-task test extraction is repointed
+  at this deterministic `### Task N:` anchor instead of grepping prose for a `Mapped to **Task N**:`
+  format the model had invented; `test-spec-compiler/SKILL.md` and `agents/test-spec-compiler.md` are
+  updated in lockstep so producer and consumer name the same anchor.
+
+### Added
+
+- **`model-strategy` gains an Effort Resolution subsection, and `code-reviewer`'s fan-out now states a
+  reviewer effort explicitly instead of inheriting the session default.** Only Copilot CLI's `task`
+  tool has a real per-dispatch `reasoning_effort` parameter; Claude Code and VS Code carry the intent
+  as a brevity/thinking-budget directive in the dispatch prompt instead (naming the host on the same
+  line, keeping L1-16 satisfied), and OpenCode cannot set it per dispatch at all.
+  `code-reviewer/SKILL.md`'s Step 3 table gains an `Effort` column: `low` for
+  `spec-compliance-reviewer`, `code-quality-reviewer`, `performance-reviewer` and
+  `history-context-reviewer` (grounded in the measured run where `spec-compliance-reviewer` spent
+  $0.815 of output for the worst chars-per-dollar ratio), `medium` for `security-reviewer` (a missed
+  vulnerability is not symmetric with a missed style nit). Model tier (`medium` for all five) is
+  unchanged — effort and tier are kept as separate, independently measurable levers.
+
+- **Cache-TTL thrash spike closed with a no-go verdict — no plugin file changed.** Investigated
+  whether any supported host (Claude Code, Copilot CLI, VS Code Copilot Chat, OpenCode) exposes a
+  cache-TTL or context-shedding control that ARCUS could set from a skill/agent body or a dispatch
+  parameter, targeting the $1.93/14% idle-cache-write line item from the JOI-101 dogfooding run. None
+  does: the only such control anywhere in the stack (`cache_control.ttl` on the raw Messages API) is
+  owned by the host's own client runtime, one layer below anything a skill, agent body, or the
+  `Agent`/`task`/`runSubagent` dispatch call can reach. `@opencode-ai/sdk@1.17.11`'s permission schema
+  was separately confirmed closed with five keys and no `task`/`skill` key either (see the
+  `buildPermission` fix above) — reinforcing that no host exposes a plugin-settable knob at this
+  layer. Findings, evidence, and the one open thread (Copilot CLI's undocumented `context_tier`
+  parameter, unverified against upstream docs) are recorded in
+  `.arcus/specs/ARC-0308/cache-ttl-findings.md`. Per the binding exit criterion, the $1.93 line item
+  is accepted as a structural host-runtime cost rather than an ARCUS defect, and `arcus-controller` is
+  not redesigned for context-shedding as part of this story.
+
+- **Eval specs added for the five highest dispatch-authority items that had none**:
+  `subagent-task-dispatcher`, `arcus-controller`, `code-reviewer`, `implementation-runner`, `kick-off`
+  (`tests/e2e/evals/specs/<name>/evals.json`). L1-12 (`checkCapabilityHasEvalSpec`) gates
+  `layer: capability` only and stays unchanged — these five are orchestrators/coordinators, exempt
+  from the gate but not from coverage. The new specs pass the zero-token eval-spec lint; the live
+  evals themselves remain manual and excluded from `pnpm test`.
+
+- **Opportunistic hardening (not part of this story's planned scope, called out explicitly per code
+  review): a drift guard for `model-strategy`'s per-host model-identifier table.** Cross-checks
+  `model-strategy/SKILL.md`'s Tier-to-Platform table against `convert.mjs`'s `TIER_TO_MODEL` so the
+  two can't silently diverge. Test-only; touches no runtime file; not tied to any L1 check number.
+
 ### Changed
 
 - **Copyright and trademark ownership corrected to Piyush Bhargava.** The `LICENSE` appendix,

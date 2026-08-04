@@ -140,7 +140,7 @@ FINDINGS:
 ### Inputs
 | Input | Required | Type | Description |
 |-------|----------|------|-------------|
-| `change_set` | yes | git diff output | The branch diff showing files and hunks changed |
+| `change_set` | yes | git diff output | The branch diff showing files and hunks changed, delivered by value (inline in the prompt when ≤ 1500 lines, else as the `change.diff` path with paged-`Read` instructions) |
 | `base_ref` | yes | git ref | The base branch or commit to compare against |
 | `context_pack` | no | markdown | Story-to-code correlations including architecture context |
 

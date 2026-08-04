@@ -17,8 +17,10 @@ and its bundled template/reference assets.
 On activation (a user "compile test plan" / "design test suite" / "create test matrix"
 request, or an orchestrator dispatch):
 
-1. **Dispatch the execution agent** — read and follow the `arcus:test-spec-compiler` agent.
-   Pass it the story's implementation plan (and grounded spec / context pack when available),
-   and the output path for the resulting test plan.
-2. **Relay** the agent's produced test plan (the multi-layered Unit / Integration / Edge-Case
-   test matrix mapped to the plan's tasks) back to the caller.
+1. **Dispatch the execution agent** — dispatch the `test-spec-compiler` agent, resolving the
+   dispatch target per **Agent Resolution** in `arcus:model-strategy`. Pass it the story's
+   implementation plan (and grounded spec / context pack when available), and the output path
+   for the resulting test plan.
+2. **Relay** the agent's produced test plan (the `### Task N:` subsection of
+   `## Detailed Test Matrix` per task, each case categorized as Happy Path / Edge Case /
+   Error Case / Regression) back to the caller.

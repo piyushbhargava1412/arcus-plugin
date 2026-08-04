@@ -55,7 +55,7 @@ you would be copying rather than summarizing belongs in a link.
 ### Step 2: Change Summarization
 - Analyze the `change_set` input to understand which files were modified.
 - Categorize changes into Features, Fixes, and Tests.
-- Draft the PR description using `"$ARCUS_HOME"/agent-resources/pull-request-builder/assets/pr-template.md`.
+- Draft the PR description using `"$ARCUS_HOME"/agent-resources/pull-request-builder/assets/pr-template.md` (resolve `ARCUS_HOME` from `.arcus/env`).
 
 ### Step 2b: Context Updates (from the Context Sync stage)
 The `context_sync` stage (agent `arcus:context-drift-sync`) runs immediately before Closure and may

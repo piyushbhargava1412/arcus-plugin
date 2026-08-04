@@ -44,6 +44,16 @@ The dispatcher resolves the tier to a platform-specific string. **Copilot CLI an
 
 **Update this table** when new model versions are released. Pass the resolved string as the per-dispatch `model`: **Copilot CLI**'s `task` tool takes a **slug id** — mandatory here, since Copilot CLI does not resolve tier words (it warns visibly and falls back; a valid slug is honoured), and also accepts `reasoning_effort`/`context_tier`; **VS Code**'s `runSubagent` takes `"Model Name (Vendor)"`; **Claude Code**'s `Agent` takes `"opus"`/`"sonnet"`/`"haiku"` and also honours tier words in frontmatter. **OpenCode** has no per-dispatch `model` — it is pinned per agent in `model:` frontmatter at build time (default provider GitHub Copilot; Amazon Bedrock alternative and full per-host mechanics in [Running Across Hosts](/concepts/cross-host)).
 
+## Effort Resolution
+
+Portable effort values (`low`/`medium`/`high`) for review specialists and time-sensitive stages, resolved to each host's mechanism:
+
+| Effort | Resolution |
+| --- | --- |
+| low | **Copilot CLI** → `reasoning_effort: low` on the `task` tool; **Claude Code** / **VS Code** → explicit brevity directive in the dispatch prompt; **OpenCode** → not settable per dispatch |
+| medium | **Copilot CLI** → `reasoning_effort: medium` on the `task` tool; **Claude Code** / **VS Code** → explicit thinking-budget directive in the dispatch prompt; **OpenCode** → not settable per dispatch |
+| high | **Copilot CLI** → `reasoning_effort: high` on the `task` tool; **Claude Code** / **VS Code** → explicit extended-thinking directive in the dispatch prompt; **OpenCode** → not settable per dispatch |
+
 ## Agent Resolution (how to address an ARCUS agent)
 
 ARCUS agents live at `agents/<name>.md` and always run as **isolated subagents**. Resolve the dispatch target by **matching the bare `<name>` against your host's live registry** — never by rewriting a prefix — using the **first route that works**:

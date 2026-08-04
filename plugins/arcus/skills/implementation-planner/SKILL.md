@@ -64,7 +64,7 @@ Use the `story`, `context_pack`, and `spec_grounding` inputs (see Inputs). Treat
 ### Step 2: Generate & Score ≥2 Candidate Approaches
 Generate **AT LEAST 2** distinct candidate approaches for implementing the story (e.g. extend an existing component vs. introduce a new one; in-process vs. queued; reuse vs. rewrite). Each candidate must be grounded in evidence from the `context_pack` input and consistent with the `spec_grounding` input's grounded decisions.
 
-Score each candidate on the following axes, **1–5** (5 = best for that axis), in the spirit of the plan template's Architecture & Safety section:
+Score each candidate on the following axes, **1–5** (5 = best for that axis):
 
 - **Blast radius** — how contained the change is (5 = minimal surface area touched).
 - **Backward-compat** — preservation of existing behavior and contracts (5 = fully backward-compatible).

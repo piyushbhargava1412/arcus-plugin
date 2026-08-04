@@ -83,10 +83,6 @@ The user's answer is authoritative and overrides the highest-scoring pick.)*
   - [ ] Requirement 1
   - [ ] [X] integrated with [Y]
 
-## Architecture & Safety
-- **Design Patterns**: [List patterns used, e.g., Strategy, Factory — aligned with `.context/design-and-coding-patterns.md`, and honoring its **Avoid** rules]
-- **Security Considerations**: [Data handling, Auth check]
-- **Cleanup / Technical Debt**: [Any specific cleanups required after implementation]
 
 ---
 *Next Step: Invoke `test-spec-compiler` to generate the test matrix for these tasks.*
