@@ -139,6 +139,7 @@ For each task **in order**, skipping any whose checkpoint status is already `com
    - `TASK_N`
    - `COMPLEXITY` = the task's `complexity` field, default `medium`
    - `COMMIT_MESSAGE` = `"Task N: <short description>"`
+   - **Description**: `"Task N: <short description>"`
 
    The dispatcher owns per-task TDD (RED → GREEN), the refactor gate (skipped on `light` complexity), the spec-compliance check, and
    the commit via `commit.sh`. This loop does not commit directly.

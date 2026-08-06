@@ -3,8 +3,7 @@ name: pull-request-builder
 description: >
   Finalize the development workflow by summarizing the change set and creating a pull
   request. Use when all tasks in the plan are completed and verified and an orchestrator
-  needs the PR description built. Dispatched by arcus:arcus-controller (Closure stage) and
-  by the pull-request-builder skill wrapper.
+  needs the PR description built. Dispatched by arcus:arcus-controller (Closure stage).
 layer: capability
 user-invocable: false
 tools: Read, Grep, Glob, Bash, Write

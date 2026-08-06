@@ -11,9 +11,38 @@
 // repository's gates exist to eliminate.
 // ==============================================================================
 
+import { readdir, readFile, writeFile } from "node:fs/promises"
+import { join } from "node:path"
+
 // `arcus:<name>` -> `<name>` for OpenCode's flat skill/agent addressing.
 const ARCUS_TOKEN = /\barcus:([a-z0-9][a-z0-9-]*)/g
 const stripArcusNamespace = (s) => s.replace(ARCUS_TOKEN, "$1")
+
+/**
+ * Recursively walk `dir`, applying `stripArcusNamespace` to every `.md` file
+ * found -- including the top-level file (e.g. `SKILL.md`) and any nested file
+ * under subdirectories such as `references/` or `assets/`. Writes back only
+ * when the transform actually changed the text, preserving the no-op-write
+ * behaviour: a token-free file is never rewritten.
+ *
+ * Lives here (not in build-bundle.mjs) so it can be imported and exercised
+ * directly against a throwaway temp dir without triggering build-bundle.mjs's
+ * unconditional `main()` call (see the file-level comment above for why that
+ * guard can't safely live on build-bundle.mjs itself).
+ */
+async function transformMarkdownFilesInPlace(dir) {
+  const entries = await readdir(dir, { withFileTypes: true })
+  for (const entry of entries) {
+    const full = join(dir, entry.name)
+    if (entry.isDirectory()) {
+      await transformMarkdownFilesInPlace(full)
+    } else if (entry.isFile() && entry.name.endsWith(".md")) {
+      const original = await readFile(full, "utf8")
+      const transformed = stripArcusNamespace(original)
+      if (transformed !== original) await writeFile(full, transformed)
+    }
+  }
+}
 
 // Tier word -> OpenCode provider/model-id (default provider: GitHub Copilot).
 // Canonical mapping is documented in plugins/arcus/skills/model-strategy.
@@ -172,6 +201,7 @@ export {
   buildPermission,
   parseAgentFrontmatter,
   stripArcusNamespace,
+  transformMarkdownFilesInPlace,
   TIER_TO_MODEL,
   COLOR_TO_HEX,
   FRONTMATTER_RE,

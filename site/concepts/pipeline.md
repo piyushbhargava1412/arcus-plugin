@@ -57,8 +57,9 @@ flowchart LR
 Stages produce specific artifacts. In the **gated** experience the pipeline pauses only for open questions during Brainstorm; otherwise it runs through. The rows below note each stage's handoff
 gate, where the orchestrator presents the just-finished stage's output; you reply "yes" (same
 session) or use the stage's explicit resume phrase (cold resume). Within Brainstorm the
-`scaffold`, `context_pack`, `spec_finalizer`, and `plan` stages run back-to-back — the
-`kick-off` coordinator runs context-pack-builder → spec-finalizer — before any questions are surfaced.
+`scaffold`, `context_pack`, `spec_finalizer`, and `plan` stages run back-to-back — `arcus-controller`
+runs context-pack-builder → spec-finalizer → implementation-planner directly — before any questions
+are surfaced.
 The Code Review stage can loop back to Implementation up to 3 times if changes are requested.
 
 > **Skills vs agents.** The participants below live on one of two surfaces (see
@@ -66,8 +67,7 @@ The Code Review stage can loop back to Implementation up to 3 times if changes a
 > (`plugins/arcus/skills/`) and model-only **agents** (`plugins/arcus/agents/`), dispatched by name
 > and never user-facing. Dispatched participants — `context-pack-builder`, `subagent-task-dispatcher`,
 > `code-simplifier`, the five specialist/spec reviewers, and `context-drift-sync` — are **agents**;
-> the stage entry points (`arcus-controller`, `code-reviewer`, `implementation-runner`, `kick-off`,
-> the `test-spec-compiler`/`pull-request-builder` wrappers) are **skills**.
+> the stage entry points (`arcus-controller`, `code-reviewer`, `implementation-runner`) are **skills**.
 
 ## What The Gates Mean
 
@@ -163,7 +163,6 @@ end-to-end.
     </td>
     <td>
       <ul>
-        <li><code>kick-off</code> coordinator <em>(skill)</em> — sequences context-pack-builder → spec-finalizer</li>
         <li><code>context-pack-builder</code> <em>(agent)</em></li>
         <li><code>spec-finalizer</code> <em>(one-shot subagent, both modes)</em></li>
         <li><code>implementation-planner</code> <em>(one-shot subagent, both modes)</em></li>
@@ -551,7 +550,7 @@ If Code Review returns `changes_requested`:
 
 | Phase | Stage key(s) | Gated entry / resume phrase | Exit condition |
 |-------|--------------|-----------------------------|----------------|
-| Brainstorm | `scaffold`, `context_pack`, `spec_finalizer`, `plan` | `plan <STORY>` / `implement <STORY>` (interactive); `kick-off <STORY>` / `brainstorm <STORY>` (brainstorm-only) | Workspace + planned branch ready; `grounded-spec.md` and `plan.md` complete |
+| Brainstorm | `scaffold`, `context_pack`, `spec_finalizer`, `plan` | `plan <STORY>` / `implement <STORY>` (interactive) | Workspace + planned branch ready; `grounded-spec.md` and `plan.md` complete |
 | Test Plan | `test_plan` | `generate test plan for <STORY>` | `test-plan.md` complete |
 | Implementation | `branch`, `task_1..N` | `implement <STORY>` / `code <STORY>` | Branch created, all tasks done, tests pass |
 | Code Review | `code_review` | `review <STORY>` | Verdict: approved / changes_requested |

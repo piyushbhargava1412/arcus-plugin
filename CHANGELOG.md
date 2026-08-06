@@ -717,6 +717,60 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   pure agent as `arcus:<name>`, with the host-correct form named in the error. Prose mentions are
   deliberately not flagged. Brings the planted-violation coverage map to 15 checks.
 
+### Removed
+
+- **Three skills removed from the user-facing API.** `pull-request-builder`, `test-spec-compiler`, and
+  `kick-off` are no longer independently triggerable skills. `pull-request-builder` and
+  `test-spec-compiler` survive as dispatched agents (`plugins/arcus/agents/{pull-request-builder,test-spec-compiler}.md`),
+  invoked by the pipeline at Closure and Test Plan stages respectively — they are callable only through
+  agent dispatch, not by user slash command. `kick-off`'s two-step sequencing logic (context-pack-builder
+  → spec-finalizer) was folded into `arcus-controller`'s Brainstorm stage group, which now runs as the
+  pipeline's entry point whenever a story is submitted.
+
+- **Standalone brainstorm-only entry point is removed.** The slash commands `brainstorm <STORY>`,
+  `kick off <STORY>`, and `architect <STORY>` no longer exist. To obtain a context pack and grounded
+  specification without proceeding to implementation, use the full pipeline entry points (`implement <STORY>`
+  or `forge <STORY>`), which run Brainstorm as the first stage group and — in INTERACTIVE mode — pause at
+  the Open-Questions gate exactly as before. AUTONOMOUS mode runs Brainstorm straight through to Test Plan.
+
+### Changed
+
+- **Two skills converted to pure agents.** `implementation-planner` and `spec-finalizer` are now
+  dispatched agents (`plugins/arcus/agents/{implementation-planner,spec-finalizer}.md`), no longer
+  independently triggerable skills. Their supporting assets (reference documents, templates) moved from
+  `plugins/arcus/skills/<name>/` to `plugins/arcus/agent-resources/<name>/`. In the pipeline, both are
+  invoked by agent dispatch through `arcus-controller` within the Brainstorm stage (spec-finalizer first at
+  stage key 3, then implementation-planner at stage key 4), never by user slash command. The entry points that used to invoke them directly (`implement <STORY>`, `forge <STORY>`) still
+  run the same logic — they now route through the orchestrator instead of invoking the skill.
+
+- **`arcus-controller` restructured: orchestration logic separated from stage bodies.** The four stage
+  bodies — Brainstorm, Test Plan, Context Sync, Closure — were extracted from `plugins/arcus/skills/arcus-controller/SKILL.md`
+  into `plugins/arcus/skills/arcus-controller/references/{brainstorm,test-plan,context-sync,closure}.md`. SKILL.md retains
+  Stage 0 (Scaffold), the Implementation stage, the Code Review stage, and the cross-cutting Resumption/Open-Questions/Loopback
+  protocols inline, plus a new stage-index table linking to the four extracted files. Each reference file
+  is read on demand, only when its stage is the one actually executing that turn — a resume that lands
+  at Closure no longer pays for Brainstorm's, Test Plan's, or Context Sync's content. A new `bundledBodies()`
+  test helper (`tests/lib/skills.mjs`) keeps the static cross-reference gates (L1-7, L1-14) scanning these
+  extracted files the same way they scan `SKILL.md`, so a dangling `arcus:` token or an unqualified agent
+  dispatch inside a reference file still fails the build. No runtime or dispatch behavior changed — this
+  is purely a maintainability refactoring to split logic from orchestration.
+
+- **Removed standalone output-path fallback for `implementation-planner` and `spec-finalizer`.** Both
+  agents now require `output_path` as a mandatory input (the filesystem path where their artifact is
+  written). Previously they fell back to a default `.arcus/outputs/<name>/<timestamp>.md` if no path
+  was supplied — a convenience for manual skill invocation. Since they are now pure agents invoked only
+  by orchestrators, and orchestrators always supply an explicit path, the fallback was dead code.
+  Orchestrator callers must now provide `output_path` in every dispatch.
+
+- **Roster change: 8 skills / 18 agents (down from 13 skills / 16 agents).** Five skills left the Skill
+  surface: `pull-request-builder` and `test-spec-compiler` were deleted outright — their agent twins
+  already existed and are now the only dispatch target; `kick-off` was deleted outright, its two-step
+  sequencing folded into `arcus-controller`; `implementation-planner` and `spec-finalizer` were converted
+  to new pure agents rather than deleted. Net: skills −5 (13 → 8), agents +2 (16 → 18, from the two
+  conversions). The 8 remaining user-triggerable skills are: `arcus-controller`, `arcus-guide`,
+  `code-reviewer`, `context-drift-sync`, `implementation-runner`, `model-strategy`, `repo-agentifier`,
+  and `write-evals`. See `plugins/arcus/agents.md` for the full roster.
+
 ## [2.2.1] - 2026-07-27
 
 ### Changed

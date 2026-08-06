@@ -39,8 +39,6 @@ questions, then runs to the pull request. You can:
 - Answer the open questions in your own words, all in one go
 - Invoke stages individually — `generate test plan for <STORY>`, `implement <STORY>`,
   `review <STORY>`, `close <STORY>`
-- Brainstorm only (context pack + finalized spec, no implementation) via the `kick-off` coordinator —
-  `brainstorm <STORY>` / `kick off <STORY>` / `architect <STORY>`
 - Pause and resume — your session checkpoint persists across agent sessions; on a cold resume, type
   the next stage's phrase
 - Answer the batched open questions — raised all at once, each presenting one **Recommended**

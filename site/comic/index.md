@@ -138,18 +138,18 @@ layout: page
 <ComicPanel :span="5" tilt="r">
   <template #caption>Exhibit B — you can call anyone by name</template>
   <template #scene>
-    <svg class="scene" viewBox="0 0 300 130" role="img" aria-label="A speech bubble reading slash arcus colon kick-off, addressed to the whole team">
+    <svg class="scene" viewBox="0 0 300 130" role="img" aria-label="A speech bubble reading slash arcus colon repo-agentifier, addressed to the whole team">
       <path d="M0 108 Q80 96 160 106 T300 104 L300 130 L0 130 Z" fill="#2a160c"/>
       <CastIcon name="genie" x="20" y="6" width="90" height="106" />
       <g transform="translate(150 30)">
         <rect x="0" y="40" width="14" height="46" rx="3" fill="#4a3220"/>
         <circle cx="7" cy="18" r="13" fill="#d1372a" stroke="#241a10" stroke-width="2.5"/>
       </g>
-      <text x="200" y="30" font-family="Arial Narrow, Impact" font-weight="800" font-size="15" fill="#f3c14a" transform="rotate(-6 200 30)">kick-off</text>
+      <text x="200" y="30" font-family="Arial Narrow, Impact" font-weight="800" font-size="15" fill="#f3c14a" transform="rotate(-6 200 30)">repo-agentifier</text>
     </svg>
   </template>
   <template #talk>
-    <TalkBubble who="Genie">A <em>skill</em> is a teammate you can ring directly — name them, like <code>kick-off</code>, or just describe what you want and the right person answers. It lives in <code>plugins/arcus/skills/&lt;name&gt;/SKILL.md</code> and joins the conversation the moment you call it.</TalkBubble>
+    <TalkBubble who="Genie">A <em>skill</em> is a teammate you can ring directly — name them, like <code>repo-agentifier</code>, or just describe what you want and the right person answers. It lives in <code>plugins/arcus/skills/&lt;name&gt;/SKILL.md</code> and joins the conversation the moment you call it.</TalkBubble>
   </template>
 </ComicPanel>
 
@@ -180,9 +180,9 @@ layout: page
     <div class="col">
       <h4>Skill — you can call them</h4>
       <ul>
-        <li>User <strong>and</strong> Lucie can ring them, by bare name: <code>kick-off</code></li>
+        <li>User <strong>and</strong> Lucie can ring them, by bare name: <code>repo-agentifier</code></li>
         <li>Joins the main conversation directly</li>
-        <li>13 of ARCUS's 29 jobs are called this way</li>
+        <li>8 of ARCUS's 26 jobs are called this way</li>
       </ul>
     </div>
     <div class="col">
@@ -190,7 +190,7 @@ layout: page
       <ul>
         <li>Never a trigger a person types themselves</li>
         <li>Works alone, in its own space</li>
-        <li>16 of ARCUS's 29 jobs work this way</li>
+        <li>18 of ARCUS's 26 jobs work this way</li>
       </ul>
     </div>
   </div>
@@ -700,7 +700,6 @@ layout: page
 | "agentify this repo" / `repo-agentifier` | **Once per repo.** Angelina scans in parallel, writes the notebook, pins up `AGENTS.md` + `CLAUDE.md`. |
 | `plan <STORY>` or `implement <STORY>` | **Interactive (gated), the default.** Lucie stops once for the open questions, then runs to the PR. |
 | `forge <STORY>` / `afk <STORY>` / `run afk on <STORY>` | **Autonomous.** Every stage back-to-back, milestone-only output, no pauses. |
-| `brainstorm <STORY>` / `kick off <STORY>` / `architect <STORY>` | **Brainstorm only** — context pack + finalized spec, no implementation. |
 | `generate test plan for <STORY>` | Cold-resume into **Quinn's Test Plan** at Gate A. |
 | `review <STORY>` | Cold-resume into **Steffi's Code Review** at Gate C. |
 | `sync context` | Standalone notebook sync, outside the board. |

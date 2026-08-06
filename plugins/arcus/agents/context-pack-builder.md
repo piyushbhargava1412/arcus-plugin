@@ -3,7 +3,7 @@ name: context-pack-builder
 description: >
   Build a minimal, story-specific context pack from shared artifacts. Use when an
   orchestrator is starting a new story, building context for a specific story ID, or
-  performing pre-specification planning. Dispatched by arcus:kick-off
+  performing pre-specification planning. Dispatched by arcus:arcus-controller (Brainstorm stage).
 layer: capability
 user-invocable: false
 tools: Read, Grep, Glob, Bash, Write

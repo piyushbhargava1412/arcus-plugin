@@ -70,13 +70,6 @@ forge path/to/story.md
 afk path/to/story.md
 ```
 
-For **brainstorm-only** (context-pack + spec-finalizer, no implementation):
-```
-brainstorm path/to/story.md
-kick off path/to/story.md
-architect path/to/story.md
-```
-
 ---
 
 ### Q: What's the difference between interactive and autonomous mode?
@@ -437,7 +430,6 @@ Or ask natural language questions like:
 agentify this repo          # Initial setup
 implement story.md          # Start story (interactive mode)
 plan story.md               # Alternative for interactive mode
-brainstorm story.md         # Brainstorm only (kick-off coordinator)
 run afk on story.md         # Start story (autonomous mode)
 where am I?                 # Check status
 yes                         # Proceed at gate

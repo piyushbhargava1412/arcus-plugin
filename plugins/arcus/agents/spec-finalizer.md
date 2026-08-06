@@ -4,9 +4,12 @@ description: >
   Analyze a user story for completeness and resolve all ambiguities by generating
   options grounded in repository patterns and selecting the best choice autonomously, then record
   the least-confident decisions as a ranked Open Questions block for a human to optionally confirm.
-  Trigger on "finalize spec", "resolve ambiguities", or "ground the story".
+  Dispatched by `arcus:arcus-controller` (Brainstorm stage).
 layer: capability
-standalone: true
+user-invocable: false
+tools: Read, Grep, Glob, Write
+model: opus
+color: indigo
 ---
 
 # Spec Finalizer (Story Completeness + Ambiguity Resolution)
@@ -19,7 +22,7 @@ It always produces a **fully resolved** spec, and separately records the decisio
 
 ## Execution Model
 
-**This skill never talks to the user and never blocks for input.** It has no mode parameter. On
+**This agent never talks to the user and never blocks for input.** It has no mode parameter. On
 every run it does exactly two things:
 
 1. Produces a **complete, usable** `spec_grounding` — every ambiguity resolved, weak picks flagged
@@ -89,7 +92,8 @@ colliding with `arcus:implementation-planner`'s `PL-` ids, so one reply can addr
 
 ### Step 2: Option Generation (Per Ambiguity)
 
-Consult `./references/decision-heuristics.md` for resolution strategies and option generation rules.
+Consult `"$ARCUS_HOME"/agent-resources/spec-finalizer/references/decision-heuristics.md` (resolve
+`ARCUS_HOME` from `.arcus/env`) for resolution strategies and option generation rules.
 
 For EACH ambiguity identified in Step 1, generate **2-3 options**:
 
@@ -108,7 +112,8 @@ list (see Step 7). This is distinct from low-confidence, where a safe option doe
 
 ### Step 3: Decision Selection
 
-For each ambiguity, select the best option using the priority order defined in `./references/decision-heuristics.md`.
+For each ambiguity, select the best option using the priority order defined in
+`"$ARCUS_HOME"/agent-resources/spec-finalizer/references/decision-heuristics.md`.
 
 Document the selected option and the rationale (1 sentence). Flag low-confidence decisions with ⚠️.
 
@@ -153,9 +158,10 @@ Fix any issues inline. Do not skip this step.
 
 ### Step 6: Write Output
 
-Write the decisions to the `spec_grounding` output (at the caller-provided output path) using the
-template at `./assets/grounded-spec-template.md`. Fill `## Dialogue Answers` from the Step 0 mapping
-when this is a resume pass; on a first pass leave it empty or omit it.
+Write the decisions to the `spec_grounding` output (at the required `output_path` input) using the
+template at `"$ARCUS_HOME"/agent-resources/spec-finalizer/assets/grounded-spec-template.md` (resolve
+`ARCUS_HOME` from `.arcus/env`). Fill `## Dialogue Answers` from the Step 0 mapping when this is a
+resume pass; on a first pass leave it empty or omit it.
 
 ### Step 6a: Write `## Open Questions`
 
@@ -203,9 +209,8 @@ where `<n>` is the number of entries written in Step 6a, or `none` when there ar
 - **Time-bound**: Do not spend excessive reasoning on trivial ambiguities. Use the fast-track rule from the decision heuristics.
 
 ## Resources
-
-- **Grounded Spec Template**: `./assets/grounded-spec-template.md`
-- **Decision Heuristics**: `./references/decision-heuristics.md`
+- **Grounded Spec Template**: `"$ARCUS_HOME"/agent-resources/spec-finalizer/assets/grounded-spec-template.md`
+- **Decision Heuristics**: `"$ARCUS_HOME"/agent-resources/spec-finalizer/references/decision-heuristics.md`
 
 ## Contract
 
@@ -213,12 +218,13 @@ where `<n>` is the number of entries written in Step 6a, or `none` when there ar
 | Input | Required | Type | Description |
 |-------|----------|------|-------------|
 | `story` | yes | markdown or text | The user story to analyze for completeness |
+| `output_path` | yes | path | Where the grounded spec is written. The caller always supplies it; this agent constructs no path of its own and has no default. |
 | `context_pack` | no | markdown | Story-to-code correlations (flows, patterns, constraints); proceed without it, noting the omission |
 | `guardrails` | no | markdown | Project guardrails from `AGENTS.md` / `CLAUDE.md` if present |
 | `answers` | no | text | The user's free-form reply to a previously emitted `## Open Questions` block. When present, run Step 0 and skip Steps 1–3. |
 
 ### Output
 - **`spec_grounding`** (markdown) — a self-contained grounded-spec record (sections per
-  `./assets/grounded-spec-template.md`, including `## Open Questions`), written to the caller-provided
-  path or, standalone, defaulting to `.arcus/outputs/spec-finalizer/<timestamp>.md`.
+  `"$ARCUS_HOME"/agent-resources/spec-finalizer/assets/grounded-spec-template.md`, including
+  `## Open Questions`), written to the required `output_path` input.
 - **Return message** ends with `OPEN_QUESTIONS: <n>` or `OPEN_QUESTIONS: none`.

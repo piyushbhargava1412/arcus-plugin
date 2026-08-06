@@ -36,6 +36,7 @@ import {
   buildPermission,
   parseAgentFrontmatter,
   stripArcusNamespace,
+  transformMarkdownFilesInPlace,
   TIER_TO_MODEL,
   COLOR_TO_HEX,
   FRONTMATTER_RE,
@@ -96,11 +97,10 @@ async function buildSkills() {
     const to = join(dest, e.name)
     await cp(from, to, { recursive: true, force: true })
 
-    // Bake the namespace transform into the bundled SKILL.md.
-    const skillFile = join(to, "SKILL.md")
-    const original = await readFile(skillFile, "utf8")
-    const transformed = stripArcusNamespace(original)
-    if (transformed !== original) await writeFile(skillFile, transformed)
+    // Bake the namespace transform into every bundled `.md` file (SKILL.md and
+    // any nested references/, assets/, etc.), not just the top-level SKILL.md --
+    // an `arcus:` token in a bundled sub-file must not ship un-transformed.
+    await transformMarkdownFilesInPlace(to)
     n++
   }
   return n

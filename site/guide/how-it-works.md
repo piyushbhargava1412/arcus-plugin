@@ -70,8 +70,7 @@ orchestrator runs the same pipeline in two modes:
   `plan <STORY>`. spec-finalizer and implementation-planner run as one-shot subagents and never
   interview you; each records its least-confident decisions in an `## Open Questions` block that the
   orchestrator shows you **all at once**. That is the only place the pipeline stops — answer them and
-  it runs to the pull request. A cold resume picks up from the checkpoint with `resume <STORY>`. (For brainstorm-only — context pack + finalized spec — the
-  `kick-off` coordinator runs via `brainstorm <STORY>` / `kick off <STORY>` / `architect <STORY>`.)
+  it runs to the pull request. A cold resume picks up from the checkpoint with `resume <STORY>`.
 - **Autonomous (AFK)** — the hands-off mode of the same orchestrator. It activates on AFK
   phrases (`afk`, `--afk`, `forge`, `run afk on <STORY>`), dispatches each stage as a one-shot
   subagent, and auto-confirms every gate.

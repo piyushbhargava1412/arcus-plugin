@@ -25,11 +25,9 @@ An item is an **agent** when no human would type a trigger for it, it already ru
 subagent, and it needs no main-thread dialogue. The reviewers, the per-task dispatcher, the refactor
 engine, and the pipeline-internal context builders/sync — including the four repo-context discovery
 agents (`repo-overview-discovery`, `flow-discovery`, `test-pattern-discovery`, `design-pattern-discovery`)
-— are agents (16); the user-facing entry points
-and dialogue-driven steps are skills (13). Two capabilities — `test-spec-compiler` and
-`pull-request-builder` — are **split**: a thin user-facing *skill wrapper* dispatches an *execution
-agent* of the same name. The surface axis is independent of the tier axis: an orchestrator can be a
-skill (`arcus-controller`) or an agent (`subagent-task-dispatcher`).
+— are agents (18); the user-facing entry points
+and dialogue-driven steps are skills (8). The surface axis is independent of the tier axis: an
+orchestrator can be a skill (`arcus-controller`) or an agent (`subagent-task-dispatcher`).
 
 ## The Three Tiers
 
@@ -37,8 +35,8 @@ ARCUS skills **and agents** fall into exactly three tiers, distinguished by **ho
 
 | Tier | What it is | State ownership | Examples |
 |------|------------|-----------------|----------|
-| **Capability** | An atomic, stateless, **plug-n-play** unit: given its declared inputs, it produces **one** output. No checkpoint, no branch ops, no ARCUS-specific paths. | None — pure input → output | `spec-finalizer`, `implementation-planner` *(skills)*; `context-pack-builder`, the specialist reviewers (`security-reviewer`, `performance-reviewer`, `code-quality-reviewer`, `spec-compliance-reviewer`, `history-context-reviewer`), `review-consolidator`, `simplify-and-verify`, `context-drift-sync`, the four repo-context discovery agents (`repo-overview-discovery`, `flow-discovery`, `test-pattern-discovery`, `design-pattern-discovery`), the `test-spec-compiler`/`pull-request-builder` execution agents *(agents)* |
-| **Coordinator** | A thin, stateless **sequencer** of capabilities — fan-out/consolidate or chain. Owns no pipeline state. | None — orchestrates capabilities but holds nothing | `kick-off` (context-pack-builder → spec-finalizer), `code-reviewer`, `repo-agentifier`, the `test-spec-compiler`/`pull-request-builder` skill wrappers *(skills)*; `code-simplifier` *(agent)* |
+| **Capability** | An atomic, stateless, **plug-n-play** unit: given its declared inputs, it produces **one** output. No checkpoint, no branch ops, no ARCUS-specific paths. | None — pure input → output | `context-pack-builder`, `spec-finalizer`, `implementation-planner`, `test-spec-compiler`, `pull-request-builder`, the specialist reviewers (`security-reviewer`, `performance-reviewer`, `code-quality-reviewer`, `spec-compliance-reviewer`, `history-context-reviewer`), `review-consolidator`, `simplify-and-verify`, `context-drift-sync`, the four repo-context discovery agents (`repo-overview-discovery`, `flow-discovery`, `test-pattern-discovery`, `design-pattern-discovery`) *(agents)* |
+| **Coordinator** | A thin, stateless **sequencer** of capabilities — fan-out/consolidate or chain. Owns no pipeline state. | None — orchestrates capabilities but holds nothing | `code-reviewer`, `repo-agentifier` *(skills)*; `code-simplifier` *(agent)* |
 | **Orchestrator** | The stateful **pipeline driver**. Owns the session checkpoint, branch creation, and stage gates; resolves every path and passes capabilities explicit inputs. | All of it — checkpoint, branch, stage gates | `arcus-controller`, `implementation-runner` *(skills)*; `subagent-task-dispatcher` *(agent)* |
 
 The rule of thumb: **only the orchestrator knows it is ARCUS.** Capabilities and coordinators are
@@ -114,7 +112,7 @@ output when used on their own.
 In the full pipeline, the **orchestrator** (`arcus-controller`, with the
 `implementation-runner` and `subagent-task-dispatcher` for the Implementation loop) owns the
 checkpoint and branch, decides which stage runs next, and hands each capability its explicit inputs.
-**Coordinators** like `kick-off` and `code-reviewer` group capabilities into a single logical step.
+**Coordinators** like `code-reviewer` group capabilities into a single logical step.
 **Capabilities** do the actual work — finalizing the spec, planning the implementation, compiling the
 test matrix, reviewing the diff.
 

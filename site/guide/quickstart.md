@@ -60,9 +60,7 @@ implement path/to/story.md
 **Default behavior:** ARCUS runs in **interactive** mode (gated) — the `arcus:arcus-controller`
 orchestrator drives the pipeline and stops **once** — when a Brainstorm stage has open questions.
 Answer them in your own words and it runs all the way to the pull request; if it has none, it never
-stops. On a cold resume, `resume <STORY>` continues from the checkpoint. To brainstorm only (context pack +
-finalized spec, no implementation), use `brainstorm <STORY>` / `kick off <STORY>` (the `kick-off`
-coordinator).
+stops. On a cold resume, `resume <STORY>` continues from the checkpoint.
 
 The pipeline runs as **six phases** over ten ordered stages:
 

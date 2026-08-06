@@ -29,9 +29,6 @@ Begin the SDLC pipeline
 |---------|-------------|-------------|
 | `implement <STORY>.md` | Start the pipeline in **interactive** mode (default) | Begin work on any story (default, recommended) |
 | `plan <STORY>.md` | Planning-only alias for interactive mode | Same as above |
-| `brainstorm <STORY>.md` | Run **kick-off** coordinator (context-pack + spec-finalizer only, no implementation) | When you want planning artifacts without implementation |
-| `kick off <STORY>.md` | Alias for brainstorm | Same as above |
-| `architect <STORY>.md` | Alias for brainstorm | Same as above |
 | `run afk on <STORY>.md` | Start the pipeline in **autonomous** mode | High-confidence stories, familiar codebases |
 | `forge <STORY>.md` | Autonomous trigger | Same as above |
 | `afk <STORY>.md` | Autonomous trigger | Same as above |
@@ -148,13 +145,6 @@ yes                             # Continue from last gate
 run afk on story.md             # Autonomous mode
 forge story.md                  # Autonomous mode
 afk story.md                    # Autonomous mode
-```
-
-**Brainstorm only (no implementation):**
-```
-brainstorm story.md             # Run kick-off coordinator
-kick off story.md               # Alternative trigger
-architect story.md              # Alternative trigger
 ```
 
 **Fixing issues:**

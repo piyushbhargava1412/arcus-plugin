@@ -3,8 +3,7 @@ name: test-spec-compiler
 description: >
   Act as a QA Lead to design a comprehensive test matrix and verification plan for a story
   from its implementation plan. Use when an orchestrator needs verification metrics defined
-  before code is written. Dispatched by arcus:arcus-controller (Test Plan stage) and by the
-  test-spec-compiler skill wrapper.
+  before code is written. Dispatched by arcus:arcus-controller (Test Plan stage).
 layer: capability
 user-invocable: false
 tools: Read, Grep, Glob, Write, Skill

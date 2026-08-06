@@ -21,9 +21,7 @@ stage gates:
   `plan <STORY>`. It surfaces any clarification questions the Brainstorm stages raised — **all of
   them at once, in a single turn** — and then runs to the pull request without stopping again.
   In the same session a `"yes"` advances to the next stage; on a cold resume you type the next
-  stage's explicit phrase and the checkpoint picks up where you left off. (For brainstorming only —
-  context pack + finalized spec, no implementation — use the `kick-off` coordinator via
-  `brainstorm <STORY>` / `kick off <STORY>` / `architect <STORY>`.)
+  stage's explicit phrase and the checkpoint picks up where you left off.
 - **Autonomous (AFK)** — the hands-off mode. Trigger it with the AFK phrases (`afk`, `--afk`,
   `forge`, `run afk on <STORY>`). Identical pipeline, except the open questions are recorded and
   never surfaced. It never stops.
@@ -156,9 +154,7 @@ plan story.md
 ```
 
 No flags needed — interactive is the default. (Note: `forge` and `run afk on …` are **autonomous**
-triggers, not interactive ones. To brainstorm only — context pack + finalized spec, no
-implementation — use `brainstorm story.md` / `kick off story.md` / `architect story.md`, which runs
-the `kick-off` coordinator.)
+triggers, not interactive ones.)
 
 **What happens:**
 - `arcus:arcus-controller` runs Scaffold then Brainstorm (its capabilities run as subagents)

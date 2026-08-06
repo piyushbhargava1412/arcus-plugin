@@ -67,7 +67,6 @@ ARCUS is built as a **three-tier capability library** — a modular architecture
 **Thin orchestrators** that sequence multiple capabilities without managing pipeline state. They compose capabilities into higher-order workflows but remain stateless.
 
 **Examples:**
-- `kick-off` — Run context-pack-builder → spec-finalizer (brainstorm/planning only, no implementation)
 - `code-reviewer` — Dispatch specialist reviewers + consolidate findings
 - `repo-agentifier` — Build repository context artifacts
 

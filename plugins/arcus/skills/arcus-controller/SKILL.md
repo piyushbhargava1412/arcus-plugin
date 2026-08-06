@@ -91,8 +91,8 @@ strictly in this order, skipping any whose checkpoint status is already `complet
 | # | Stage key(s) | Phase group | Owner |
 |---|--------------|-------------|-------|
 | 1 | `scaffold` | Scaffold | `scaffold.sh` |
-| 2 | `context_pack` | Brainstorm | `arcus:context-pack-builder` (via `arcus:kick-off`) |
-| 3 | `spec_finalizer` | Brainstorm | `arcus:spec-finalizer` (via `arcus:kick-off`) |
+| 2 | `context_pack` | Brainstorm | `arcus:context-pack-builder` |
+| 3 | `spec_finalizer` | Brainstorm | `arcus:spec-finalizer` |
 | 4 | `plan` | Brainstorm | `arcus:implementation-planner` |
 | 5 | `test_plan` | Test Plan | `arcus:test-spec-compiler` |
 | 6 | `branch` | Implementation | `branch.sh` (via `arcus:implementation-runner`) |
@@ -161,6 +161,26 @@ gate is pending a "yes"/"proceed", distinct from a stage genuinely being incompl
 
 ## Execution Pipeline
 
+Stage instructions live in two places. Stage 0, Implementation and Code Review are inline below —
+Stage 0 runs unconditionally on every cold start and the two delegating stages are a couple of lines
+each. The four content-heavy stages live in `references/`, one file per stage; read the file when you
+reach the stage and follow it in-thread. Every reference file assumes this file's **Dispatching an
+ARCUS agent** blockquote and never restates it; `brainstorm.md` additionally assumes the
+**Open-Questions Protocol** (the only stage it applies to — see that protocol's own heading).
+
+| Stage | Phase group | Instructions |
+|-------|-------------|--------------|
+| Stage 0: Scaffold | Scaffold | inline — **Stage 0: Scaffold** below |
+| Brainstorm | Brainstorm | [`references/brainstorm.md`](references/brainstorm.md) |
+| Test Plan | Test Plan | [`references/test-plan.md`](references/test-plan.md) |
+| Implementation | Implementation | inline — **Implementation** below |
+| Code Review | Code Review | inline — **Code Review** below |
+| Context Sync | Closure | [`references/context-sync.md`](references/context-sync.md) |
+| Closure | Closure | [`references/closure.md`](references/closure.md) |
+
+If a stage's instruction file cannot be read, do not improvise the stage from memory — see
+**Error Handling**.
+
 ### Stage 0: Scaffold (deterministic, no gate, no branch)
 
 0. **Stage the helper scripts**: run `bash "$ARCUS_HOME"/scripts/locate.sh` from the repo root
@@ -200,44 +220,6 @@ gate is pending a "yes"/"proceed", distinct from a stage genuinely being incompl
 6. **Output**: in autonomous mode emit `[AFK] Story: <STORY_ID>`; in interactive mode emit
    `Story: <STORY_ID> (interactive)`. Then flow into the Brainstorm stage.
 
-### Brainstorm (delegated to `arcus:kick-off`, then implementation-planner)
-
-1. **Context pack + spec finalize** — read and follow `arcus:kick-off` **in-thread** (it is a
-   coordinator), passing the `story` and the available `repo_context`. It returns a `context_pack`
-   and a `spec_grounding`, which the controller resolves to the workspace files
-   `.arcus/specs/<STORY_ID>/context-pack.md` and `.arcus/specs/<STORY_ID>/grounded-spec.md`.
-
-   Then mark the two stages **separately, in order, each against its own evidence** — never as one
-   batch after both have run:
-   - `context-pack.md` exists → `.arcus/bin/checkpoint.sh complete <STORY_ID> context_pack`.
-   - `grounded-spec.md` exists → run the **Open-Questions Protocol** against it. **Only if that
-     protocol returns without halting** may you run
-     `.arcus/bin/checkpoint.sh complete <STORY_ID> spec_finalizer`. If it halted, the stage is
-     `awaiting_handoff` and you are done for this turn — see the prohibition in that protocol.
-2. **Create implementation plan** — dispatch a one-shot subagent (identical in both modes; the skill
-   never interviews):
-   - **Prompt**: "Read and follow the `arcus:implementation-planner` skill. Story ID: `<STORY_ID>`. Write the plan to `.arcus/specs/<STORY_ID>/plan.md`."
-   - **Description**: "Brainstorm: implementation-planner"
-   - **Model**: resolve complexity `heavy` via the `arcus:model-strategy` skill.
-   - Verify `plan.md` exists, then run the **Open-Questions Protocol** against `plan.md`. **Only if
-     it returns without halting** may you run `.arcus/bin/checkpoint.sh complete <STORY_ID> plan`.
-3. **Record the task count**: run `.arcus/bin/checkpoint.sh set-tasks <STORY_ID> <N>` (N = `### Task`
-   headings in `plan.md`) so the checkpoint reflects every planned task slot immediately, instead of
-   relying on per-task keys appearing only as `implementation-runner` starts each one.
-4. **Output**: emit `[Brainstorm] Complete: <N> tasks, <M> decisions` (M = resolved decisions in
-   `grounded-spec.md`) and continue into Test Plan. There is no gate here: the human's input for this
-   phase was the Open-Questions Protocol above, and it has already happened.
-
-### Test Plan (one-shot)
-
-1. **Compile test spec** — dispatch a subagent:
-   - **Agent**: `test-spec-compiler`, resolved per **Agent Resolution** in `arcus:model-strategy`.
-   - **Prompt**: "Story ID: `<STORY_ID>`. Produce `.arcus/specs/<STORY_ID>/test-plan.md`."
-   - **Description**: "TestPlan: test-spec-compiler"
-   - **Model**: resolve complexity `medium` via the `arcus:model-strategy` skill.
-   - Verify the file exists, then `.arcus/bin/checkpoint.sh complete <STORY_ID> test_plan`.
-2. **Output**: emit `[TestPlan] Complete: <N> test cases` and continue into Implementation.
-
 ### Implementation (delegated — branch + task loop)
 
 Do **not** re-implement the per-task TDD loop, the branch realization, or the loopback here — they
@@ -262,33 +244,6 @@ are owned by the canonical loop driver. **Delegate** the whole Implementation st
      automatically, bounded by the review-round cap, then re-review. No confirmation: the findings
      are the reviewer's, the fix-tasks are mechanical, and a human who disagrees reviews the result
      at the PR.
-
-### Context Sync (one-shot, runs only after final approval)
-
-Runs **only after** a final `approved` verdict — the diff is now stable and approved. Reconciles any
-shared `.context/` artifact that the approved change set materially drifted.
-
-1. **Run the drift sync** — dispatch a one-shot subagent:
-   - **Agent**: `context-drift-sync`, resolved per **Agent Resolution** in `arcus:model-strategy`.
-   - **Prompt**: "Inputs: `sync_scope=branch`,
-     `base_ref=`merge-base(HEAD, `<base_branch>`), `apply_mode=auto`, `commit_label=<STORY_ID>`."
-   - **Description**: "Context Sync: context-drift-sync"
-   - **Model**: resolve complexity `medium` via the `arcus:model-strategy` skill.
-   - Then `.arcus/bin/checkpoint.sh complete <STORY_ID> context_sync`.
-2. **Output**: `[Context] <K artifacts updated, J skipped — or "no material drift">`. Continue to
-   Closure.
-
-### Closure (one-shot + script, terminal)
-
-1. **Build PR description** — dispatch a subagent:
-   - **Agent**: `pull-request-builder`, resolved per **Agent Resolution** in `arcus:model-strategy`.
-   - **Prompt**: "Story ID: `<STORY_ID>`. Produce `.arcus/specs/<STORY_ID>/PR_DESCRIPTION.md`."
-   - **Description**: "Closure: pull-request-builder"
-   - **Model**: resolve complexity `light` via the `arcus:model-strategy` skill.
-   - Verify the file exists.
-2. **Create PR**: run `.arcus/bin/pr.sh <STORY_ID>`.
-3. **Mark complete**: `.arcus/bin/checkpoint.sh complete <STORY_ID> closure`.
-4. **Output**: `[Complete] PR deployed: <link from pr.sh output>`.
 
 ## Open-Questions Protocol (mid-stage, Brainstorm only)
 
@@ -323,16 +278,16 @@ Run this immediately after the owning stage produces its artifact, before markin
    > `awaiting_handoff`, not `complete` — marking it complete tells every later resume the human
    > already answered, so the questions are silently dropped and the tentative picks ship unreviewed.
    > `complete` for this stage happens in step 4 and nowhere else.
-4. **On the user's reply**, re-dispatch the same skill with its `answers` input set to the user's
-   reply verbatim, writing to the same output path. The skill maps answers to ids, records the
+4. **On the user's reply**, re-dispatch the same agent with its `answers` input set to the user's
+   reply verbatim, writing to the same output path. The agent maps answers to ids, records the
    mapping in `## Dialogue Answers`, and skips re-deriving what it already resolved. **Now** mark the
    stage complete: `.arcus/bin/checkpoint.sh complete <STORY_ID> <stage>`.
 5. **Echo the mapping back** so a mis-parse is visible rather than silent:
    `[Questions] Read your answers as: SF-1→B, SF-2→custom("…")`.
 6. **Repeat at most once.** A second `## Open Questions` block (round 2) may only contain gaps the
-   round-1 answers newly revealed. Never run a third round — the skills auto-resolve past the cap.
+   round-1 answers newly revealed. Never run a third round — the agents auto-resolve past the cap.
 
-Answers are never written by the controller. The owning skill writes its own `## Dialogue Answers`,
+Answers are never written by the controller. The owning agent writes its own `## Dialogue Answers`,
 so each artifact keeps exactly one writer.
 
 ## Loopback Protocol (Code Review → Implementation)
@@ -387,7 +342,7 @@ When a checkpoint already exists:
 
    **Exception:** do **not** reconcile `spec_finalizer` or `plan` if the artifact's
    `## Open Questions` still has entries unanswered in `## Dialogue Answers` — the file existing
-   means the skill ran, not that the human replied. Leave those `awaiting_handoff`.
+   means the agent ran, not that the human replied. Leave those `awaiting_handoff`.
 4. Determine the next action from stage status, walking the Canonical Pipeline order:
    - Skip any stage whose status is `complete`.
    - Run the first stage that is `pending`, `in_progress`, or `needs_rework` (a `code_review` marked
@@ -401,7 +356,11 @@ When a checkpoint already exists:
 - If a helper script fails (non-zero exit): retry once. If it still fails, run
   `.arcus/bin/checkpoint.sh fail <STORY_ID> <stage> "<reason>"`, output `[ERROR] <stage>: <reason>`,
   and stop.
+- If a stage's instruction file under `references/` cannot be read: run
+  `.arcus/bin/checkpoint.sh fail <STORY_ID> <stage> "stage instructions missing"`, then stop with
+  `[ERROR] <stage>: stage instructions missing`. Never reconstruct the stage from memory — a
+  half-remembered stage silently skips its checkpoint writes and its verification steps.
 - If a stage's required output file is missing after its subagent returns: run
   `.arcus/bin/checkpoint.sh fail <STORY_ID> <stage> "produced no output"`, then stop with
-  `[ERROR] <stage>: <skill> produced no output`.
+  `[ERROR] <stage>: <agent> produced no output`.
 - Do NOT advance into the next stage if the current stage's required artifacts are missing.
