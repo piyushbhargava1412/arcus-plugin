@@ -121,30 +121,19 @@ findings; treat them like any other critical (they force `CHANGES_REQUESTED`).
 
 ## Write the Report
 
-Write the `review_report` to the resolved output path. Structure:
+Write the `review_report` to the resolved output path, using the template at
+`"$ARCUS_HOME"/agent-resources/review-consolidator/assets/review-report-template.md` (resolve
+`ARCUS_HOME` from `.arcus/env`) to structure it:
 
-```
-# Code Review — <timestamp>  (round <review_round>)
-
-**Verdict:** APPROVE | CHANGES_REQUESTED
-**Counts:** critical <C>, warning <W>, suggestion <S>
-
-## Critical
-- [critical] <description> — <file:line>
-
-## Warnings
-- [warning] <description> — <file:line>
-
-## Suggestions
-- [suggestion] <description> — <file:line>
-
-## History/Context
-- [severity] <description of git-history signal found> — <file:line>
-(Omit section if no findings.)
-
-## Notes
-<one-paragraph summary: overall quality, what was verified, anything the user should know>
-```
+- **Findings** — one table, all severities together (no separate Critical/Warnings/Suggestions
+  sections, and no separate History/Context section either — a git-history finding is a finding,
+  categorised by severity like any other). One row per surviving finding, ordered critical →
+  warning → suggestion, ties keeping investigation order. Keep "Issue / Observation" to 1-3
+  sentences and "Proposed Solution" to one concrete, actionable fix — push deep verification
+  narrative out; the fact that a finding was verified is already implicit in this report. Omit the
+  whole section when there are zero findings.
+- **Notes** — 3-6 short bullets (overall quality signal, what was verified, anything else worth
+  flagging). No prose paragraph.
 
 Omit any section with no items. End the return message with exactly one of:
 
@@ -170,3 +159,6 @@ written file; otherwise write to the standalone default.
 - **One report, one verdict**: Callers depend on a single parseable `VERDICT:` line.
 - **Stateless**: No checkpoint reads/writes, no branch ops, no ARCUS path construction — operate only
   on the declared inputs.
+
+## Resources
+- **Review Report Template**: `"$ARCUS_HOME"/agent-resources/review-consolidator/assets/review-report-template.md`

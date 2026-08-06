@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **`review.md`'s findings were unreadable paragraphs — reformatted into a table, and the report
+  template moved to match every other output-writing agent's convention.** The `## Critical` /
+  `## Warnings` / `## Suggestions` / `## History/Context` sections in `review-consolidator`'s output
+  were each a bullet list of full-prose paragraphs, several sentences long per finding, with no
+  visual separation between the issue and any proposed fix. `plugins/arcus/agents/review-consolidator.md`
+  now writes one `## Findings` table (columns: Severity | Issue / Observation | Proposed Solution,
+  ordered critical → warning → suggestion) merging all four former sections — a git-history finding
+  is a finding, categorised by severity like any other, not by which specialist reported it — and
+  caps each cell at 1-3 sentences / one concrete fix instead of a full investigation narrative. The
+  `## Notes` section is now short bullets instead of one summary paragraph. Nothing that other
+  skills depend on changed: the `VERDICT:` line and `**Counts:**` line are untouched, and nothing in
+  the repo parsed the old section headers programmatically.
+
+  Separately, the report structure itself moved out of `review-consolidator.md`'s prose into
+  `plugins/arcus/agent-resources/review-consolidator/assets/review-report-template.md` — every other
+  output-writing agent (`context-pack-builder`, `spec-finalizer`, `test-spec-compiler`,
+  `pull-request-builder`, and the four discovery agents) already keeps its template as a bundled
+  asset referenced from a `## Resources` section; `review-consolidator` was the only one inlining the
+  whole template as a fenced block in the agent body. Pure convention fix, no functional change.
+
+### Added
+
+- **`implementation-runner`'s per-task loop now seeds a host-provided task-list tool, when one is
+  exposed, alongside the existing `checkpoint.sh` calls.** Previously the only user-visible
+  per-task-loop progress was the checkpoint file and one milestone line at the very end of
+  Implementation, so live progress required reading `session-checkpoint.json` directly; whether a
+  host happened to surface a todo list on top of that was purely incidental model behavior, not an
+  ARCUS instruction. Step 5 of `plugins/arcus/skills/implementation-runner/SKILL.md` now seeds one
+  entry per parsed task before the loop starts and mirrors each `in_progress`/`complete` transition
+  (and Loopback Protocol fix-tasks) onto it. This is explicitly best-effort and host-agnostic — no
+  tool name is hard-coded, since task-list-tool support is inconsistent across hosts today (notably,
+  headless GitHub Copilot CLI sessions currently drop their documented `todo` tool per an open
+  upstream bug). `checkpoint.sh` remains the single source of truth; the task list only mirrors it
+  for the human watching the terminal, and the call is skipped silently wherever no such tool exists.
+
 ### Fixed
 
 - **`subagent-task-dispatcher` could return control to its caller with a nested dispatch still

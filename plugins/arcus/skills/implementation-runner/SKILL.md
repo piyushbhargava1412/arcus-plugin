@@ -130,9 +130,17 @@ the **main orchestration thread** (this loop) is fixed to the session model and 
 mid-session; the per-task override applies to the dispatched subagents. `complexity` also guides the
 dispatcher's escalation and reviewer model picks.)
 
+**Task list (best-effort, host-provided).** If your host exposes a structured task-list tool, seed
+it with one entry per parsed task (Step 4) before the loop starts, using each task's short
+description as the entry text. This capability is not reliably available on every host today; if
+the call is rejected or no such tool is exposed, skip it silently and continue. **Never treat it as
+a second source of truth** — `checkpoint.sh` alone decides what actually happened; the task list
+only mirrors it for the human watching the terminal.
+
 For each task **in order**, skipping any whose checkpoint status is already `complete`:
 
-1. `<BIN>/checkpoint.sh set-status <STORY_ID> task_<N> in_progress`.
+1. `<BIN>/checkpoint.sh set-status <STORY_ID> task_<N> in_progress` — if a task list was seeded,
+   mark this entry in_progress too.
 2. **Dispatch the `subagent-task-dispatcher` agent** for that task (resolve the dispatch target per **Agent Resolution** in `arcus:model-strategy`) — do **not**
    reimplement per-task dispatch. Pass it:
    - `STORY_ID`
@@ -143,7 +151,8 @@ For each task **in order**, skipping any whose checkpoint status is already `com
 
    The dispatcher owns per-task TDD (RED → GREEN), the refactor gate (skipped on `light` complexity), the spec-compliance check, and
    the commit via `commit.sh`. This loop does not commit directly.
-3. On a `DONE` outcome: `<BIN>/checkpoint.sh complete <STORY_ID> task_<N>`, then proceed to the next task.
+3. On a `DONE` outcome: `<BIN>/checkpoint.sh complete <STORY_ID> task_<N>`, then proceed to the next
+   task — if a task list was seeded, mark this entry completed too.
 4. On a `BLOCKED` outcome the dispatcher could not resolve: stop the loop and surface it. This is a
    genuine failure, not a gate — record it with `<BIN>/checkpoint.sh fail <STORY_ID> task_<N>
    "<reason>"` so a resume reports it instead of silently retrying.
@@ -160,7 +169,8 @@ automatically in both modes, or the user typed `"fix <STORY_ID>"` standalone):
 2. Read `.arcus/specs/<STORY_ID>/review.md`. Convert **each critical and warning finding** into a
    fix-task: append it to `plan.md` as a new `### Task N:` heading (continuing the numbering),
    each with a **Definition of Done derived from the finding**. Mark each new task
-   `<BIN>/checkpoint.sh set-status <STORY_ID> task_<N> pending`.
+   `<BIN>/checkpoint.sh set-status <STORY_ID> task_<N> pending` — if a task list was seeded, append
+   an entry for each new fix-task too.
 3. Run the loop (Step 5) for the **new fix-tasks only** — the already-complete tasks stay complete.
 4. After the fix-tasks complete, hand off to Code Review again so it re-reviews the updated diff.
 5. **Loopback cap**: stop auto-looping once `review_round` reaches **3**. Beyond that, always hand off
