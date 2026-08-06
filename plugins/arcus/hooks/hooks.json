@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}\"/scripts/bootstrap.sh"
+            "command": "\"${CLAUDE_PLUGIN_ROOT}\"/scripts/bootstrap.sh --from-hook"
           }
         ]
       }

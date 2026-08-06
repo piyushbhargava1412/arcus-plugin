@@ -4,7 +4,7 @@ ARCUS uses a combination of plugin hooks, helper scripts, and portable skill ref
 
 ## Bootstrap Process
 
-Every ARCUS entry point runs `scripts/locate.sh` as its first step, which finds the newest installed copy of the plugin and runs `scripts/bootstrap.sh`. (Claude Code *also* fires the bundled `SessionStart` hook automatically. ARCUS's hooks are not observed firing on Copilot CLI — the cause is still unexplained, and **not** a schema difference: Copilot CLI does auto-discover a plugin's `hooks/hooks.json` and does normalize Claude's PascalCase event names. ARCUS simply never depends on the hook firing anywhere.) This:
+Every ARCUS entry point runs `scripts/locate.sh` as its first step, which finds the newest installed copy of the plugin and runs `scripts/bootstrap.sh`. Both Claude Code and Copilot CLI fire the bundled `SessionStart` hook automatically — Copilot CLI's plugin-contributed hook invokes the command with cwd defaulting to the *plugin's own install directory*, not the session's, so `bootstrap.sh` reads the real cwd from the hook's stdin JSON payload (`--from-hook`) and `cd`s there first. `locate.sh` running unconditionally on every entry point is still the safety net — it never depends on any host's hook firing. This:
 
 1. Stages deterministic helper scripts into the workspace at `.arcus/bin/`:
    - Workspace scaffold (`scaffold.sh`) — creates the spec folder, copies the story, and inits the checkpoint with the *planned* branch (no git branch yet)

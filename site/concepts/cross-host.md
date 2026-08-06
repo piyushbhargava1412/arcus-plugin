@@ -160,10 +160,12 @@ purpose is to be unable to write.
 ## Hooks
 
 Every ARCUS entry point runs `scripts/locate.sh` as its first step, so **ARCUS never depends on a
-hook firing anywhere**. Claude Code additionally fires the bundled `SessionStart` hook automatically.
-ARCUS's hooks are not observed firing on Copilot CLI; the cause is still unexplained and is **not** a
-schema difference — Copilot CLI does auto-discover a plugin's `hooks/hooks.json` and does normalize
-Claude's PascalCase event names.
+hook firing anywhere** — it re-stages `.arcus/bin/` unconditionally instead. Both Claude Code and
+Copilot CLI do also fire the bundled `SessionStart` hook automatically. Confirmed live 2026-08-06:
+Copilot CLI's plugin-contributed hook invokes its command with cwd defaulting to the **plugin's own
+install directory**, not the session's — `bootstrap.sh` reads the real cwd from the hook's stdin JSON
+payload (`--from-hook`, present in both the native camelCase and the "VS Code compatible"/Claude-format
+payload shapes) and `cd`s there before doing anything else.
 
 ## Related
 

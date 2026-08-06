@@ -51,9 +51,9 @@ Call these via shell for all deterministic git/state operations — never reason
 commit messages, or checkpoint JSON by hand. Resolve the script directory in this order and use the
 Run `bash "$ARCUS_HOME"/scripts/locate.sh` from the repo root first — it re-stages `.arcus/bin/`
 from the newest install and writes `ARCUS_HOME`/`ARCUS_VERSION` into `.arcus/env`. Never trust an
-existing `.arcus/bin/`: it is a copy with no expiry, and on hosts that do not fire the plugin's
-SessionStart hook (Copilot CLI) it may not exist at all. This is the same resolution rule the `arcus:arcus-controller`
-uses.
+existing `.arcus/bin/`: it is a copy with no expiry, so a repo bootstrapped once keeps serving those
+same scripts to every later session regardless of any hook. This is the same resolution rule the
+`arcus:arcus-controller` uses.
 
 | Script | Usage | Purpose |
 |--------|-------|---------|

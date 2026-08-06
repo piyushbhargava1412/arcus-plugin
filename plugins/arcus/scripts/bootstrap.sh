@@ -8,12 +8,19 @@
 #              agent specs regardless of where the plugin is cached on disk.
 #
 # It is idempotent and MUST be run at the start of every ARCUS entry point
-# rather than relied upon as a host hook. Only Claude Code is observed firing
-# this as a SessionStart hook; ARCUS's hooks do not fire on GitHub Copilot CLI
-# for reasons still unexplained. That is NOT a schema difference — measured
-# 2026-07-29, Copilot CLI auto-discovers a plugin's hooks/hooks.json and
-# normalizes Claude's PascalCase event names, and a sibling plugin's hook fires
-# there correctly. Running unconditionally sidesteps the question entirely.
+# rather than relied upon as a host hook — but as a plugin-contributed
+# SessionStart hook it now works on BOTH Claude Code and Copilot CLI. Confirmed
+# live 2026-08-06: Copilot CLI DOES fire this hook and DOES set
+# CLAUDE_PLUGIN_ROOT correctly, but it invokes the hook's COMMAND with cwd
+# defaulting to the PLUGIN'S OWN install directory, not the actual session's
+# working directory. That install directory is not a git repo, so the
+# "not a git repository" check below silently exited 0 having staged nothing —
+# the true cause of the original bug, not a schema or firing difference.
+# Copilot CLI does deliver the session's real cwd as JSON on the hook's own
+# stdin, though (`{"cwd": "...", ...}`, true for both the native camelCase and
+# the "VS Code compatible"/Claude-format payload shapes), so hooks.json now
+# passes `--from-hook` and this script reads that payload and cd's there
+# before doing anything else.
 # It also re-stages .arcus/bin after a plugin upgrade — the staged copy is
 # otherwise a snapshot that never expires, and a repo bootstrapped by one host
 # keeps serving that host's older scripts to every other host.
@@ -33,7 +40,8 @@ is_valid_home() {
 
 # Resolve the plugin root from this script's own location. This works in every
 # host (VS Code, Copilot CLI, Claude Code) and does not depend on a plugin-root
-# token being defined.
+# token being defined. Resolve this BEFORE any hook-driven cd below: BASH_SOURCE
+# is only reliably absolute-safe relative to the ORIGINAL invocation directory.
 ENV_ARCUS_HOME="${ARCUS_HOME:-}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
 ARCUS_HOME="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -52,6 +60,30 @@ if ! is_valid_home "$ARCUS_HOME"; then
         echo "        Derived from this script: $ARCUS_HOME (no scripts/ + .claude-plugin/plugin.json)" >&2
         echo "        Run the bootstrap from inside a real install, or export ARCUS_HOME to one." >&2
         exit 1
+    fi
+fi
+
+# When invoked as a plugin-contributed hook (hooks.json passes --from-hook),
+# the host's own working directory for the command is NOT reliable — Copilot
+# CLI runs it from the plugin's own install dir. The hook's stdin JSON payload
+# carries the real session cwd, though, so read it and cd there before the git
+# checks below ever run. Never block waiting on stdin outside this explicit,
+# hook-only path: every other caller (locate.sh, CI, a developer's shell) never
+# passes --from-hook, so this block never runs for them.
+if [ "${1:-}" = "--from-hook" ]; then
+    HOOK_PAYLOAD="$(cat 2>/dev/null || true)"
+    HOOK_CWD="$(printf '%s' "$HOOK_PAYLOAD" | node -e '
+        let d = "";
+        process.stdin.on("data", (c) => { d += c; });
+        process.stdin.on("end", () => {
+            try {
+                const j = JSON.parse(d);
+                if (j && typeof j.cwd === "string" && j.cwd) process.stdout.write(j.cwd);
+            } catch (e) { /* no usable payload — fall back to the process cwd */ }
+        });
+    ' 2>/dev/null)" || true
+    if [ -n "$HOOK_CWD" ] && [ -d "$HOOK_CWD" ]; then
+        cd "$HOOK_CWD"
     fi
 fi
 

@@ -112,10 +112,9 @@ script from wherever the plugin is installed. It finds the newest install, runs 
 prints the resolved `ARCUS_HOME`.
 
 Do **not** treat an existing `.arcus/bin/` as good enough. It is a *copy* with no expiry: a repo
-bootstrapped by one host keeps serving that host's older scripts to every later session. Only Claude
-Code is observed firing the plugin's `SessionStart` hook, so on a Copilot-only machine `.arcus/bin/`
-may never be created at all. `locate.sh` is idempotent and costs milliseconds; run it
-unconditionally rather than checking first.
+bootstrapped by one host keeps serving that host's older scripts to every later session even after
+an upgrade. `locate.sh` is idempotent and costs milliseconds; run it unconditionally rather than
+checking first.
 
 After it has run, `.arcus/bin/` is authoritative and `.arcus/env` carries `ARCUS_HOME` +
 `ARCUS_VERSION`.

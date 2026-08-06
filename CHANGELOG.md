@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **The `SessionStart` hook silently no-oped on Copilot CLI — root cause found and fixed.**
+  Previously documented as "unexplained," this was neither a schema difference nor a
+  hook-not-firing issue. Confirmed live 2026-08-06: Copilot CLI's plugin-contributed `SessionStart`
+  hook **does** fire and **does** set `CLAUDE_PLUGIN_ROOT` correctly, but it invokes the hook's
+  command with cwd defaulting to the **plugin's own install directory**, not the session's actual
+  working directory. Since that install directory is never a git repo, `bootstrap.sh`'s own
+  "not a git repository" guard silently exited 0 having staged nothing — the toolbox never got
+  created on a Copilot-only machine with zero visible error.
+
+  The fix needs no hardcoded paths, no duplicate hook blocks, and no SDK extension mechanism:
+  Copilot CLI delivers the session's real cwd as JSON on the hook's own stdin (`{"cwd": "...", ...}`,
+  true for both the native camelCase and the "VS Code compatible"/Claude-format payload shapes).
+  `plugins/arcus/hooks/hooks.json`'s command now passes `--from-hook`, and `bootstrap.sh` reads that
+  flag to parse the stdin payload and `cd` into its `cwd` before doing anything else — a no-op on
+  Claude Code, where the cwd was already correct. Every non-hook caller (`locate.sh`, CI, a
+  developer's shell) never passes `--from-hook`, so nothing about their invocation changes.
+  `plugins/arcus/scripts/tests/bootstrap.test.sh` covers the regression directly: the hook path
+  staging at the stdin-provided cwd rather than the process cwd, and falling back gracefully to the
+  process cwd when no usable payload is present.
+
+  A new opt-in tier, `tests/e2e/plugin-load/run-plugin-load-test.mjs` (`pnpm test:plugin-load`),
+  proves the same fix end-to-end against a **real** Copilot CLI session — not a simulated stdin
+  payload: it copies the plugin tree to a throwaway temp directory, launches
+  `copilot -p ... --plugin-dir <copy>` in a disposable repo, and asserts `.arcus/bin/` was actually
+  staged by the live hook. It never touches a real `~/.copilot/installed-plugins/`, needs an
+  authenticated `copilot` binary, and costs real AI credits — same reasoning as `pnpm test:evals`,
+  it is intentionally excluded from `pnpm test`/CI.
+
 ### Changed
 
 - **`review.md`'s findings were unreadable paragraphs — reformatted into a table, and the report
