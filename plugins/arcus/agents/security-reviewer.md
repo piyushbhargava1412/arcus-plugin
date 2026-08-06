@@ -57,9 +57,27 @@ concretely dangerous** — not theoretical, defense-in-depth wishlist items.
 - **warning** — a concrete weakness with a plausible (not theoretical) risk path
 - **suggestion** — a minor, non-blocking hardening note (use sparingly)
 
+## Skip Criteria
+
+**Before running any analysis**, evaluate the condition below. When in doubt, do not skip — only
+skip when it is clearly and unambiguously true.
+
+**Condition — Nothing in-domain changed**: none of the changed files touch authentication/authorization
+logic, cryptographic operations, network/IO trust boundaries, untrusted input handling, secrets or
+credential material, or dependency manifests (e.g. `package.json`, lockfiles, `requirements.txt`,
+`go.mod`). If the diff is ambiguous or touches any of these domains even indirectly, do not skip.
+
+If the skip criterion is met, output:
+
+```
+SUMMARY: Skipped — <reason: no auth/crypto/IO-boundary/input/secrets/dependency-manifest changes>
+FINDINGS:
+(none)
+```
+
 ## Output Format
 
-Return a short summary line, then findings (or `No security findings.`):
+Return a short summary line, then findings. Use `SKIPPED: <reason>` only when the Skip Criteria condition held and no investigation was performed. Use `No security findings.` when the diff was investigated and nothing rose above the confidence threshold.
 
 ```
 SUMMARY: <one line>

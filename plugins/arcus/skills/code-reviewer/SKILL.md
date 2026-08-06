@@ -85,6 +85,21 @@ severity calibration and the verdict are owned by `arcus:review-consolidator`.
    noise-filtered file set — to `<STORY_DIR>/change.diff`. This is the by-value payload Step 3 hands to
    the specialists.
 
+### Step 1.5: Classify the diff — docs-only fast path
+
+1. Apply the docs-only predicate defined in `plugins/arcus/schemas/docs-only-predicate.md` (read it
+   directly — it is a plain reference doc, not a skill) to the noise-filtered file set from Step 1
+   (the same set written to `<STORY_DIR>/change.diff`).
+2. If the diff is **docs-only** (per that predicate, including its secret-pattern carve-out), mark the
+   three specialists it exempts — `security-reviewer`, `performance-reviewer`,
+   `history-context-reviewer` — as `SKIPPED: docs-only diff (coordinator fast path)` for Step 3. Do
+   **not** spawn those specialist subagents at all; the skip must happen before dispatch, not as an
+   early-return inside an agent that still gets invoked.
+3. `spec-compliance-reviewer` and `code-quality-reviewer` are unaffected by this classification and
+   always dispatch in Step 3, docs-only or not.
+4. If the diff is **not** docs-only (or the secret carve-out hit), all five specialists dispatch as
+   normal in Step 3.
+
 ### Step 2: Deterministic Gate (run the tooling — fail fast)
 
 Before any LLM reviewer runs, execute the repo's own tooling over the **integrated branch** (all tasks
@@ -154,6 +169,10 @@ section — an agent is addressed by the host's registered subagent type, never 
 | Performance | `performance-reviewer` | medium | low | Whole diff |
 | History/Context | `history-context-reviewer` | medium | low | Whole diff vs. git blame/log — flags load-bearing complexity removals, silently-reverted fixes, and re-added reverted code |
 
+Security, performance, and history/context skip dispatch entirely — per Step 1.5's docs-only
+classification (`plugins/arcus/schemas/docs-only-predicate.md`) — when the diff is docs-only; spec
+compliance and code quality always dispatch.
+
 Each specialist returns findings as a list of `severity | file:line | description` plus a one-line
 summary. Tell each reviewer to read source files as needed to verify before flagging. Reviewers focus
 on **judgment-grade** concerns only — lint/format/test-pass/build are already settled by the Step 2
@@ -164,16 +183,31 @@ gate, so reviewers must not re-litigate them.
 Do **not** judge findings inline. Delegate consolidation to the `review-consolidator` agent
 (resolved per **Agent Resolution** in `arcus:model-strategy`), passing it:
 
-- `specialist_findings` — the collected outputs of the five specialists from Step 3 (each carries
-  severity, file:line, description, confidence), plus any deterministic-gate failures from Step 2
-  pre-tagged as `critical` findings.
+- `specialist_findings` — the collected outputs of only the **dispatched** specialists from Step 3
+  (2 of the 5, if Step 1.5 skipped three; all 5 otherwise) — each carries severity, file:line,
+  description, confidence — plus any deterministic-gate failures from Step 2 pre-tagged as `critical`
+  findings.
+- `dispatched_reviewers` — a 5-entry list, one per specialist in the Step 3 dispatch-table order
+  (spec compliance, code quality, security, performance, history/context):
+  `{reviewer: <name>, dispatched: true|false, reason: <string, only when dispatched=false>}`. A
+  specialist skipped by Step 1.5 gets `dispatched: false, reason: "docs-only diff (coordinator fast
+  path)"`; every other entry gets `dispatched: true` with no `reason`.
 - `change_set` — the branch diff from Step 1, for anchoring and scope-guarding.
 - `acceptance_criteria` — the relevant plan Definition of Done, to weight spec-compliance findings.
-- An explicit `output_path` of `<STORY_DIR>/review.md`, plus the `review_round`.
+- `story_id` — the `STORY_ID`, for the report title only.
+- An explicit `output_path` of `<STORY_DIR>/review.md`, plus `review_round` (0-indexed: `0` for the
+  initial review, `1` after the first loopback, `2` after the second, etc.).
+- `previous_report` — **when `review_round >= 1`** (this is a re-review), first read the *existing*
+  `<STORY_DIR>/review.md` from disk and pass its full verbatim content as `previous_report`, so the
+  consolidator can prepend the new round above it instead of overwriting it. On the initial review
+  (`review_round == 0`) there is no prior report — omit this input entirely, do not pass an empty
+  string.
 
 The agent returns the calibrated `review_report` (written to `output_path`) and a `VERDICT:` line; it
 owns all dedupe, severity-calibration, signal-over-noise, and verdict judgment — see
-`arcus:review-consolidator`. The coordinator only forwards inputs and relays the result.
+`arcus:review-consolidator`. The coordinator only forwards inputs and relays the result. The
+coordinator must **never** write to `<STORY_DIR>/review.md` itself, and never overwrite it in place —
+only the consolidator writes this file, and only via its prepend-newest-round contract.
 
 ### Step 5: Emit the verdict
 
@@ -206,9 +240,13 @@ the consolidated semantic findings.
   by `arcus:review-consolidator`. The coordinator forwards the specialists' findings and the change
   set and relays the result — it does not re-judge them inline.
 - **One report, one verdict**: The orchestrator depends on a single parseable `VERDICT:` line.
-- **Loopback awareness**: On a re-review (round > 1), pass the `review_round` through to the
-  consolidator so previously-reported items and gate failures are reconciled; only re-emit ones that
-  still apply, plus any new ones.
+- **Loopback awareness**: `review_round` is 0-indexed (`0` = initial review, `1` = first re-review,
+  and so on). On any re-review (`review_round >= 1`), read back the existing `<STORY_DIR>/review.md`
+  and pass it as `previous_report` to the consolidator, alongside `review_round`, so previously-reported
+  items and gate failures are reconciled — only re-emit ones that still apply, plus any new ones —
+  **and** so the prior round's findings are preserved (prepended below the new round) rather than
+  lost. Never show the raw 0-indexed `review_round` to a human; the report title uses
+  `display_round = review_round + 1`.
 
 ## Handoff Protocol
 

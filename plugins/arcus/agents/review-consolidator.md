@@ -44,6 +44,10 @@ problems block; a clean change with one or two minor nits is still an approval.
 | `specialist_findings` | yes | list of structured findings | Specialist reviewer outputs — each with severity, file:line, description, confidence |
 | `change_set` | yes | git diff or file contents | The diff under review, for anchoring and verification |
 | `acceptance_criteria` | no | markdown or text | Definition of Done, to weight spec-compliance findings |
+| `story_id` | yes | string | The `STORY_ID`, used only to compose the report title — not for any checkpoint/path lookup (this capability stays stateless) |
+| `dispatched_reviewers` | no | list of {reviewer, dispatched, reason} | 5-entry record (grounded-spec Resolved Ambiguity #3) of which specialists ran vs. were skipped and why, in Step-3 dispatch-table order |
+| `review_round` | yes | integer, 0-indexed | 0 for the initial review, 1 after the first loopback, 2 after the second, etc. Convert to the 1-indexed `display_round = review_round + 1` for anything human-facing (the report title). Never show the raw 0-indexed value to a human. |
+| `previous_report` | no | markdown | Full verbatim content of the existing `<STORY_DIR>/review.md`, when `review_round >= 1` (i.e. this is a re-review). Omitted on the initial review (`review_round == 0`), when there is nothing to preserve. |
 
 ### Outputs
 - **`review_report`** (markdown) — A consolidated, severity-tagged review with a calibrated verdict
@@ -125,6 +129,17 @@ Write the `review_report` to the resolved output path, using the template at
 `"$ARCUS_HOME"/agent-resources/review-consolidator/assets/review-report-template.md` (resolve
 `ARCUS_HOME` from `.arcus/env`) to structure it:
 
+- **Round numbering**: title this round's report `# Code Review — <STORY_ID> — Round
+  <display_round> Verdict: <APPROVE|CHANGES_REQUESTED>`, where `display_round = review_round + 1`
+  (the coordinator's `review_round` input is 0-indexed — 0 is the first review, so its display round
+  is 1; the first re-review is `review_round: 1`, display round 2; and so on). Never title the
+  report using the raw 0-indexed `review_round`.
+- **History is append-only, newest-first — never overwrite**: when `previous_report` is supplied
+  (i.e. `review_round >= 1`), the final file written to `output_path` is: this round's freshly
+  written report **first**, then a `---` horizontal-rule separator, then the entire `previous_report`
+  content **verbatim, unmodified** beneath it. Do not summarize, truncate, or drop any prior round —
+  each re-review prepends, it never replaces. On the initial review (`review_round == 0`, no
+  `previous_report`), just write this round's report with nothing appended below it.
 - **Findings** — one table, all severities together (no separate Critical/Warnings/Suggestions
   sections, and no separate History/Context section either — a git-history finding is a finding,
   categorised by severity like any other). One row per surviving finding, ordered critical →
@@ -133,7 +148,8 @@ Write the `review_report` to the resolved output path, using the template at
   narrative out; the fact that a finding was verified is already implicit in this report. Omit the
   whole section when there are zero findings.
 - **Notes** — 3-6 short bullets (overall quality signal, what was verified, anything else worth
-  flagging). No prose paragraph.
+  flagging). No prose paragraph. When `dispatched_reviewers` shows any specialist skipped, include
+  one Notes bullet naming which ran and which were skipped (with reason).
 
 Omit any section with no items. End the return message with exactly one of:
 

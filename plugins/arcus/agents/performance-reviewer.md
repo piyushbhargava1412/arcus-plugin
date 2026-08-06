@@ -58,9 +58,27 @@ resource risks — not micro-optimizations or speculative tuning.
 - **warning** — a concrete, measurable inefficiency likely to matter at expected scale
 - **suggestion** — a minor, non-blocking improvement (use sparingly)
 
+## Skip Criteria
+
+**Before running any analysis**, evaluate the condition below. When in doubt, do not skip — only
+skip when it is clearly and unambiguously true.
+
+**Condition — Nothing in-domain changed**: none of the changed files touch loops, database/network
+queries, memory allocation or data-structure growth, concurrency (threads, async tasks, locks), or
+I/O calls (file, network, disk). If the diff is ambiguous or touches any of these domains even
+indirectly, do not skip.
+
+If the skip criterion is met, output:
+
+```
+SUMMARY: Skipped — <reason: no loop/query/allocation/concurrency/IO changes>
+FINDINGS:
+(none)
+```
+
 ## Output Format
 
-Return a short summary line, then findings (or `No performance findings.`):
+Return a short summary line, then findings. Use `SKIPPED: <reason>` only when the Skip Criteria condition held and no investigation was performed. Use `No performance findings.` when the diff was investigated and nothing rose above the confidence threshold.
 
 ```
 SUMMARY: <one line>

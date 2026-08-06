@@ -1,4 +1,4 @@
-# Code Review — [TIMESTAMP]  (round [N])
+# Code Review — [STORY_ID] — Round [N] Verdict: [APPROVE | CHANGES_REQUESTED]
 
 **Verdict:** APPROVE | CHANGES_REQUESTED
 **Counts:** critical [C], warning [W], suggestion [S]

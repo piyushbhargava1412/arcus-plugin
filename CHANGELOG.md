@@ -74,7 +74,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   upstream bug). `checkpoint.sh` remains the single source of truth; the task list only mirrors it
   for the human watching the terminal, and the call is skipped silently wherever no such tool exists.
 
+- **New shared docs-only predicate reference doc, a coordinator fast path, per-specialist Skip
+  Criteria, and a `dispatched_reviewers` field — cutting `code-reviewer` cost on docs-only and
+  low-risk diffs.** `plugins/arcus/schemas/docs-only-predicate.md` is a new shared, plain reference
+  document (no skill frontmatter, not registered in the skill/agent roster) defining the docs-only
+  classification that any skill or agent can read directly instead of re-deriving diff intent from
+  scratch. `code-reviewer`'s Step 1.5 now runs a docs-only fast path against it before fanning out to
+  specialists, and `security-reviewer.md` / `performance-reviewer.md` each gained a Skip Criteria
+  section so a specialist can decline low-relevance diffs instead of always running.
+  `review-consolidator` takes a new `dispatched_reviewers` input recording which specialists actually
+  ran, and `history-context-reviewer.md`'s Condition 1 now reads the same reference doc for
+  consistency. `model-strategy/SKILL.md`'s Static Stage Assignments table also gained the
+  previously-missing `history-context-reviewer` row (`medium` complexity). Purely additive: existing
+  callers that don't pass `dispatched_reviewers` or reference the predicate doc are unaffected.
+
 ### Fixed
+
+- **`.context/` snapshot left inconsistent after the `diff-classification` skill was converted to
+  a plain reference doc.** `.context/repo_map.md` still counted 9 skills and listed
+  `diff-classification` in the skill roster, and `.context/design-and-coding-patterns.md`'s
+  "Shared-predicate skip gating" pattern still cited the removed `plugins/arcus/skills/diff-classification/SKILL.md`
+  path and described it as a `substrate`-tier skill. Both now correctly reflect the 8-skill roster
+  and the plain-reference-doc shape (`plugins/arcus/schemas/docs-only-predicate.md`). Also fixed the
+  Secret-Pattern Carve-Out's generic key/token regex in `docs-only-predicate.md`, which was
+  case-sensitive and missed common camelCase forms (e.g. `apiToken`) despite the doc claiming full
+  determinism; patterns are now explicitly documented and matched case-insensitively.
 
 - **`subagent-task-dispatcher` could return control to its caller with a nested dispatch still
   pending.** Observed live during the `SKILL-SURFACE-CONSOLIDATION` story: the dispatcher spawned its

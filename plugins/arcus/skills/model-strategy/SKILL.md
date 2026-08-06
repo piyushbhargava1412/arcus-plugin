@@ -44,6 +44,33 @@ The dispatcher resolves the tier to a platform-specific string. **Copilot CLI an
 
 **Update this table** when new model versions are released. Pass the resolved string as the per-dispatch `model`: **Copilot CLI**'s `task` tool takes a **slug id** — mandatory here, since Copilot CLI does not resolve tier words (it warns visibly and falls back; a valid slug is honoured), and also accepts `reasoning_effort`/`context_tier`; **VS Code**'s `runSubagent` takes `"Model Name (Vendor)"`; **Claude Code**'s `Agent` takes `"opus"`/`"sonnet"`/`"haiku"` and also honours tier words in frontmatter. **OpenCode** has no per-dispatch `model` — it is pinned per agent in `model:` frontmatter at build time (default provider GitHub Copilot; Amazon Bedrock alternative and full per-host mechanics in [Running Across Hosts](/concepts/cross-host)).
 
+## Dispatch Requirement (MUST)
+
+Resolving a tier from the tables above is **not optional prose** — it is a checkpoint every dispatch
+call must pass before it is sent. **Omitting the resolved `model` (or, on OpenCode, relying on the
+per-agent frontmatter pin without having checked it matches the intended tier) is itself a failure
+mode**, exactly like skipping a required input: the dispatch silently falls back to whatever model
+the calling session happens to be running on, defeating the entire cost/quality tiering this skill
+exists to enforce, with no visible error.
+
+Before sending **any** subagent/agent dispatch call, on whichever dispatch mechanism your host
+provides:
+
+1. Classify the work's complexity (`heavy` / `medium` / `light`) per **Complexity Levels** and
+   **Classification Guardrails**, or read it off **Static Stage Assignments** if it is a fixed
+   orchestrator-level stage.
+2. Resolve that complexity to a platform-specific model string per **Tier-to-Platform Model String
+   Mapping** for the host you are actually running on.
+3. Populate the dispatch call's model-selection parameter with that resolved string (Copilot CLI:
+   `model`; Claude Code: `model` on `Agent`; VS Code: the model argument to `runSubagent`) —
+   **before** issuing the call, not as a follow-up correction.
+4. If effort is also relevant (review specialists, time-sensitive stages), resolve and set it too
+   per **Effort Resolution** in the same pass.
+
+A dispatch call that reaches step 3 without a resolved model string populated is malformed and must
+not be sent. If you catch yourself about to omit it "just this once," that is the failure mode this
+section names — stop and resolve it first.
+
 ## Effort Resolution
 
 Portable effort values (`low`/`medium`/`high`) for review specialists and time-sensitive stages, resolved to each host's mechanism:
@@ -78,6 +105,7 @@ Fixed complexity for orchestrator-level stages (does not vary per story):
 | code-reviewer | heavy | Holistic review coordination, dedupe + judge |
 | security-reviewer | medium | Vulnerability detection in changed code |
 | performance-reviewer | medium | Hot-path / resource regression detection |
+| history-context-reviewer | medium | Git-history correlation over changed lines |
 | pull-request-builder | light | Template fill + summary |
 | repo-overview-discovery | heavy | Full repo scan, multi-area coordination |
 | flow-discovery | heavy | Code path tracing across multiple layers |

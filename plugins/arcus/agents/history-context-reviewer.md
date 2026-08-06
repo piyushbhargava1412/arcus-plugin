@@ -41,8 +41,12 @@ speculative risks.
 **Before running any analysis**, evaluate both conditions. If either is true, return immediately
 with `SKIPPED: <reason>` and an empty FINDINGS list.
 
-**Condition 1 — Docs-only diff**: all changed files match `*.md` OR are comment-only diffs OR are
-test-data fixtures (no logic code changed).
+**Condition 1 — Docs-only diff**: same predicate as the one defined in
+`plugins/arcus/schemas/docs-only-predicate.md` (read it directly — it is a plain reference doc, not
+a skill).
+(Note: after `code-reviewer`'s Step 1.5 lands, this condition becomes dead code on coordinator-driven
+runs — the coordinator already skips dispatch on a docs-only diff — but it is intentionally left in
+place because it still fires on standalone invocation of this agent.)
 
 **Condition 2 — Shallow history**: for every changed file, `git log --oneline <file>` yields fewer
 than 3 commits (brand-new files with no meaningful history to review).
