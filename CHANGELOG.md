@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`subagent-task-dispatcher` could return control to its caller with a nested dispatch still
+  pending.** Observed live during the `SKILL-SURFACE-CONSOLIDATION` story: the dispatcher spawned its
+  own implementer, refactor-gate, or spec-check subagent and then ended its own turn before that
+  child completed, forcing the orchestrator one level up to catch the child's result out-of-band and
+  manually re-resume the dispatcher — four separate times across ten tasks. `plugins/arcus/agents/subagent-task-dispatcher.md`
+  now carries an explicit **"Block on every dispatch"** rule: every subagent this protocol spawns
+  (Step 3's implementer, Step 6's refactor gate, Step 7's spec-compliance check) must be invoked
+  synchronously and awaited before the protocol proceeds. Prompt-only change; no other file touched.
+
 - **Test Plan and Closure dispatched the wrapper skill instead of the sibling agent, so the agent's
   narrower `tools:` allowlist never bound — and the gate meant to catch this couldn't see it either.**
   `arcus-controller/SKILL.md`'s Test Plan (`:229`) and Closure (`:278`) stages read "Read and follow

@@ -28,6 +28,13 @@ color: orange
 > neither the variable nor a `.arcus/env` instruction of its own, so a literal reference is exactly
 > how an unresolvable path (and the filesystem-wide `find` it invites) gets improvised.
 
+> **Block on every dispatch.** Every subagent this protocol spawns — the implementer in Step 3, the
+> refactor gate in Step 6, the spec-compliance check in Step 7 — must be invoked synchronously and
+> its result awaited before proceeding to the next step. Never return control to your own caller
+> with a dispatched child still pending: that leaves the parent orchestrator to catch the child's
+> result out-of-band and manually re-resume you, which is pure overhead this protocol should absorb
+> itself, not push upward.
+
 ## Overview
 
 Defines the protocol for the orchestrator to dispatch individual implementation tasks to fresh subagents. Each subagent operates in isolation with only the context it needs — preventing token accumulation and context drift across a multi-task story.
