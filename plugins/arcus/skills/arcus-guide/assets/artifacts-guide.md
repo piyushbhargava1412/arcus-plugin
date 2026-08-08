@@ -270,6 +270,7 @@ snapshot.
   "current_status": "IN_PROGRESS",
   "current_stage": "spec_finalizer",
   "review_round": 0,
+  "stop_after": ["test_plan", "implementation", "code_review"],
   "stages": {
     "scaffold": "complete",
     "context_pack": "complete",
@@ -284,11 +285,15 @@ snapshot.
 }
 ```
 
-Stage values are **plain status strings**, not nested objects. `mode` is `gated` or `afk`
-(the human-facing names are "interactive" and "autonomous"). `task_1..task_N` keys are **not**
-pre-seeded at init — they are added by `checkpoint.sh set-tasks <N>` once the plan is compiled and
-the real task count is known, so the checkpoint never carries phantom task slots that a resume
-could mistakenly try to run.
+Stage values are **plain status strings**, not nested objects. `mode` is one of three values:
+`gated` (default — human-facing "gated"), `intelligent` (human-facing "intelligent"), or `afk`
+(human-facing "AFK"/"autonomous"). `task_1..task_N` keys are **not** pre-seeded at init — they are
+added by `checkpoint.sh set-tasks <N>` once the plan is compiled and the real task count is known,
+so the checkpoint never carries phantom task slots that a resume could mistakenly try to run.
+
+`gated` mode also carries a `stop_after` list (resolved once at scaffold time from the optional
+`.arcus/config.json` — see **Modes Explained** for how to shape it). `intelligent` and `afk` always
+resolve `stop_after` to `[]`.
 
 **Per-stage status values** (the `stages` map):
 - `pending` — Not started
@@ -351,8 +356,8 @@ the guardrail check. Written solely by spec-finalizer.
 - **`## Open Questions`** — always present: the decisions spec-finalizer resolved but would prefer
   you to confirm, as a machine-readable YAML block (max 7, each with exactly one **Recommended**
   option + rationale). The spec is fully resolved regardless — these are confirmation requests, not
-  blockers. In interactive mode the orchestrator shows them to you all at once; in AFK they are
-  recorded but never surfaced.
+  blockers. In `gated` and `intelligent` modes the orchestrator shows them to you all at once; in
+  `afk` they are recorded but never surfaced.
 - **`## Dialogue Answers`** — populated only once you have answered: one `### Round N` table mapping
   each question id to your **verbatim** wording and the resolved choice (max 2 rounds)
 
@@ -549,7 +554,7 @@ in a new file or a `plan.md` subsection.
 - **`test-plan.md`** — Add missing test cases before coding
 - **`context-pack.md`** — Add missing context before planning
 
-**Best practice:** In interactive mode, edit at a handoff before saying "yes" to proceed
+**Best practice:** In `gated` mode, edit at a handoff before saying "yes" to proceed
 
 ---
 
@@ -591,7 +596,7 @@ graph LR
 
 ```mermaid
 graph LR
-    A[Run: implement story.md] --> B[scaffold: folder + checkpoint<br/>NO branch yet]
+    A[Run: arcus story.md] --> B[scaffold: folder + checkpoint<br/>NO branch yet]
     B --> C[context_pack + spec_finalizer: grounded-spec.md]
     C --> D[plan: plan.md]
     D --> E[test_plan: test-plan.md]
@@ -633,5 +638,5 @@ A: `.context/` is reused automatically. `.arcus/specs/` is per-story.
 
 - **Understand the pipeline:** Ask "explain the pipeline"
 - **See all commands:** Ask "command reference"
-- **Choose a mode:** Ask "interactive or autonomous?"
+- **Choose a mode:** Ask "gated or afk?"
 - **Get help:** Ask "troubleshooting"

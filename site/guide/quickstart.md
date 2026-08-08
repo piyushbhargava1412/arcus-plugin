@@ -45,22 +45,17 @@ This invokes the `repo-agentifier` skill, which:
 
 ## 2. Run the Pipeline (Per Story)
 
-Point ARCUS at a user story file to start planning the SDLC pipeline:
+Point ARCUS at a user story file to start the SDLC pipeline:
 
 ```
-plan path/to/story.md
+arcus path/to/story.md
 ```
 
-Or jump straight to implementation (still interactive/gated):
+You can also use `plan path/to/story.md` to explicitly enter the default `gated` mode.
 
-```
-implement path/to/story.md
-```
-
-**Default behavior:** ARCUS runs in **interactive** mode (gated) — the `arcus:arcus-controller`
-orchestrator drives the pipeline and stops **once** — when a Brainstorm stage has open questions.
-Answer them in your own words and it runs all the way to the pull request; if it has none, it never
-stops. On a cold resume, `resume <STORY>` continues from the checkpoint.
+**Default behavior:** ARCUS runs in **gated** mode — the `arcus:arcus-controller`
+orchestrator drives the pipeline and surfaces any Brainstorm open questions (all at once). Answer them
+in your own words and it runs all the way to the pull request; if there are none, it never stops. On a cold resume, `resume <STORY>` continues from the checkpoint. For details on all three modes (gated, intelligent, afk) and their behaviors, see [Three Modes, One Pipeline](/concepts/modes).
 
 The pipeline runs as **six phases** over ten ordered stages:
 
@@ -73,35 +68,40 @@ The pipeline runs as **six phases** over ten ordered stages:
 
 ### Choosing Your Mode
 
-**Gated Mode (Default)** — Best for:
+ARCUS offers three modes, all driven by the same `arcus:arcus-controller` orchestrator:
+
+**Gated (Default)** — Best for:
 - First time using ARCUS in this repository
 - Stories with ambiguities or unknowns
 - High-risk or complex changes
 - Learning how ARCUS works
 - Need to pause and resume across sessions
 
-**AFK Mode (Fully Autonomous)** — Best for:
+Runs with optional phase-boundary gates (configurable via `.arcus/config.json`). Trigger: `arcus path/to/story.md` or `plan path/to/story.md`.
+
+**Intelligent** — Best for:
+- Cloud/CI runs (ARCUS cloud explicitly uses `--intelligent`)
+- Local runs that want Brainstorm questions without phase-boundary pauses
+- Want question-gating but no pipeline pausing between phases
+
+Surfaces only Brainstorm open questions; no phase-boundary gates. Trigger: `arcus path/to/story.md --intelligent`.
+
+**AFK (Autonomous)** — Best for:
 - High-confidence, well-defined stories
 - Familiar codebase and domain
 - Simple features or bug fixes
 - Uninterrupted 30-90 minute sessions
 
-To use AFK mode, use an AFK trigger or the `--afk` flag (these activate the `arcus:arcus-controller`):
+Never stops — open questions are recorded but never surfaced. Trigger: `forge path/to/story.md`, `afk path/to/story.md`, `run afk on path/to/story.md`, or `arcus path/to/story.md --afk`.
 
-```
-run afk on path/to/story.md
-forge path/to/story.md
-implement path/to/story.md --afk
-```
-
-For more details on choosing between the two modes, see [Mode Concepts](/concepts/modes). For a detailed breakdown of each pipeline stage, see [Pipeline Concepts](/concepts/pipeline).
+For a detailed comparison of all three modes, see [Three Modes, One Pipeline](/concepts/modes). For a detailed breakdown of each pipeline stage, see [Pipeline Concepts](/concepts/pipeline).
 
 ## Quick Start Checklist
 
 - [ ] Install ARCUS plugin
 - [ ] Run `generate context` to build `.context/` snapshot
 - [ ] Write your first story in `story.md`
-- [ ] Run `plan story.md` to start the interactive (gated) pipeline
+- [ ] Run `arcus story.md` to start the pipeline in gated mode (default)
 - [ ] Answer the open questions if ARCUS raises any
 - [ ] Verify the opened pull request
 
@@ -109,5 +109,5 @@ For more details on choosing between the two modes, see [Mode Concepts](/concept
 - Your first story should use gated mode to learn the workflow
 - Keep stories focused and atomic (one feature or fix per story)
 - Answer the open questions carefully — the last chance to steer before code is written
-- You can pause anytime and resume later (gated mode only)
+- You can pause anytime and resume later (both gated and intelligent modes support this)
 - Check status anytime with: "where am I?"

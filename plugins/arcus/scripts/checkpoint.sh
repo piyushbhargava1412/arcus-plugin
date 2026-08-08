@@ -6,12 +6,12 @@
 #              (pending | in_progress | awaiting_handoff | complete | needs_rework)
 #              to support human-gated, resumable, multi-session workflows.
 # USAGE:
-#   scripts/checkpoint.sh init       <STORY_ID> [<BRANCH_NAME>] [<BASE_BRANCH>] [<MODE>]
+#   scripts/checkpoint.sh init       <STORY_ID> [<BRANCH_NAME>] [<BASE_BRANCH>] [<MODE>] [<STOP_AFTER>]
 #   scripts/checkpoint.sh read       <STORY_ID>
 #   scripts/checkpoint.sh complete   <STORY_ID> <stage>
 #   scripts/checkpoint.sh set-status <STORY_ID> <stage> <status>
 #   scripts/checkpoint.sh reopen     <STORY_ID> <stage>        # -> needs_rework, bumps review_round
-#   scripts/checkpoint.sh set-mode   <STORY_ID> <gated|afk>
+#   scripts/checkpoint.sh set-mode   <STORY_ID> <afk|intelligent|gated>
 #   scripts/checkpoint.sh set-branch <STORY_ID> <branch> <base>
 #   scripts/checkpoint.sh set-tasks  <STORY_ID> <N>             # seed/prune task_1..task_N slots
 #   scripts/checkpoint.sh set-cursor <STORY_ID> <COMMENT_ID>    # highest ingested comment id
@@ -20,7 +20,7 @@
 #   scripts/checkpoint.sh fail       <STORY_ID> <stage> <reason>
 #
 # Stage status values: pending | in_progress | awaiting_handoff | complete | needs_rework
-# Modes: gated (default, human handoff between stages) | afk (autonomous, auto-confirm)
+# Modes: afk (autonomous, auto-confirm) | intelligent (stops only on open questions; cloud behavior) | gated (intelligent + configurable phase-boundary gates; local default). Note: set-mode does not backfill stop_after—a story scaffolded afk/intelligent then switched to gated yields zero phase gates by design (SF-5).
 # current_status values: IN_PROGRESS | AWAITING_HANDOFF | COMPLETE | FAILED
 #   (AWAITING_INPUT is reserved for the async/cloud channel; no local code path sets it yet.)
 #
@@ -224,18 +224,44 @@ run_mutation() {
 
 case "$ACTION" in
     init)
-        mkdir -p "$WORKSPACE_DIR"
-
         # Parse optional positional args.
         BRANCH_NAME="${3:-$(git rev-parse --abbrev-ref HEAD)}"
         BASE_BRANCH="${4:-main}"
         MODE="${5:-gated}"
+        STOP_AFTER="${6:-}"
+
+        # Up-front validation, mirroring set-mode's existing explicit-comparison
+        # shape (not the grep-based VALID_STATUSES check) so an unusual MODE value
+        # can't be misread as a grep pattern — ahead of any filesystem work,
+        # including the already-exists short-circuit below.
+        if [ "$MODE" != "afk" ] && [ "$MODE" != "intelligent" ] && [ "$MODE" != "gated" ]; then
+            echo "[ERROR] Usage: checkpoint.sh init <STORY_ID> [<BRANCH_NAME>] [<BASE_BRANCH>] [<afk|intelligent|gated>] [<STOP_AFTER>]" >&2
+            exit 1
+        fi
+
+        mkdir -p "$WORKSPACE_DIR"
 
         if [ -f "$CHECKPOINT_FILE" ]; then
             echo "CHECKPOINT_EXISTS: true"
             cat "$CHECKPOINT_FILE"
             exit 0
         fi
+
+        # Convert the comma-separated STOP_AFTER positional into a JSON array
+        # literal, deduplicated while preserving first-seen order (SF-3: stop_after
+        # is a set, not a sequence). The raw value flows through process.argv, never
+        # string-interpolated into the JS source, matching run_mutation's
+        # injection-safety discipline.
+        STOP_AFTER_JSON=$(node -e '
+            const raw = process.argv[1] || "";
+            const items = raw.split(",").map(s => s.trim()).filter(s => s.length > 0);
+            const seen = new Set();
+            const uniq = [];
+            for (const item of items) {
+                if (!seen.has(item)) { seen.add(item); uniq.push(item); }
+            }
+            console.log(JSON.stringify(uniq));
+        ' "$STOP_AFTER")
 
         cat <<EOF > "$CHECKPOINT_FILE"
 {
@@ -248,6 +274,7 @@ case "$ACTION" in
   "current_status": "IN_PROGRESS",
   "current_stage": "scaffold",
   "review_round": 0,
+  "stop_after": $STOP_AFTER_JSON,
   "stages": {
     "scaffold": "pending",
     "context_pack": "pending",
@@ -310,8 +337,8 @@ EOF
 
     set-mode)
         MODE="$3"
-        if [ "$MODE" != "gated" ] && [ "$MODE" != "afk" ]; then
-            echo "[ERROR] Usage: checkpoint.sh set-mode <STORY_ID> <gated|afk>" >&2
+        if [ "$MODE" != "afk" ] && [ "$MODE" != "intelligent" ] && [ "$MODE" != "gated" ]; then
+            echo "[ERROR] Usage: checkpoint.sh set-mode <STORY_ID> <afk|intelligent|gated>" >&2
             exit 1
         fi
         run_mutation set-mode "$MODE"

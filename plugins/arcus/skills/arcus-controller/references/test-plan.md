@@ -10,4 +10,6 @@ unchanged — they are not restated below.
    - **Description**: "TestPlan: test-spec-compiler"
    - **Model**: resolve complexity `medium` via the `arcus:model-strategy` skill.
    - Verify the file exists, then `.arcus/bin/checkpoint.sh complete <STORY_ID> test_plan`.
-2. **Output**: emit `[TestPlan] Complete: <N> test cases` and continue into Implementation.
+2. **Output**: emit `[TestPlan] Complete: <N> test cases`, then run the
+   **Phase-Boundary Gate Protocol** in `SKILL.md` for the `test_plan` phase-group key. If it does not
+   gate, continue into Implementation.

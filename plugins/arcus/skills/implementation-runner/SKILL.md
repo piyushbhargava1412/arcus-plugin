@@ -4,7 +4,7 @@ description: >
   The canonical ARCUS implementation loop. Creates the git branch at entry
   (deferred-branch design), parses the plan's tasks, and drives each task
   through the subagent-task-dispatcher protocol with per-task TDD, spec-check,
-  and commit. Reused by both the gated flow and the afk controller. Activates on
+  and commit. Reused by the user entry phrase and by the controller in all three modes. Activates on
   "implement <STORY>" or "code <STORY>"; resumes after a changes_requested review
   via the loopback protocol.
 layer: orchestrator
@@ -17,10 +17,12 @@ argument-hint: <STORY>
 ## Overview
 
 This skill is the **single, canonical implementation loop** for the ARCUS Implementation
-stage. It is reused verbatim by **both** entry paths:
+stage. It is reused by the user entry phrase `"implement <STORY>"` / `"code <STORY>"` and
+by the controller in all three modes:
 
-- the **gated flow** — the user types `"implement <STORY>"` / `"code <STORY>"`;
-- the **afk controller** — which delegates the Implementation stage to this skill.
+- **gated** (default) — the user invokes via `"implement <STORY>"` / `"code <STORY>"`;
+- **afk** — the afk controller delegates the Implementation stage to this skill;
+- **intelligent** — the intelligent controller delegates the Implementation stage to this skill (cloud CI).
 
 It realizes the git branch at entry (the **deferred-branch** design — the branch was only
 *planned* at scaffold time, never created), then loops over the plan's `### Task N:`
@@ -34,14 +36,15 @@ Review** and stops.
 
 ## Execution Modes
 
-This skill behaves **identically in both modes** — it runs the loop and returns. It never stops for
+This skill behaves **identically in all three modes** — it runs the loop and returns. It never stops for
 confirmation: the only place the pipeline waits for a human is the Brainstorm open questions, long
 before this skill is reached.
 
 | Mode | Caller | Behaviour at completion |
 |------|--------|-------------------------|
 | **gated** (default) | User entry phrase `"implement <STORY>"` | Run the loop, emit the milestone, return. Standalone, tell the user `review <STORY_ID>` is next. |
-| **afk** | The afk arcus-controller delegates here | Identical — the controller continues into Code Review. |
+| **afk** | The afk arcus-controller delegates here | Run the loop, emit the milestone, return. The controller continues into Code Review. |
+| **intelligent** | Cloud CI (via `fresh-prompt.md`) | Run the loop, emit the milestone, return. The controller continues into Code Review. |
 
 Read the persisted `mode` from the checkpoint; do not re-infer it.
 
@@ -162,7 +165,7 @@ When all tasks are `complete`, go to the Handoff Protocol.
 ### Loopback Protocol (Code Review → Implementation)
 
 When this skill is **re-entered after a `changes_requested` review** (the controller loops back
-automatically in both modes, or the user typed `"fix <STORY_ID>"` standalone):
+automatically in all three modes, or the user typed `"fix <STORY_ID>"` standalone):
 
 1. `<BIN>/checkpoint.sh reopen <STORY_ID> code_review` — sets `code_review` to `needs_rework` and bumps
    `review_round`.

@@ -5,7 +5,7 @@ Consumed by .github/workflows/arcus-pipeline.yml, which substitutes {{STORY_ID}}
 Kept as a file rather than inlined in YAML so it is reviewable in a diff, does
 not fight block-scalar indentation, and is versioned with the skills it drives.
 -->
-Read and follow the `arcus-controller` skill to run the story at `.arcus/specs/{{STORY_ID}}/story.md` in INTERACTIVE (gated) mode.
+Read and follow the `arcus-controller` skill to run the story at `.arcus/specs/{{STORY_ID}}/story.md` in INTELLIGENT mode, passing `--mode intelligent` explicitly.
 
 Run the pipeline as far as it will go, all the way to the pull request.
 

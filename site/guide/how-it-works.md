@@ -59,23 +59,15 @@ Skills reference other ARCUS skills **by name**, not by path:
 
 The agent runtime resolves these names to the appropriate skill within the plugin, maintaining portability across installation locations.
 
-## Two Modes: Interactive vs Autonomous
+## Three Modes: gated, intelligent, afk
 
 ARCUS is a **three-tier capability library** — atomic capabilities, thin coordinators, and one
 stateful `arcus:arcus-controller` orchestrator that owns the pipeline (checkpoint, branch, stage
 gates). See [The Capability Library](/concepts/capability-library) for the full breakdown. That one
-orchestrator runs the same pipeline in two modes:
+orchestrator runs the same pipeline in three modes — all using the same stage keys and the same
+helper scripts. For a detailed comparison, see [Three Modes, One Pipeline](/concepts/modes).
 
-- **Interactive (default, user-driven)** — the gated mode. You enter with `implement <STORY>` or
-  `plan <STORY>`. spec-finalizer and implementation-planner run as one-shot subagents and never
-  interview you; each records its least-confident decisions in an `## Open Questions` block that the
-  orchestrator shows you **all at once**. That is the only place the pipeline stops — answer them and
-  it runs to the pull request. A cold resume picks up from the checkpoint with `resume <STORY>`.
-- **Autonomous (AFK)** — the hands-off mode of the same orchestrator. It activates on AFK
-  phrases (`afk`, `--afk`, `forge`, `run afk on <STORY>`), dispatches each stage as a one-shot
-  subagent, and auto-confirms every gate.
-
-Both modes reuse the same `arcus:implementation-runner` loop driver for the Implementation stage, the
+All three modes reuse the same `arcus:implementation-runner` loop driver for the Implementation stage, the
 same helper scripts, and the same checkpoint stage keys
 (`scaffold → context_pack → spec_finalizer → plan → test_plan → branch → task_1..N → code_review → context_sync → closure`).
 

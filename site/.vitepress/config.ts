@@ -30,7 +30,7 @@ export default withMermaid({
           { text: 'The ARCUS Pipeline', link: '/concepts/pipeline' },
           { text: 'The Capability Library', link: '/concepts/capability-library' },
           { text: 'Context Engineering', link: '/concepts/context-engineering' },
-          { text: 'Interactive vs Autonomous Mode', link: '/concepts/modes' },
+          { text: 'Three Modes, One Pipeline', link: '/concepts/modes' },
           { text: 'Running Across Hosts', link: '/concepts/cross-host' }
         ]
       }

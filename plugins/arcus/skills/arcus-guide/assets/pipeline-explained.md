@@ -74,7 +74,7 @@ ARCUS is built as a **three-tier capability library** — a modular architecture
 **Owns checkpoint and branch state.** Drives the full lifecycle from story to PR, managing the session and stage transitions.
 
 **Examples:**
-- `arcus-controller` — The single orchestrator for **both interactive and autonomous modes**
+- `arcus-controller` — The single orchestrator for **all three modes** (`afk`, `intelligent`, `gated`)
 - `implementation-runner` — Per-task implementation loop
 - `subagent-task-dispatcher` — Isolated task dispatch protocol
 
@@ -82,17 +82,44 @@ This three-tier design keeps ARCUS **composable** — capabilities can be reused
 
 ---
 
-## Two Modes: Interactive vs Autonomous
+## Three Modes, One Pipeline
 
-ARCUS ships **two ways to run the same pipeline** via the **`arcus-controller`** orchestrator:
+ARCUS ships **three ways to run the same pipeline** via the **`arcus-controller`** orchestrator —
+they differ only in **whether, and where, the pipeline pauses for a human**:
 
-- **Interactive (default)** — The `arcus-controller` surfaces the Brainstorm open questions as one batch and waits for your answers, then runs to the PR without stopping again. Trigger with `implement <STORY>` or `plan <STORY>`.
+- **`gated` (default)** — everything `intelligent` does, **plus** configurable phase-boundary
+  stops (see **`.arcus/config.json`** below). Trigger with `arcus <STORY>` (the default) or
+  `plan <STORY>`.
+- **`intelligent`** — stops only for a genuine open question raised during Brainstorm; no
+  phase-boundary gates ever fire. This is **cloud's default behavior** (every ARCUS cloud/CI run is
+  scaffolded with `--mode intelligent`). Trigger locally with `arcus <STORY> --intelligent`.
+- **`afk` (autonomous)** — runs all stages unattended, back-to-back with milestone-only output.
+  Activates on AFK phrases: `afk <STORY>`, `forge <STORY>`, `run afk on <STORY>`, or
+  `arcus <STORY> --afk`.
 
-- **Autonomous (afk)** — The `arcus-controller` runs all stages unattended, back-to-back with milestone-only output. Activates on AFK phrases: `afk`, `forge`, `run afk on <STORY>`.
+All three modes use the same orchestrator (`arcus-controller`), the same stages, and the same
+capabilities — the only differences are whether the Brainstorm open questions are surfaced to you,
+and whether (for `gated`) the pipeline also pauses at phase boundaries.
 
-Both modes use the same orchestrator (`arcus-controller`), the same stages, and the same capabilities — the only difference is whether the Brainstorm open questions are surfaced to you or merely recorded.
+### `.arcus/config.json`: narrowing `gated`'s phase-boundary stops
 
-See **"interactive or autonomous?"** for guidance on choosing.
+`gated` mode's phase-boundary gates default to pausing after **all three** transitions — Test Plan
+→ Implementation, Implementation → Code Review, Code Review → Context Sync. To pause after fewer of
+them, create an optional, developer-authored, **gitignored** `.arcus/config.json` at the repo root
+**before** scaffolding a `gated` story:
+
+```json
+{ "stop_after": ["test_plan", "implementation", "code_review"] }
+```
+
+The three valid keys are `test_plan`, `implementation`, `code_review`. It only ever **narrows**
+that default set (an unordered set — it never reorders the fixed pipeline sequence, and never adds
+a fourth gate). It's opt-in (no script creates it), read **once at scaffold time** for `gated` mode
+only (never on `resume <STORY>`, never for `intelligent`/`afk`), and invalid content (malformed
+JSON, non-array, unknown keys, duplicates) never hard-fails a scaffold — it warns and falls back or
+drops the bad entries.
+
+See **"modes explained"** for the full decision guide on choosing between the three.
 
 ---
 
@@ -110,8 +137,7 @@ See **"interactive or autonomous?"** for guidance on choosing.
 - Creates **no git branch** (deferred to the `branch` stage)
 
 **Driven by:**
-- Interactive: `arcus-controller` (interactive mode) calls `scaffold.sh`
-- Autonomous: `arcus-controller` (autonomous mode) calls `scaffold.sh`
+- `arcus-controller` calls `scaffold.sh` identically in all three modes (`gated`, `intelligent`, `afk`)
 
 **Artifacts created:**
 - `.arcus/specs/[STORY-ID]/story.md` (copy of original)
@@ -143,12 +169,12 @@ snapshot.
 **What happens:**
 - Analyzes the story for completeness and identifies ambiguous requirements
 - **Always** auto-resolves every ambiguity one-shot, grounded in repo patterns — the spec is fully
-  resolved on every run, in both modes
+  resolved on every run, in all three modes
 - **Also** records what it was least confident about in an `## Open Questions` block. **Every entry
   presents exactly one option marked Recommended (with a one-line rationale)** and you can always
   answer in your own words.
-- **Interactive mode:** the orchestrator shows you that block — **all questions at once** — and folds
-  your reply back in. **Autonomous mode:** the block is recorded but never surfaced.
+- **`gated` and `intelligent`:** the orchestrator shows you that block — **all questions at once** —
+  and folds your reply back in. **`afk`:** the block is recorded but never surfaced.
 - Consolidates all grounded story decisions into a single **`grounded-spec.md`**
 
 **Skills invoked:**
@@ -216,7 +242,7 @@ carefully!
   `checkpoint.sh set-branch` to record the actual name
 
 **Driven by:**
-- `implementation-runner` (used by both interactive and autonomous modes)
+- `implementation-runner` (used identically by all three modes)
 
 **Why deferred?** Planning never touches git. The branch is only created once you commit
 to writing code, keeping aborted/abandoned plans from littering your branch list.
@@ -228,8 +254,8 @@ to writing code, keeping aborted/abandoned plans from littering your branch list
 **Purpose:** Implement the story task-by-task with continuous verification.
 
 **What happens:**
-- The `implementation-runner` drives the per-task loop (the same loop is reused by
-  both interactive and autonomous modes)
+- The `implementation-runner` drives the per-task loop (the same loop is reused identically by
+  all three modes)
 - Each task is dispatched to an isolated subagent with scoped context
 - Each task includes implementation, test writing (following `test-plan.md`), a refactor
   gate (`simplify-and-verify` capability: mutate toward simplicity, re-run suite — skipped on `light`
@@ -319,8 +345,9 @@ approved branch diff materially drifted — *before* the PR is opened.
 - Surgically syncs **only the affected** artifacts (refreshing their context-meta); updates
   `AGENTS.md` only when a flow file is added or removed
 - **Facts-only and diff-driven** — no full repository rescan
-- **Interactive mode:** shows a drift assessment + a single consolidated yes/no
-- **Autonomous mode:** auto-decides
+- Runs automatically (`apply_mode=auto`) in **all three modes** — no user decision gate here. Any
+  `gated`-mode pause for this transition already happened one step earlier, at the Code Review →
+  Context Sync phase boundary (see **`.arcus/config.json`** above)
 - Resume the in-pipeline stage with `resume <STORY_ID>` (the controller picks up here); run an
   ad-hoc full sweep with `sync context`
 
@@ -374,41 +401,44 @@ judgment is needed.
 
 ---
 
-## Interactive vs Autonomous Behavior
+## Mode Behavior at a Glance
 
-| Aspect | Interactive (default) | Autonomous (afk) |
-|--------|----------------------|------------------|
-| **Driver** | `arcus-controller` in interactive mode | `arcus-controller` in autonomous mode |
-| **Gates** | Pauses between stages for your "yes"/"proceed" | Auto-confirms; runs back-to-back |
-| **spec_finalizer** | One-shot auto-resolution; its `## Open Questions` shown to you as one batch | One-shot auto-resolution; `## Open Questions` recorded, not surfaced |
-| **Resume** | Cold resume = the next stage's explicit phrase + the checkpoint | Intended to run uninterrupted |
-| **Output** | Full progress updates | Milestone-only output |
+| Aspect | `gated` (Default) | `intelligent` | `afk` (Autonomous) |
+|--------|----------------------|------------------|------------------|
+| **Driver** | `arcus-controller` | `arcus-controller` | `arcus-controller` |
+| **Open-question gate** | Pauses once, for the Brainstorm open questions | Pauses once, for the Brainstorm open questions | Never (recorded, not surfaced) |
+| **Phase-boundary gates** | Optional, per `stop_after` (see `.arcus/config.json` above) — absent/empty means none fire | Never fire | Never fire |
+| **spec_finalizer** | One-shot auto-resolution; `## Open Questions` shown as one batch | One-shot auto-resolution; `## Open Questions` shown as one batch | One-shot auto-resolution; `## Open Questions` recorded, not surfaced |
+| **Resume** | Cold resume = the next stage's explicit phrase + the checkpoint | Cold resume = the next stage's explicit phrase + the checkpoint | Intended to run uninterrupted |
+| **Output** | Milestone-only output | Milestone-only output | Milestone-only output |
 
-> Both modes use the same **`arcus-controller`** orchestrator — the only difference is whether
-> the Brainstorm open questions are surfaced to you.
+> All three modes use the same **`arcus-controller`** orchestrator — the differences are entirely
+> in whether, and where, the pipeline pauses for a human.
 
 ---
 
-## Interactive Mode Resume Phrases
+## Resume Phrases
 
-In interactive mode, the orchestrator tells you the exact phrase to resume the next
-stage in a fresh session. Examples:
+The orchestrator tells you the exact phrase to resume the next stage in a fresh session (all
+modes). Examples:
 
 | To run / resume… | Say |
 |------------------|-----|
-| Full pipeline | `implement <STORY>` (or `plan <STORY>`) |
+| Full pipeline | `arcus <STORY>` (or `plan <STORY>`); add `--intelligent` or use an AFK trigger for the other modes |
 | Test plan | `generate test plan for <STORY>` |
 | Code review | `review <STORY>` |
 | Context sync | `resume <STORY>` (controller resumes here); `sync context` for an ad-hoc full sweep |
 | Closure (PR) | `create pull request for <STORY>` |
 
-Within the same session, a simple `yes` / `proceed` loads the next stage directly.
+Within the same session, a simple `yes` / `proceed` loads the next stage directly. Note:
+`implement <STORY>` / `code <STORY>` are **not** in this table — those belong to
+`implementation-runner`, not `arcus-controller` (see "command reference").
 
 ---
 
 ## What's Next?
 
-- **Understand modes:** Ask "interactive or autonomous?"
+- **Understand modes:** Ask "gated, intelligent, or afk?"
 - **See all commands:** Ask "command reference"
 - **Check artifacts:** Ask "explain artifacts"
 - **Get help:** Ask "troubleshooting"

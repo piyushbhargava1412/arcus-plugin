@@ -23,31 +23,65 @@ Initial setup and context management
 
 ## 🚀 Pipeline Start Commands
 
-Begin the SDLC pipeline
+Begin the SDLC pipeline. These all belong to **`arcus-controller`**, the single orchestrator —
+`implement <STORY>` / `code <STORY>` are **not** in this table; see the callout below.
 
 | Command | What it does | When to use |
 |---------|-------------|-------------|
-| `implement <STORY>.md` | Start the pipeline in **interactive** mode (default) | Begin work on any story (default, recommended) |
-| `plan <STORY>.md` | Planning-only alias for interactive mode | Same as above |
-| `run afk on <STORY>.md` | Start the pipeline in **autonomous** mode | High-confidence stories, familiar codebases |
-| `forge <STORY>.md` | Autonomous trigger | Same as above |
-| `afk <STORY>.md` | Autonomous trigger | Same as above |
+| `arcus <STORY>.md` | Start the pipeline in **`gated`** mode (default) | Begin work on any story (default, recommended) |
+| `plan <STORY>.md` | Alias for `gated` mode | Same as above |
+| `arcus <STORY>.md --intelligent` | Start the pipeline in **`intelligent`** mode | Question-gating without phase-boundary pauses; this is also cloud's automatic default |
+| `run afk on <STORY>.md` | Start the pipeline in **`afk`** mode | High-confidence stories, familiar codebases |
+| `forge <STORY>.md` | `afk` trigger | Same as above |
+| `afk <STORY>.md` | `afk` trigger | Same as above |
+| `arcus <STORY>.md --afk` | `afk` trigger | Same as above |
 
-> **Interactive vs Autonomous:** Both modes use the **`arcus-controller`** orchestrator.
-> Interactive mode (default) stops once, for the Brainstorm open questions, then runs to the PR.
-> Autonomous mode (`afk`, `forge`, `run afk on`) runs all stages unattended.
+> **Trigger ownership:** `implement <STORY>` and `code <STORY>` are **not** `arcus-controller`
+> triggers — they belong exclusively to `implementation-runner`, which resumes/drives just the
+> Implementation loop for a story that already has a `plan.md` (see the note under **Review & Fix
+> Commands** below). To start or resume the full Spec → Code → PR pipeline, use `arcus <STORY>`,
+> `plan <STORY>`, or an `afk` trigger from the table above.
+>
+> **Three modes, one orchestrator:** `arcus-controller` runs `gated`, `intelligent`, and `afk` —
+> not two. `gated` (default) stops for Brainstorm open questions **and** can pause at configurable
+> phase boundaries (see `.arcus/config.json` below). `intelligent` stops only for open questions,
+> never at a phase boundary — this is cloud's automatic default. `afk` never stops at all.
 
 ---
 
-## ⏭️ Interactive Mode Resume Phrases
+## ⚙️ `.arcus/config.json`: Narrowing `gated`'s Phase-Boundary Stops
 
-In interactive mode, the orchestrator stops only for open questions. To cold-resume a later
-stage in a fresh session, use that stage's explicit phrase.
+`gated` mode's phase-boundary gates default to pausing after **all three** transitions —
+`test_plan`, `implementation`, `code_review`. To pause after fewer of them, create an optional,
+developer-authored, **gitignored** `.arcus/config.json` at the repo root **before** scaffolding a
+`gated` story:
+
+```json
+{ "stop_after": ["test_plan", "implementation", "code_review"] }
+```
+
+List only the phase groups you want to pause after — the three valid keys are `test_plan`,
+`implementation`, and `code_review`. It only ever **narrows** that default set — it can drop gates,
+never add a fourth or reorder the existing three.
+
+- **Opt-in only.** No script creates or seeds this file. If it's absent, `gated` falls back to the
+  built-in default of all three gates.
+- **Read once, at scaffold time, `gated` mode only.** It is never re-read on `resume <STORY>`, and
+  `intelligent`/`afk` never read it at all.
+- **Never hard-fails.** Malformed JSON, a non-array `stop_after`, unknown keys, or duplicates log a
+  warning and fall back / drop the bad entries — they never abort scaffolding.
+
+---
+
+## ⏭️ Resume Phrases
+
+The orchestrator stops for open questions (all modes) and, in `gated`, optionally at phase
+boundaries too. To cold-resume a later stage in a fresh session, use that stage's explicit phrase.
 
 | Command | Resumes / runs | When to use |
 |---------|----------------|-------------|
-| `implement <STORY>` | Full pipeline from start (interactive mode) | Start or resume from beginning |
-| `plan <STORY>` | Alias for implement | Same as above |
+| `arcus <STORY>` | Full pipeline from start (`gated` mode) | Start or resume from beginning |
+| `plan <STORY>` | Alias for `arcus <STORY>` | Same as above |
 | `generate test plan for <STORY>` | The `test_plan` stage | Resume or restart test planning |
 | `review <STORY>` | The `code_review` stage | Resume or restart code review |
 | `code review <STORY>` | Alias for review | Same as above |
@@ -75,19 +109,24 @@ Answer open questions
 | `stop` | Alias for no | Same as above |
 | `hold` | Alias for no | Same as above |
 
-**💡 Tip:** In interactive mode, you can pause at any gate and resume hours or days later.
+**💡 Tip:** In `gated` mode, you can pause at any gate and resume hours or days later.
 
 ---
 
 ## 🔄 Review & Fix Commands
 
-Handle review loops
+Handle review loops, and drive/resume the Implementation loop directly
 
 | Command | What it does | When to use |
 |---------|-------------|-------------|
 | `fix <STORY>` | Loopback: feed review findings into the task loop as fix-tasks | After `code_review` returns `changes_requested` verdict |
+| `implement <STORY>` | Belongs to **`implementation-runner`**, not `arcus-controller` — realizes the branch and drives the per-task loop for a story that already has a `plan.md` | Resuming/driving just the Implementation stage directly, outside the full pipeline flow |
+| `code <STORY>` | Alias for `implement <STORY>` (`implementation-runner`) | Same as above |
 
-**Note:** Review loops are automatic (up to 3 rounds). This command is for manual intervention.
+**Note:** Review loops are automatic (up to 3 rounds). `fix <STORY>` is for manual intervention.
+`implement`/`code <STORY>` do not start or resume the full Spec → Code → PR pipeline — that's
+`arcus <STORY>` (`arcus-controller`). `implementation-runner` is reused verbatim by both `gated`
+and `afk` for the Implementation stage; these phrases give you a direct handle on it.
 
 ---
 
@@ -123,11 +162,11 @@ Helper and history tools
 **Starting fresh:**
 ```
 agentify this repo              # First-time setup
-implement story.md              # Run your first story (interactive mode)
-plan story.md                   # Alternative trigger for interactive mode
+arcus story.md                  # Run your first story (gated mode, default)
+plan story.md                   # Alternative trigger for gated mode
 ```
 
-**Mid-pipeline (interactive):**
+**Mid-pipeline (gated):**
 ```
 where am I?                     # Check status
 yes                             # Proceed to next stage
@@ -140,16 +179,27 @@ where am I?                     # See current position
 yes                             # Continue from last gate
 ```
 
+**Question-gating without phase pauses:**
+```
+arcus story.md --intelligent    # intelligent mode (also cloud's automatic default)
+```
+
 **Need speed (experienced users):**
 ```
-run afk on story.md             # Autonomous mode
-forge story.md                  # Autonomous mode
-afk story.md                    # Autonomous mode
+run afk on story.md             # AFK (autonomous) mode
+forge story.md                  # AFK (autonomous) mode
+afk story.md                    # AFK (autonomous) mode
 ```
 
 **Fixing issues:**
 ```
 fix story.md                    # Address review findings
+```
+
+**Driving Implementation directly (implementation-runner, not arcus-controller):**
+```
+implement story.md              # Resume/drive just the Implementation loop
+code story.md                   # Alias for implement
 ```
 
 **Getting help:**
@@ -165,7 +215,7 @@ troubleshooting                 # Common issues
 ## 💡 Command Tips
 
 - **Case insensitive:** Commands work regardless of capitalization
-- **Flexible phrasing:** Natural variations work (e.g., "build story.md" = "implement story.md")
+- **Flexible phrasing:** Natural variations work (e.g., "start story.md" = "arcus story.md")
 - **Tab completion:** Most tools support tab completion for file paths
 - **Paths:** Use relative or absolute paths for story files
 - **Resume phrases:** ARCUS tells you the exact resume command whenever it stops
@@ -175,6 +225,6 @@ troubleshooting                 # Common issues
 ## What's Next?
 
 - **Understand the stages:** Ask "explain the pipeline"
-- **Choose a mode:** Ask "interactive or autonomous?"
+- **Choose a mode:** Ask "gated, intelligent, or afk?"
 - **Check your status:** Ask "where am I?"
 - **Get troubleshooting help:** Ask "troubleshooting"

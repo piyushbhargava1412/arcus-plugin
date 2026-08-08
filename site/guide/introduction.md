@@ -1,12 +1,12 @@
 # Introduction
 
-**ARCUS (Any Repository Can Use Spec-driven development)** is an agentic SDLC factory that transforms written user stories into reviewed, test-backed pull requests. Delivered as an installable agent-skills plugin for GitHub Copilot, Claude Code, VS Code, and OpenCode, ARCUS orchestrates a complete Spec → Code → Pull Request pipeline through human-gated stages, with a fully-autonomous Away From Keyboard (AFK) mode as an add-on orchestrator skill.
+**ARCUS (Any Repository Can Use Spec-driven development)** is an agentic SDLC factory that transforms written user stories into reviewed, test-backed pull requests. Delivered as an installable agent-skills plugin for GitHub Copilot, Claude Code, VS Code, and OpenCode, ARCUS orchestrates a complete Spec → Code → Pull Request pipeline through one stateful orchestrator in three modes: gated (with optional phase gates), intelligent (cloud's default), and afk (hands-off).
 
 ## What is ARCUS?
 
 ARCUS is your AI-powered software development lifecycle factory. It takes a user story written in markdown and runs it through a six-phase pipeline (`Brainstorm → Test Plan → Implementation → Code Review → Context Sync → Closure`, spanning ten ordered stages) that produces production-ready code, complete with tests and code review, ending with an opened pull request.
 
-The system is built around a repository-agentifier and **two modes** of one orchestrator over the same pipeline:
+The system is built around a repository-agentifier and a single stateful orchestrator that runs the pipeline in three modes:
 
 ### `repo-agentifier`
 
@@ -28,27 +28,34 @@ scoped per story, and synced on drift.
 ARCUS is a **three-tier capability library** — atomic, plug-n-play capabilities; thin coordinators
 that sequence them; and one stateful orchestrator (`arcus-controller`) that owns the pipeline.
 See [The Capability Library](/concepts/capability-library) for how the pieces fit together. The
-orchestrator runs the pipeline in **two modes**:
+orchestrator runs the same pipeline in **three modes**:
 
-### Interactive mode (default) — `arcus-controller`
+### Gated (default) — `arcus-controller`
 
-The **default, user-driven** mode. You enter with `implement <STORY>` or `plan <STORY>`; the
-`arcus-controller` orchestrator runs the pipeline gated: it stops once, for the Brainstorm open
-questions, then runs to the pull request. You can:
+The **default, user-driven** mode. Start with `arcus <STORY>`. The
+`arcus-controller` orchestrator surfaces any Brainstorm open questions (all at once), and can also
+pause at optional phase boundaries per `.arcus/config.json` (defaults to pausing after Test Plan, Implementation, and Code Review). Answer the questions and it runs to the pull request. You can:
 
 - Answer the open questions in your own words, all in one go
-- Invoke stages individually — `generate test plan for <STORY>`, `implement <STORY>`,
+- Configure phase-boundary gates via `.arcus/config.json`
+- Invoke stages individually — `generate test plan for <STORY>`, `code <STORY>`,
   `review <STORY>`, `close <STORY>`
 - Pause and resume — your session checkpoint persists across agent sessions; on a cold resume, type
-  the next stage's phrase
+  `resume <STORY>`
 - Answer the batched open questions — raised all at once, each presenting one **Recommended**
   option with a rationale, and you can always answer in your own words
 
-### Autonomous (AFK) mode — `arcus-controller`
+### Intelligent — `arcus-controller`
 
-The opt-in **autonomous** mode of the same `arcus-controller` orchestrator. It activates on AFK
-phrases (`afk`, `--afk`, `forge`, `run afk on <STORY>`), runs every stage back-to-back as one-shot
-subagents with milestone-only output, and never stops at a gate.
+Surfaces only Brainstorm open questions; no phase-boundary gates ever fire. This is cloud's default
+behavior — every ARCUS cloud/CI run is scaffolded with `--intelligent` explicitly. Trigger locally
+with `arcus <STORY> --intelligent`.
+
+### AFK (autonomous) — `arcus-controller`
+
+The hands-off mode of the same orchestrator. Open questions are recorded but never surfaced, so
+nothing ever stops. Trigger with `forge <STORY>`, `afk <STORY>`, `run afk on <STORY>`, or
+`arcus <STORY> --afk`.
 
 ## Who is ARCUS for?
 

@@ -6,6 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+
+- **Three-mode split, configurable phase-boundary gates, and trigger de-collision (ARC-0042).** 
+  ARCUS's two-mode system (`afk` and the `gated` local default) becomes three: `afk`, `intelligent` (cloud CI behavior — unattended with no phase gates), and `gated` (interactive local default — instrumented with three optional phase-boundary gates). The phase gates can be narrowed or disabled per-repository via an optional `.arcus/config.json` file read only at scaffold time in gated mode, listing which of `test_plan`, `implementation`, and `code_review` should pause for human review.
+
+  **Design rationale and precedent.** Commit `38c3acc` removed phase-boundary gates entirely, reasoning that mandatory gates trained teams to type "yes" without reading. ARC-0042 reinstates them as per-boundary, developer-configurable (on by default in `gated`, narrowable or disabled via `.arcus/config.json`). The `intelligent` mode preserves 38c3acc's question-only-gate behavior, while `gated` mode includes all three phase-boundary gates by default but allows narrowing or disabling them per-repository. This addresses the original concern by ensuring gates are selectively applied rather than mandatory.
+
+  **Contract-surface changes:**
+  1. **Trigger phrase**: The pipeline entry point `implement <STORY>` is no longer claimed by `arcus-controller`; it now belongs **exclusively** to `implementation-runner`. Use `arcus <STORY>` to invoke `arcus-controller` instead (optional synonyms: `arcus <STORY> --intelligent`, `arcus <STORY> --afk`; also `resume <STORY>`). Scripts and muscle memory using `implement <STORY>` to run the pipeline must migrate.
+  2. **`--mode` input**: The `--mode` flag passed to `scaffold.sh` is now validated (previously unvalidated); only `afk`, `intelligent`, and `gated` are accepted. Typos (e.g., `--mode inteligent`) now fail at scaffold time rather than writing an invalid checkpoint.
+  3. **`mode` enum**: The checkpoint schema's `mode` field is now an explicit three-value enum. Pre-existing `gated` checkpoints remain valid.
+  4. **Phase gates**: The `arcus-controller` orchestrator introduces the Phase-Boundary Gate Protocol, firing at three named transitions when the session is in `gated` mode and `stop_after` includes that phase group. By default, a newly scaffolded `gated` story enables all three phase-boundary gates (`test_plan`, `implementation`, `code_review`); they can be narrowed or disabled entirely via an optional `.arcus/config.json` file. Gates are silent (emit `[Gate] <phase> complete...` and pause) in `gated` mode and entirely absent in `afk`/`intelligent`.
+
+  Detailed rationale and per-file changes: see the story ARC-0042 issues and `grounded-spec.md`.
+
 
 ### Fixed
 

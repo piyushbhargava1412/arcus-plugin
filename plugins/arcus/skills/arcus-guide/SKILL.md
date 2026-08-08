@@ -1,6 +1,6 @@
 ---
 name: arcus-guide
-description: Comprehensive help and onboarding for ARCUS plugin. Provides context-aware guidance on getting started, command reference, pipeline explanation, mode selection, artifact interpretation, context engineering, troubleshooting, and FAQs. Activates on "what is arcus", "how do I use arcus", "arcus help", "help with arcus", "show arcus commands", "I'm new to arcus", "getting started with arcus", "where am I", "what stage am I in", "check pipeline status", "what can I do", "show me commands", "what are my options", "explain the pipeline", "how does arcus work", "gated or afk", "should I use afk mode", "when to use gated mode", "what's in .arcus", "explain artifacts", "what files does arcus create", "what is context engineering", "explain the .context artifacts", "design and coding patterns", "arcus troubleshooting", "arcus isn't working", "stuck in arcus".
+description: Comprehensive help and onboarding for ARCUS plugin. Provides context-aware guidance on getting started, command reference, pipeline explanation, mode selection, artifact interpretation, context engineering, troubleshooting, and FAQs. Activates on "what is arcus", "how do I use arcus", "arcus help", "help with arcus", "show arcus commands", "I'm new to arcus", "getting started with arcus", "where am I", "what stage am I in", "check pipeline status", "what can I do", "show me commands", "what are my options", "explain the pipeline", "how does arcus work", "gated or afk", "should I use afk mode", "when to use gated mode", "when to use intelligent mode", "what's in .arcus", "explain artifacts", "what files does arcus create", "what is context engineering", "explain the .context artifacts", "design and coding patterns", "arcus troubleshooting", "arcus isn't working", "stuck in arcus".
 layer: substrate
 standalone: false
 ---
@@ -15,7 +15,7 @@ Help users:
 1. **Get started** — Guide first-time setup and repo agentification
 2. **Discover commands** — Show available triggers and when to use them
 3. **Understand the pipeline** — Explain the six-phase / ten-stage SDLC workflow and the three-tier capability library
-4. **Make decisions** — Choose between interactive and autonomous modes
+4. **Make decisions** — Choose among gated, intelligent, and AFK modes
 5. **Interpret artifacts** — Understand what ARCUS creates and why
 6. **Troubleshoot** — Self-service common issues
 7. **Get quick answers** — Frequently asked questions

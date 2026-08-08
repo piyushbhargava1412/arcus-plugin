@@ -57,13 +57,19 @@ See the full README for detailed instructions.
 
 ### Q: How do I start a story?
 
-**A:** Start the pipeline in **interactive** mode (default):
+**A:** Start the pipeline in **`gated`** mode (default):
 ```
-implement path/to/story.md
+arcus path/to/story.md
 plan path/to/story.md
 ```
 
-Interactive mode pauses at each stage. For **autonomous** mode, use an autonomous trigger:
+`gated` mode pauses for open questions and, optionally, at phase boundaries. For **`intelligent`**
+mode (question-gating only, also cloud's automatic default):
+```
+arcus path/to/story.md --intelligent
+```
+
+For **`afk`** (autonomous) mode, use an AFK trigger:
 ```
 run afk on path/to/story.md
 forge path/to/story.md
@@ -72,11 +78,16 @@ afk path/to/story.md
 
 ---
 
-### Q: What's the difference between interactive and autonomous mode?
+### Q: What's the difference between the three modes?
 
-**A:** Both modes use the **`arcus-controller`** orchestrator:
-- **Interactive:** The default. Stops once for the Brainstorm open questions, then runs to the PR. Triggered by `implement <story>` or `plan <story>`.
-- **Autonomous:** Runs all stages unattended, back-to-back. Triggered by AFK phrases (`afk`, `forge`, `run afk on <story>`).
+**A:** All three modes use the **`arcus-controller`** orchestrator — they differ only in whether,
+and where, the pipeline pauses for a human:
+- **`gated` (default):** Stops for the Brainstorm open questions, plus optional phase-boundary
+  stops (see `.arcus/config.json` below). Triggered by `arcus <story>` or `plan <story>`.
+- **`intelligent`:** Stops only for the Brainstorm open questions, never at a phase boundary. This
+  is cloud/CI's automatic default. Triggered locally by `arcus <story> --intelligent`.
+- **`afk`:** Runs all stages unattended, back-to-back. Triggered by AFK phrases (`afk`, `forge`,
+  `run afk on <story>`, or `arcus <story> --afk`).
 
 ---
 
@@ -103,14 +114,17 @@ See **Artifacts Guide** for full editing guidelines.
 
 ### Q: How do I resume or jump to a stage?
 
-**A:** In interactive mode, use the resume phrase your last handoff printed:
+**A:** Use the resume phrase your last handoff printed:
 ```
-implement <story>                    # Full pipeline (interactive mode)
+arcus <story>                        # Full pipeline (gated mode)
 plan <story>                         # Alternative for full pipeline
 generate test plan for <story>       # Test plan stage
 review <story>                       # Code review stage
 create pull request for <story>      # Closure stage
 ```
+
+Note: `implement <story>` / `code <story>` are `implementation-runner`'s own triggers, not
+`arcus-controller`'s — they resume/drive just the Implementation loop, not the full pipeline.
 
 ⚠️ **Warning:** Cold-resuming a later stage assumes the earlier artifacts already exist.
 
@@ -118,52 +132,57 @@ create pull request for <story>      # Closure stage
 
 ### Q: Can I pause and resume later?
 
-**A:** **Yes**, in interactive mode only. When ARCUS surfaces its open questions:
+**A:** **Yes**, in `gated` and `intelligent` modes. When ARCUS surfaces its open questions:
 - Say `"no"` to pause
 - Return hours or days later
 - Say `"where am I?"` to check status
 - Say `"yes"` to resume from where you left off
 
-Your progress is saved in `.arcus/session-checkpoint.json`.
+`gated` mode can also pause at phase boundaries (see `.arcus/config.json` in **Modes Explained**);
+`afk` never pauses. Your progress is saved in `.arcus/session-checkpoint.json`.
 
 ---
 
 ## Modes & Configuration
 
-### Q: What's the difference between interactive and autonomous mode?
+### Q: What's the difference between the three modes?
 
 **A:** 
 
-| Aspect | Interactive (Default) | Autonomous (afk) |
-|--------|--------------------|------------------|
-| Control | Stops once, for open questions | Runs end-to-end |
-| User role | Review and approve | Hands-off |
-| Best for | Learning, high-risk | Simple, familiar |
-| Resumable | Yes | No |
+| Aspect | `gated` (Default) | `intelligent` | `afk` (Autonomous) |
+|--------|--------------------|------------------|------------------|
+| Control | Stops for open questions, plus optional phase-boundary gates | Stops once, for open questions | Runs end-to-end |
+| User role | Review and approve, at each configured gate | Review and approve, once | Hands-off |
+| Best for | Learning, high-risk | Cloud/CI, or local runs wanting question-gating only | Simple, familiar |
+| Resumable | Yes | Yes | Resume-capable, but intended to run uninterrupted |
 
-**Use interactive** for safety and learning.  
-**Use autonomous** when story is clear and you trust the system.
+**Use `gated`** for safety and learning (the default).
+**Use `intelligent`** for cloud/CI runs, or locally when you want question-gating without phase pauses.
+**Use `afk`** when the story is clear and you trust the system.
 
-See **Modes Explained** for detailed decision framework.
+**`.arcus/config.json`** lets you narrow which phase boundaries `gated` pauses at (default: all
+three — `test_plan`, `implementation`, `code_review`). It's optional, gitignored, and read once at
+scaffold time. See **Modes Explained** for the full shape and behavior, and detailed decision
+framework.
 
 ---
 
-### Q: When should I use autonomous mode?
+### Q: When should I use afk mode?
 
-**A:** Use autonomous mode when **all** of these are true:
+**A:** Use `afk` mode when **all** of these are true:
 - ✅ Story is 100% clear and unambiguous
 - ✅ You trust ARCUS patterns in this repo (not first story)
 - ✅ You can dedicate 30-90 min uninterrupted
 - ✅ Low-to-medium risk change
 - ✅ You've used ARCUS successfully here before
 
-**When in doubt:** Use interactive mode (default, safe).
+**When in doubt:** Use `gated` mode (default, safe).
 
 ---
 
 ### Q: Can I switch modes mid-pipeline?
 
-**A:** **No**, mode is set at pipeline start and persists through all stages. To change modes, you'd need to restart the pipeline.
+**A:** **No**, mode is set at pipeline start and persists through all stages. To change modes, you'd need to restart the pipeline. Note that `stop_after` is only ever resolved once, at scaffold time — switching a story's persisted mode later never re-reads `.arcus/config.json`.
 
 ---
 
@@ -194,8 +213,8 @@ See **Pipeline Overview** for detailed breakdown.
 ### Q: How long does a full pipeline take?
 
 **A:** 
-- **Interactive mode:** 30-90 minutes of *active time* (spread over hours/days if you pause)
-- **Autonomous mode:** 30-90 minutes *uninterrupted*
+- **`gated` / `intelligent`:** 30-90 minutes of *active time* (spread over hours/days if you pause)
+- **`afk`:** 30-90 minutes *uninterrupted*
 
 Time varies based on story complexity, codebase size, and number of tasks.
 
@@ -283,7 +302,7 @@ Not committed to git, safe to delete after PR merged.
 
 ### Q: Does ARCUS commit automatically?
 
-**A:** **Yes** — the branch is created at the start of Implementation (the `branch` stage), then each task is committed incrementally to the `arcus/[STORY-ID]` branch. You control whether to create the final PR (the `closure` stage asks for confirmation in interactive mode).
+**A:** **Yes** — the branch is created at the start of Implementation (the `branch` stage), then each task is committed incrementally to the `arcus/[STORY-ID]` branch. In `gated` mode the run can pause after Code Review if `code_review` is in `stop_after`; Context Sync → Closure never gates. `intelligent` and `afk` run straight through to PR creation.
 
 ---
 
@@ -301,11 +320,15 @@ ARCUS adapts to your patterns rather than enforcing its own.
 
 ### Q: How do I customize review criteria?
 
-**A:** Review criteria are embedded in reviewer skills. Currently not user-configurable, but you can:
+**A:** Review criteria themselves are still embedded in reviewer skills and not user-configurable,
+but you can:
 1. Review findings in `review.md` after `code_review`
 2. Override the semantic verdict by editing code and resuming closure: `"create pull request for <story>"`
 
-**Future:** Reviewer configuration files may be supported.
+ARCUS's one delivered configuration file, `.arcus/config.json`, controls *when* `gated` mode pauses
+at phase boundaries (including the one right after Code Review) — not what the reviewers look for.
+See the "`.arcus/config.json`: Narrowing the Gated Stops" section of `site/concepts/modes.md` (or
+ask "modes explained" here) for its shape and rules.
 
 ---
 
@@ -378,7 +401,7 @@ See **Troubleshooting** for detailed solutions.
 
 ### Q: What if `.arcus/` directory is missing?
 
-**A:** Reinitialize with `implement story.md` to trigger the `scaffold` stage and rebuild the workspace. See **Troubleshooting** for details.
+**A:** Reinitialize with `arcus story.md` to trigger the `scaffold` stage and rebuild the workspace. See **Troubleshooting** for details.
 
 ---
 
@@ -428,9 +451,10 @@ Or ask natural language questions like:
 **Most common commands:**
 ```
 agentify this repo          # Initial setup
-implement story.md          # Start story (interactive mode)
-plan story.md               # Alternative for interactive mode
-run afk on story.md         # Start story (autonomous mode)
+arcus story.md              # Start story (gated mode, default)
+plan story.md               # Alternative for gated mode
+arcus story.md --intelligent # Start story (intelligent mode)
+run afk on story.md         # Start story (afk mode)
 where am I?                 # Check status
 yes                         # Proceed at gate
 no                          # Pause at gate
@@ -439,7 +463,7 @@ what is arcus?              # Launch this guide
 
 **Most common questions:**
 - "How do I get started?" → Getting Started section above
-- "What's the difference between interactive and autonomous?" → Modes section above
+- "What's the difference between gated, intelligent, and afk?" → Modes section above
 - "Where are my artifacts?" → Artifacts section above
 - "Something's not working" → Troubleshooting guide
 - "How do I [specific task]?" → Command Reference

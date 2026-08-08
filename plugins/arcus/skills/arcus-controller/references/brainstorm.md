@@ -25,7 +25,7 @@ restated below.
      protocol returns without halting** may you run
      `.arcus/bin/checkpoint.sh complete <STORY_ID> spec_finalizer`. If it halted, the stage is
      `awaiting_handoff` and you are done for this turn — see the prohibition in that protocol.
-3. **Create implementation plan** — dispatch a one-shot subagent (identical in both modes; the agent
+3. **Create implementation plan** — dispatch a one-shot subagent (identical in all three modes; the agent
    never interviews):
    - **Agent**: `implementation-planner`, resolved per **Agent Resolution** in `arcus:model-strategy`.
    - **Prompt**: "Story ID: `<STORY_ID>`. Write the plan to `.arcus/specs/<STORY_ID>/plan.md`."

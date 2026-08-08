@@ -54,9 +54,7 @@ flowchart LR
   S4 -. "changes_requested (max 3 rounds)" .-> S3
 ```
 
-Stages produce specific artifacts. In the **gated** experience the pipeline pauses only for open questions during Brainstorm; otherwise it runs through. The rows below note each stage's handoff
-gate, where the orchestrator presents the just-finished stage's output; you reply "yes" (same
-session) or use the stage's explicit resume phrase (cold resume). Within Brainstorm the
+Stages produce specific artifacts. The pipeline's pausing behavior depends on mode (see [Three Modes, One Pipeline](/concepts/modes)): in **gated** mode, it pauses for open questions during Brainstorm and optionally at phase boundaries; in **intelligent** mode, only for Brainstorm questions; in **afk** mode, never. The rows below note each stage's handoff gate, where the orchestrator presents the just-finished stage's output. Within Brainstorm the
 `scaffold`, `context_pack`, `spec_finalizer`, and `plan` stages run back-to-back — `arcus-controller`
 runs context-pack-builder → spec-finalizer → implementation-planner directly — before any questions
 are surfaced.
@@ -83,9 +81,7 @@ Gates are explicit pause points where you review outputs before the pipeline mov
 
 Context Sync → Closure is an **automatic continuation** (no user decision gate — like Test Plan auto-running): once the `.context/` reconciliation is decided, the pipeline proceeds straight to Closure.
 
-In **interactive** mode (the gated default), ARCUS stops only for the Brainstorm open questions and waits for your
-confirmation. In **autonomous** (AFK) mode, the `arcus-controller` auto-confirms every gate and runs
-end-to-end.
+Gates are phase-boundary pauses specific to **gated** mode. For how modes control which gates fire and whether open questions surface, see [Three Modes, One Pipeline](/concepts/modes).
 
 ---
 
@@ -157,15 +153,15 @@ end-to-end.
         <li>Builds a story-specific context pack (stage key <code>context_pack</code>)</li>
         <li>Analyzes the story for completeness and resolves ambiguity (stage key <code>spec_finalizer</code>)</li>
         <li>Both capabilities always run one-shot inside subagents and always resolve every ambiguity / select an approach themselves. Each also records what it was least confident about in an <code>## Open Questions</code> block in its own artifact — every entry presenting exactly one <strong>Recommended</strong> option + one-line rationale, with the reader free to answer in their own words</li>
-        <li><strong>Gated:</strong> the orchestrator surfaces that block to you, <strong>all questions at once</strong>, and folds your reply back in. <strong>AFK:</strong> the block is recorded but never surfaced</li>
+        <li><strong>Gated and intelligent modes:</strong> the orchestrator surfaces that block to you, <strong>all questions at once</strong>, and folds your reply back in. <strong>AFK mode:</strong> the block is recorded but never surfaced. See <a href="/concepts/modes">Three Modes, One Pipeline</a> for the full comparison</li>
         <li>Produces the implementation plan and task list (stage key <code>plan</code>)</li>
       </ul>
     </td>
     <td>
       <ul>
         <li><code>context-pack-builder</code> <em>(agent)</em></li>
-        <li><code>spec-finalizer</code> <em>(one-shot subagent, both modes)</em></li>
-        <li><code>implementation-planner</code> <em>(one-shot subagent, both modes)</em></li>
+        <li><code>spec-finalizer</code> <em>(one-shot subagent, all three modes)</em></li>
+        <li><code>implementation-planner</code> <em>(one-shot subagent, all three modes)</em></li>
         <li>Driven by <code>arcus-controller</code> (orchestrator; interactive or autonomous)</li>
       </ul>
     </td>
@@ -178,7 +174,7 @@ end-to-end.
     </td>
   </tr>
   <tr>
-    <td colspan="3"><strong>The one stop:</strong> if <code>spec-finalizer</code> or <code>implementation-planner</code> recorded open questions, interactive mode surfaces them <strong>as one batch</strong> and waits. Answer them and the pipeline runs to the PR without stopping again. No questions raised → no stop. AFK never surfaces them. Resume phrase: <code>resume &lt;STORY-ID&gt;</code>.</td>
+    <td colspan="3"><strong>The Brainstorm stop:</strong> if <code>spec-finalizer</code> or <code>implementation-planner</code> recorded open questions, <code>gated</code> and <code>intelligent</code> modes surface them <strong>as one batch</strong> and wait. Answer them and the pipeline runs to the PR without stopping again (unless <code>gated</code> mode is also configured with phase-boundary gates via <code>stop_after</code>). No questions raised → no stop in those modes. <code>AFK</code> mode never surfaces them. Resume phrase: <code>resume &lt;STORY-ID&gt;</code>.</td>
   </tr>
   </tbody>
 </table>
@@ -235,7 +231,7 @@ end-to-end.
     </td>
   </tr>
   <tr>
-    <td colspan="3">Continues straight into Implementation. Resume phrase: <code>implement &lt;STORY-ID&gt;</code>.</td>
+    <td colspan="3">Continues straight into Implementation. Resume phrase: <code>resume &lt;STORY-ID&gt;</code>.</td>
   </tr>
   </tbody>
 </table>
@@ -296,7 +292,7 @@ end-to-end.
     </td>
   </tr>
   <tr>
-    <td colspan="3">Continues straight into Code Review. Resume phrase: <code>review &lt;STORY-ID&gt;</code>.</td>
+    <td colspan="3">Continues straight into Code Review. Resume phrase: <code>resume &lt;STORY-ID&gt;</code>.</td>
   </tr>
   </tbody>
 </table>
@@ -375,7 +371,7 @@ end-to-end.
     </td>
   </tr>
   <tr>
-    <td colspan="3">Acts on the verdict without asking: <code>approved</code> → Context Sync; <code>changes_requested</code> → the Loopback Protocol runs automatically, up to 3 rounds. Resume phrase: <code>resume &lt;STORY-ID&gt;</code>.</td>
+    <td colspan="3">Acts on the verdict without asking: <code>approved</code> → Context Sync (then auto-continues to Closure); <code>changes_requested</code> → the Loopback Protocol runs automatically, up to 3 rounds. Resume phrase: <code>resume &lt;STORY-ID&gt;</code>.</td>
   </tr>
   </tbody>
 </table>
@@ -548,9 +544,9 @@ If Code Review returns `changes_requested`:
 
 ## Quick Stage Reference
 
-| Phase | Stage key(s) | Gated entry / resume phrase | Exit condition |
+| Phase | Stage key(s) | Entry / resume phrase | Exit condition |
 |-------|--------------|-----------------------------|----------------|
-| Brainstorm | `scaffold`, `context_pack`, `spec_finalizer`, `plan` | `plan <STORY>` / `implement <STORY>` (interactive) | Workspace + planned branch ready; `grounded-spec.md` and `plan.md` complete |
+| Brainstorm | `scaffold`, `context_pack`, `spec_finalizer`, `plan` | `arcus <STORY>` (gated) or `plan <STORY>` (alias) | Workspace + planned branch ready; `grounded-spec.md` and `plan.md` complete |
 | Test Plan | `test_plan` | `generate test plan for <STORY>` | `test-plan.md` complete |
 | Implementation | `branch`, `task_1..N` | `implement <STORY>` / `code <STORY>` | Branch created, all tasks done, tests pass |
 | Code Review | `code_review` | `review <STORY>` | Verdict: approved / changes_requested |

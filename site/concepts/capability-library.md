@@ -117,4 +117,4 @@ checkpoint and branch, decides which stage runs next, and hands each capability 
 test matrix, reviewing the diff.
 
 For the stage-by-stage map, see [The ARCUS Pipeline](/concepts/pipeline). For the two ways the
-orchestrator runs that pipeline, see [Interactive vs Autonomous Mode](/concepts/modes).
+orchestrator runs that pipeline, see [Three Modes, One Pipeline](/concepts/modes).

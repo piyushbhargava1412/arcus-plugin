@@ -21,7 +21,7 @@ Understanding the Spec → Code → PR SDLC workflow
 → *Say: "explain the pipeline" or "how does it work"*
 
 ### ⚙️ **Modes Explained**
-Choose between Gated and AFK modes  
+Choose between `gated` (default), `intelligent`, and `afk` modes  
 → *Say: "gated or afk" or "which mode should I use"*
 
 ### 📁 **Artifacts Guide**

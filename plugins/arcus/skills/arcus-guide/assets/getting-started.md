@@ -90,9 +90,9 @@ causing bounce rates and poor data quality.
 
 ### Phase 3: Run the Pipeline 🎯
 
-**Command to run (interactive mode, default):**
+**Command to run (`gated` mode, default):**
 ```
-implement path/to/story.md
+arcus path/to/story.md
 ```
 
 Or use the planning alias:
@@ -116,7 +116,8 @@ plan path/to/story.md
    drifted (no new artifact; rationale in the sync commit), then auto-continues
 10. **closure** — Creates the pull request
 
-**Default mode:** **Interactive** — the `arcus-controller` orchestrator runs in interactive mode, pausing between stages for your review.
+**Default mode:** **`gated`** — the `arcus-controller` orchestrator stops for Brainstorm open
+questions and, optionally, at configurable phase boundaries.
 
 **Your role:**
 - Review artifacts at each handoff
@@ -127,27 +128,56 @@ plan path/to/story.md
 
 ---
 
-## Quick Decision: Interactive or Autonomous Mode?
+## Quick Decision: Which of the Three Modes?
 
-**Use Interactive Mode (default) if:**
+ARCUS runs the same pipeline in one of **three modes** — `gated`, `intelligent`, `afk` — all driven
+by the same `arcus-controller` orchestrator:
+
+**Use `gated` Mode (default) if:**
 - ✅ First time using ARCUS in this repository
 - ✅ Story has ambiguities or unknowns
 - ✅ High-risk or complex changes
 - ✅ Want to learn how ARCUS works
 - ✅ Need to pause and resume across sessions
 
-**Use Autonomous Mode (afk) if:**
+**Use `intelligent` Mode if:**
+- ✅ Running in cloud/CI (this is automatic — every cloud run scaffolds `--mode intelligent`)
+- ✅ Locally: you want the open-questions gate without any phase-boundary pauses
+
+**Use `afk` Mode (autonomous) if:**
 - ✅ High-confidence, well-defined story
 - ✅ Familiar codebase and domain
 - ✅ Simple feature or bug fix
 - ✅ Can dedicate 30-90 minutes uninterrupted
 
-**To use autonomous mode**:
+**To use `intelligent` mode**:
+```
+arcus path/to/story.md --intelligent
+```
+
+**To use `afk` mode**:
 ```
 run afk on path/to/story.md
 forge path/to/story.md
 afk path/to/story.md
+arcus path/to/story.md --afk
 ```
+
+### `.arcus/config.json`: choosing where `gated` pauses
+
+`gated` mode's phase-boundary gates default to pausing after **all three** transitions
+(`test_plan`, `implementation`, `code_review`). If you want fewer stops, create an optional,
+developer-authored, **gitignored** `.arcus/config.json` at the repo root **before** scaffolding:
+
+```json
+{ "stop_after": ["test_plan", "code_review"] }
+```
+
+Only the three keys above are valid, and the file only ever **narrows** the default set — it never
+adds a fourth gate or reorders them. It's read once, at scaffold time, for `gated` mode only —
+never on `resume <STORY>`, and never for `intelligent`/`afk`. If the file is missing, malformed, or
+contains unknown keys, `gated` falls back to (or drops just the bad entries from) the built-in
+default — it never hard-fails a scaffold.
 
 ---
 
@@ -159,16 +189,17 @@ afk path/to/story.md
 
 ## Next Steps
 
-1. **If .context/ is ready:** Write your first story and run `implement story.md` or `plan story.md`
+1. **If .context/ is ready:** Write your first story and run `arcus story.md` or `plan story.md`
 2. **If .context/ is missing:** Run `agentify this repo` now
-3. **Need help deciding?** Ask: "Should I use interactive or autonomous mode?"
+3. **Need help deciding?** Ask: "Should I use gated, intelligent, or afk mode?"
 4. **Want to understand more?** Ask: "Explain the pipeline"
 
 ---
 
 **💡 Pro Tips:**
-- Your first story should use **interactive mode** to learn the workflow
+- Your first story should use **`gated` mode** to learn the workflow
 - Keep stories focused and atomic (one feature or fix per story)
 - Answer the open questions carefully — they are your one chance to steer before code is written
-- You can pause anytime and resume later (interactive mode only)
+- You can pause anytime and resume later (`gated` mode's phase-boundary gates only; open-question
+  pauses work the same way in `intelligent` too)
 - Check status anytime with: **"where am I?"**

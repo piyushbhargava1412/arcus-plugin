@@ -413,12 +413,12 @@ layout: page
 
 </ComicStrip>
 
-<ComicChapter no="INTERLUDE" cmd="interactive vs autonomous — same Lucie, two speeds">Lucie's two speeds</ComicChapter>
+<ComicChapter no="INTERLUDE" cmd="three modes, one Lucie — gated / intelligent / AFK">Lucie's three modes</ComicChapter>
 
 <ComicStrip>
 
-<ComicPanel :span="6" tilt="l">
-  <template #caption>Careful Lucie — checks in at every gate</template>
+<ComicPanel :span="4" tilt="l">
+  <template #caption>Careful Lucie — gated mode</template>
   <template #scene>
     <svg class="scene" viewBox="0 0 360 140" role="img" aria-label="Lucie pauses at a checkpoint with her hand up, waiting for a nod before proceeding">
       <path d="M0 118 Q90 106 180 116 T360 114 L360 140 L0 140 Z" fill="#2a160c"/>
@@ -428,12 +428,27 @@ layout: page
     </svg>
   </template>
   <template #talk>
-    <TalkBubble who="Lucie"><strong>Interactive</strong> is my default. I stop <em>once</em> — when Angelina has questions she is not sure about — hand you the whole list, and then run all the way to the pull request. If she has no questions, I do not stop at all. Best for a new codebase, a risky change, or a story with any TBD in it.</TalkBubble>
+    <TalkBubble who="Lucie"><strong>Gated</strong> is my default. I stop for Angelina's open questions, and I also pause at phase boundaries — transitions between major stages. Hand you the whole decision list at once, then stop again if a gate fires. Best for careful control and a story with any TBD in it.</TalkBubble>
   </template>
 </ComicPanel>
 
-<ComicPanel :span="6" tilt="r">
-  <template #caption>Turbo Lucie — one uninterrupted run</template>
+<ComicPanel :span="4" tilt="r">
+  <template #caption>Middle Lucie — intelligent mode</template>
+  <template #scene>
+    <svg class="scene" viewBox="0 0 360 140" role="img" aria-label="Lucie pauses at a checkpoint to ask, but with lighter touch">
+      <path d="M0 118 Q90 106 180 116 T360 114 L360 140 L0 140 Z" fill="#2a160c"/>
+      <path d="M200 30 v88" stroke="#4a3220" stroke-width="4" stroke-dasharray="4 4"/>
+      <CastIcon name="lucie" x="60" y="18" width="120" height="120" />
+      <text x="280" y="70" font-family="Arial Narrow, Impact" font-weight="800" font-size="14" fill="#f3c14a" transform="rotate(-4 280 70)">?</text>
+    </svg>
+  </template>
+  <template #talk>
+    <TalkBubble who="Lucie"><strong>Intelligent</strong> is my cloud mode. I stop once for Angelina's open questions if she has any — just like gated — but I skip the phase-boundary gates. Run unattended from CI, stop for decisions only, no waits on human gates.</TalkBubble>
+  </template>
+</ComicPanel>
+
+<ComicPanel :span="4" tilt="r">
+  <template #caption>Turbo Lucie — AFK mode</template>
   <template #scene>
     <svg class="scene" viewBox="0 0 360 140" role="img" aria-label="Lucie blurs through the whole board at once with motion lines">
       <path d="M0 118 Q90 106 180 116 T360 114 L360 140 L0 140 Z" fill="#2a160c"/>
@@ -443,7 +458,7 @@ layout: page
     </svg>
   </template>
   <template #talk>
-    <TalkBubble who="Lucie"><strong>Autonomous (AFK)</strong> is the same me, no brakes. Trigger with <code>forge</code>, <code>afk</code>, or <code>run afk on &lt;STORY&gt;</code> — every stage runs back-to-back, every gate auto-confirms, milestones only. Only for a spec I already trust.</TalkBubble>
+    <TalkBubble who="Lucie"><strong>Autonomous (AFK)</strong> is the same me, no brakes. Trigger with <code>forge</code>, <code>afk</code>, <code>run afk on &lt;STORY&gt;</code>, or <code>arcus &lt;STORY&gt; --afk</code> — every stage runs back-to-back, every gate auto-confirms, milestones only. Only for a spec I already trust.</TalkBubble>
   </template>
 </ComicPanel>
 
@@ -451,8 +466,8 @@ layout: page
 
 <ComicStrip>
 
-<FactCard :span="12" tip="-.4deg" tease="Can Lucie change speed mid-story — swap gated for AFK partway through?">
-  <strong>No.</strong> Mode is set once, at the very start, and persists through every stage — you cannot switch gated → AFK or AFK → gated mid-run. Both speeds are still the <em>same</em> Lucie underneath; they only differ in whether she pauses and asks you. When in doubt, the house rule is simple: start gated.
+<FactCard :span="12" tip="-.4deg" tease="Can Lucie change speed mid-story — switch between gated, intelligent, and AFK partway through?">
+  <strong>No.</strong> Mode is set once, at the very start, and persists through every stage — you cannot switch from one mode to another mid-run. All three are still the <em>same</em> Lucie underneath; they only differ in where she pauses and when gates fire. When in doubt, the house rule is simple: start gated.
 </FactCard>
 
 </ComicStrip>
@@ -481,7 +496,7 @@ layout: page
     </svg>
   </template>
   <template #talk>
-    <TalkBubble who="Quinn">Happy path, boundary conditions, and every way this could fail — designed before code exists, following whatever <code>.context/testing-patterns.md</code> already established. That's TDD, not an afterthought. Gate B: <code>implement &lt;STORY&gt;</code> when you're happy with the matrix.</TalkBubble>
+    <TalkBubble who="Quinn">Happy path, boundary conditions, and every way this could fail — designed before code exists, following whatever <code>.context/testing-patterns.md</code> already established. That's TDD, not an afterthought. Gate B: <code>arcus &lt;STORY&gt;</code> when you're happy with the matrix.</TalkBubble>
   </template>
 </ComicPanel>
 
@@ -698,8 +713,9 @@ layout: page
 | Say this | You get |
 | --- | --- |
 | "agentify this repo" / `repo-agentifier` | **Once per repo.** Angelina scans in parallel, writes the notebook, pins up `AGENTS.md` + `CLAUDE.md`. |
-| `plan <STORY>` or `implement <STORY>` | **Interactive (gated), the default.** Lucie stops once for the open questions, then runs to the PR. |
-| `forge <STORY>` / `afk <STORY>` / `run afk on <STORY>` | **Autonomous.** Every stage back-to-back, milestone-only output, no pauses. |
+| `plan <STORY>` or `arcus <STORY>` | **Gated, the default.** Lucie stops for open questions and phase-boundary gates. |
+| `arcus <STORY> --intelligent` | **Intelligent, cloud mode.** Lucie stops for open questions only, no phase-boundary gates. |
+| `forge <STORY>` / `afk <STORY>` / `run afk on <STORY>` / `arcus <STORY> --afk` | **Autonomous (AFK), no gates.** Every stage back-to-back, milestone-only output. |
 | `generate test plan for <STORY>` | Cold-resume into **Quinn's Test Plan** at Gate A. |
 | `review <STORY>` | Cold-resume into **Steffi's Code Review** at Gate C. |
 | `sync context` | Standalone notebook sync, outside the board. |

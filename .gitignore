@@ -28,6 +28,9 @@ replay_pid*
 
 .arcus
 
+# Root workspace deps — pnpm-lock.yaml is tracked, node_modules/ is not
+node_modules/
+
 # --- ARCUS OpenCode generated (staged from plugins/arcus/) ---
 .opencode/skills/
 .opencode/agents/
