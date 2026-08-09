@@ -105,13 +105,17 @@ WORKSPACE_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 BIN_DIR="$WORKSPACE_ROOT/.arcus/bin"
 mkdir -p "$BIN_DIR"
 
-# Stage every helper script except this bootstrapper.
-for script in "$ARCUS_HOME"/scripts/*.sh; do
-    [ -e "$script" ] || continue
-    name="$(basename "$script")"
-    [ "$name" = "bootstrap.sh" ] && continue
-    cp "$script" "$BIN_DIR/$name"
-    chmod +x "$BIN_DIR/$name"
+# Stage every helper runtime script except this bootstrapper. ARCUS now ships a
+# small Node state-machine helper alongside the shell scripts, so copy both `.sh`
+# and `.mjs` entrypoints into `.arcus/bin/`.
+for pattern in "$ARCUS_HOME"/scripts/*.sh "$ARCUS_HOME"/scripts/*.mjs; do
+    for script in $pattern; do
+        [ -e "$script" ] || continue
+        name="$(basename "$script")"
+        [ "$name" = "bootstrap.sh" ] && continue
+        cp "$script" "$BIN_DIR/$name"
+        chmod +x "$BIN_DIR/$name"
+    done
 done
 
 # Stage sourced libraries (the top-level glob above does not recurse into lib/).

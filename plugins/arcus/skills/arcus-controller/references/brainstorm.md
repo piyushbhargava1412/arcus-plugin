@@ -2,8 +2,9 @@
 
 Stage instructions for the `context_pack`, `spec_finalizer` and `plan` checkpoint keys. The
 controller reads this file in-thread when it reaches Brainstorm; the **Dispatching an ARCUS agent**
-rules and the **Open-Questions Protocol** are in `SKILL.md` and apply here unchanged — they are not
-restated below.
+rules are in `SKILL.md`, and the shared open-question behavior lives in
+[`open-questions-protocol.md`](open-questions-protocol.md). The deterministic parsing/counting work
+is handled by `.arcus/bin/arcus-controller.mjs`.
 
 1. **Context pack** — dispatch a one-shot subagent:
    - **Agent**: `context-pack-builder`, resolved per **Agent Resolution** in `arcus:model-strategy`.
@@ -21,7 +22,7 @@ restated below.
    - **Model**: resolve complexity `heavy` via the `arcus:model-strategy` skill.
    - It analyzes the story for completeness and resolves every ambiguity, producing a
      `spec_grounding`, resolved to the workspace file `.arcus/specs/<STORY_ID>/grounded-spec.md`.
-   - `grounded-spec.md` exists → run the **Open-Questions Protocol** against it. **Only if that
+   - `grounded-spec.md` exists → run `node .arcus/bin/arcus-controller.mjs questions --artifact .arcus/specs/<STORY_ID>/grounded-spec.md`, then follow the **Open-Questions Protocol** in [`open-questions-protocol.md`](open-questions-protocol.md). **Only if that
      protocol returns without halting** may you run
      `.arcus/bin/checkpoint.sh complete <STORY_ID> spec_finalizer`. If it halted, the stage is
      `awaiting_handoff` and you are done for this turn — see the prohibition in that protocol.
@@ -31,11 +32,9 @@ restated below.
    - **Prompt**: "Story ID: `<STORY_ID>`. Write the plan to `.arcus/specs/<STORY_ID>/plan.md`."
    - **Description**: "Brainstorm: implementation-planner"
    - **Model**: resolve complexity `heavy` via the `arcus:model-strategy` skill.
-   - Verify `plan.md` exists, then run the **Open-Questions Protocol** against `plan.md`. **Only if
+   - Verify `plan.md` exists, then run `node .arcus/bin/arcus-controller.mjs questions --artifact .arcus/specs/<STORY_ID>/plan.md`, then follow the **Open-Questions Protocol** in [`open-questions-protocol.md`](open-questions-protocol.md). **Only if
      it returns without halting** may you run `.arcus/bin/checkpoint.sh complete <STORY_ID> plan`.
 4. **Record the task count**: run `.arcus/bin/checkpoint.sh set-tasks <STORY_ID> <N>` (N = `### Task`
    headings in `plan.md`) so the checkpoint reflects every planned task slot immediately, instead of
    relying on per-task keys appearing only as `implementation-runner` starts each one.
-5. **Output**: emit `[Brainstorm] Complete: <N> tasks, <M> decisions` (M = resolved decisions in
-   `grounded-spec.md`) and continue into Test Plan. There is no gate here: the human's input for this
-   phase was the Open-Questions Protocol above, and it has already happened.
+5. **Output**: run `node .arcus/bin/arcus-controller.mjs counts --plan .arcus/specs/<STORY_ID>/plan.md --grounded-spec .arcus/specs/<STORY_ID>/grounded-spec.md`, emit `[Brainstorm] Complete: <N> tasks, <M> decisions`, and continue into Test Plan. There is no gate here: the human's input for this phase was the Open-Questions Protocol above, and it has already happened.

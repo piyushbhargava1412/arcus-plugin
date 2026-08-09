@@ -6,6 +6,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Changed
+
+- **`arcus-controller`'s Execution Pipeline section now uses per-stage headings instead of a compact table.**
+  The stage/protocol reference map in `skills/arcus-controller/SKILL.md` is now a sequence of
+  `###` headings with one-line "read this file and follow it in this thread" instructions, matching
+  the rest of the skill's prose style more closely. No trigger, stage-order, or runtime behavior
+  changed.
+
+- **`arcus-controller` now routes its deterministic orchestration through a shipped Node helper and slimmer reference files.**
+  The controller's checkpoint walk, unanswered-open-question detection, artifact reconciliation,
+  milestone counting, phase-gate membership checks, and loopback-cap logic now live in the bundled
+  `plugins/arcus/scripts/arcus-controller.mjs` helper instead of being prose-only in
+  `skills/arcus-controller/SKILL.md`. The main skill is now the host-facing contract/index, while the
+  bulky Stage 0, Open-Questions, Phase-Boundary Gate, Loopback, and Resumption mechanics were
+  extracted into `skills/arcus-controller/references/*.md`. `bootstrap.sh` now stages `.mjs` runtime
+  helpers alongside `.sh` helpers so the controller engine is available from `.arcus/bin/` on every
+  host. No user-facing trigger or stage-order contract changed.
+
 ### Added
 
 - **Three-mode split, configurable phase-boundary gates, and trigger de-collision (ARC-0042).** 
