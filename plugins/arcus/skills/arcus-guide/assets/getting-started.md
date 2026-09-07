@@ -179,11 +179,69 @@ never on `resume <STORY>`, and never for `intelligent`/`afk`. If the file is mis
 contains unknown keys, `gated` falls back to (or drops just the bad entries from) the built-in
 default — it never hard-fails a scaffold.
 
+#### `models`: Tiering model selection
+
+The optional `models` key lets you tier model selection across the pipeline — or force a single
+model for a whole run — without touching any skill or agent file:
+
+**Tiered (host-free shape):**
+
+```json
+{ "models": { "mode": "tiered", "tiers": {
+  "heavy":  { "claude": "opus",   "copilot": "claude-opus-4.8",   "vscode": "Claude Opus 4.6 (copilot)",   "opencode": "github-copilot/claude-opus-4.8" },
+  "medium": { "claude": "sonnet", "copilot": "claude-sonnet-4.6", "vscode": "Claude Sonnet 4.6 (copilot)", "opencode": "github-copilot/claude-sonnet-4.6" },
+  "light":  { "claude": "haiku",  "copilot": "claude-haiku-4.5",  "vscode": "Claude Haiku 4.5 (copilot)",  "opencode": "github-copilot/claude-haiku-4.5" }
+} } }
+```
+
+The `tiers` object is entirely yours to write — ARCUS ships no built-in model identifiers or
+presets; which model backs each tier on each host is your own deployment decision.
+
+**Flat (one model for all dispatches):**
+
+```json
+{ "models": { "mode": "flat", "flat": "<your-model-id>" } }
+```
+
+where `"<your-model-id>"` is an id from your host's own model picker. When the `models` key is
+absent, ARCUS inherits the session's own model (the default). Like `stop_after`, the `models` block
+is snapshotted into the story's checkpoint at scaffold time — so a story runs on the policy it
+started with, and editing the file mid-story affects only *new* stories (the resolver warns and
+tells you how to adopt it for one already running). Unlike `stop_after`, which is gated-only, the
+`models` block is read in **all three modes**. And like `stop_after`, it **never hard-fails**:
+unknown keys or a bad value log a warning and fall back to the inherit default.
+
 ---
 
 ## Interactive Setup Assistance
 
-{SETUP_OFFER}
+I can help you with any of the following:
+
+**a. Explain the three model policy modes** — Ask me to walk through `inherit` (default; every
+dispatch uses your session's own model), `tiered` (heavy / medium / light work gets different
+models), and `flat` (one model id for the whole run), and help you choose which fits your situation.
+
+**b. Write a tiered config from the model ids you supply** — Tell me, for each host you use, which
+model id backs `heavy`/`medium`/`light` (open your host's own model picker to find them), and I
+will write the `.arcus/config.json` fragment. The same config works unchanged on all four hosts —
+no host-specific key:
+
+```json
+{ "models": { "mode": "tiered", "tiers": {
+  "heavy":  { "claude": "<your-heavy-id>" },
+  "medium": { "claude": "<your-medium-id>" },
+  "light":  { "claude": "<your-light-id>" }
+} } }
+```
+
+**c. Write a config from a model id you supply** — Open your host's own model picker, copy the id
+you want to use, and give it to me. I will write the flat-mode fragment:
+
+```json
+{ "models": { "mode": "flat", "flat": "<your-model-id>" } }
+```
+
+I never enumerate model ids — they differ per host and go stale quickly.
 
 ---
 

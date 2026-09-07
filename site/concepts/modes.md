@@ -92,14 +92,17 @@ A few things worth knowing about this file:
 
 - **Location and scope.** It lives inside `.arcus/`, which is **gitignored** — the file is
   **per-machine**, not team-shared. Each developer (or CI runner) can carry a different one.
+- **`stop_after` is not the only key.** The same file also carries an optional `models` block, which
+  configures which model each agent dispatch runs on. It is orthogonal to everything on this page —
+  it applies in all three modes, and it has its own rules. See [Model Policy](/guide/model-policy).
 - **No script ever creates it.** It is pure opt-in: if the file doesn't exist, `gated` mode falls
   back to the built-in default of all three gates. Nothing in ARCUS writes, seeds, or scaffolds this
   file for you.
-- **Read once, at scaffold time only.** It is consulted **only** while scaffolding a fresh story in
-  `gated` mode, and **never again** — not on `resume <STORY>`, not mid-pipeline. The resolved list is
-  persisted onto the checkpoint's `stop_after` field and that persisted value, not the file, is what
-  every phase-boundary check reads from then on. Editing the file mid-story has no effect on that
-  story. `--mode afk` and `--mode intelligent` never read this file at all, even if it's present.
+- **Read once, at scaffold time only.** `stop_after` is consulted **only** while scaffolding a fresh
+  story in `gated` mode, and **never again** — not on `resume <STORY>`, not mid-pipeline. The
+  resolved list is persisted onto the checkpoint's `stop_after` field and that persisted value, not
+  the file, is what every phase-boundary check reads from then on. Editing the file mid-story has no
+  effect on that story. `--mode afk` and `--mode intelligent` never read this file at all, even if it's present.
 - **It narrows — it never reorders.** `stop_after` is an **unordered set**: the three transitions
   always fire in the same fixed pipeline order regardless of the order you list keys in the file, and
   duplicate keys collapse. The file can only ever *remove* gates from the default set of three, never
@@ -111,6 +114,9 @@ A few things worth knowing about this file:
   - A valid array containing unknown phase-group names or duplicates logs a warning, drops the bad
     entries, and keeps whatever valid ones remain — which may be none, resulting in `stop_after: []`
     (no phase-boundary gates at all, though open-question gating still applies).
+
+Every one of these bullets is about `stop_after`. The `models` block is read in all three modes and
+has its own failure behaviour; [Model Policy](/guide/model-policy) covers it.
 
 ---
 

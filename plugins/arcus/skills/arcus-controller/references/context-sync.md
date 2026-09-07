@@ -12,7 +12,7 @@ shared `.context/` artifact that the approved change set materially drifted.
    - **Prompt**: "Inputs: `sync_scope=branch`,
      `base_ref=`merge-base(HEAD, `<base_branch>`), `apply_mode=auto`, `commit_label=<STORY_ID>`."
    - **Description**: "Context Sync: context-drift-sync"
-   - **Model**: resolve complexity `medium` via the `arcus:model-strategy` skill.
+   - **Model**: `node .arcus/bin/models.mjs resolve --complexity medium --stage context-drift-sync --checkpoint .arcus/specs/<STORY_ID>/session-checkpoint.json`
    - Then `.arcus/bin/checkpoint.sh complete <STORY_ID> context_sync`.
 2. **Output**: `[Context] <K artifacts updated, J skipped — or "no material drift">`. Continue to
    Closure.

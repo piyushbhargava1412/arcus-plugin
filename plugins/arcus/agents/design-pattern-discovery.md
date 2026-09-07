@@ -9,7 +9,7 @@ description: >
 layer: capability
 user-invocable: false
 tools: Read, Grep, Glob, Bash, Write, Edit
-model: opus
+model: inherit
 color: blue
 ---
 

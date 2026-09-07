@@ -6,7 +6,106 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+
+- **OpenCode resolves models from your repo's policy, at plugin load.** OpenCode bakes an agent's
+  model into its frontmatter, so it has no per-dispatch hook the way Claude Code and Copilot CLI do
+  — which left it the one host that could not honour a model policy. The `arcus-opencode` plugin now
+  reads the target repo's own `.arcus/config.json` `models` block once per session at plugin load, and writes the resolved
+  `opencode` model into each staged agent under `.opencode/agents/`. Editing the policy takes effect
+  on the next OpenCode session — no rebuild, no reinstall, no republished package.
+
+  **Nothing to configure for the default case:** with no policy set, every agent resolves to inherit,
+  no `model:` line is written, and ARCUS runs on your OpenCode session's default model — the same
+  promise the other hosts make.
+
+  Resolution is fail-open end to end: a missing or unimportable resolver, a malformed policy, or a
+  policy value naming other hosts but not `opencode` all leave the agent on the session default and
+  log a warning, never abort the session. An agent with no `STAGE_COMPLEXITY` row is deliberately
+  left **unpinned** rather than defaulted to `medium`, so a heavy agent can never quietly run on the
+  light model. Pins are rewritten (not appended) on every load, so a changed policy never leaves a
+  stale pin behind. New module: `plugins/arcus-opencode/src/model-pin.mjs`, inlined into
+  `dist/index.js` by esbuild.
+
+### Removed
+
+- **No environment-variable overrides, no `--model` flag.** An earlier iteration of this same
+  unreleased cycle resolved policy through a six-rank precedence ladder that included `ARCUS_MODEL`,
+  `ARCUS_MODEL_MODE`/`ARCUS_MODEL_FLAT` and `ARCUS_MODEL_CONFIG`. Nothing in the pipeline ever set
+  any of them and nothing ever passed `--model` — they were configuration surface whose only real
+  effect was to make "which model did this actually run on?" a question needing an investigation
+  rather than a file read. None of it ever shipped; all of it is gone.
+
+  What remains is a two-rank chain, then a default: the story's frozen `model_policy` → the `models`
+  block of `.arcus/config.json` → `{"mode":"inherit"}`. `source` is `'checkpoint'`, `'config'` or
+  `'default'`. A stale `--model` is warned about on stderr and ignored, so a leftover call site
+  cannot silently receive a model no readable file names.
+
 ### Changed
+
+- **Default model dispatch inverts (ARC-0309 — `5.0.0`; `arcus-opencode` tracks the same version).** Every agent's
+  `model:` frontmatter is now `inherit`, so dispatches inherit the calling session's model rather
+  than resolving a tier word. `model-strategy/SKILL.md`'s tier-to-model tables and the host-specific
+  slug column are removed; resolution now goes through `.arcus/bin/models.mjs`. `TIER_TO_MODEL` is
+  removed from `arcus-opencode`'s module surface.
+
+  **Migration surprise:** doing nothing is cheaper on flat-rate plans (Copilot, Claude Max) but is
+  potentially *more* expensive on metered API if your session model is Opus — ARCUS was previously
+  dispatching light tasks on Haiku. To restore tiered dispatch, add a `tiers` object (one entry per
+  host, per complexity level) under `{"models":{"mode":"tiered","tiers":{...}}}` in
+  `.arcus/config.json` — see `site/guide/model-policy.md` for the shape.
+
+  **Comic no-op (deliberate):** `site/comic/index.md` and `questions.ts` were verified to contain
+  no model-tiering content; neither file changed in this release.
+
+- **The published OpenCode bundle never carries build-time model pins.** `build-bundle.mjs` no longer
+  reads any model configuration and no longer emits a `model:` frontmatter line for any agent; it no
+  longer imports `models.mjs` at all. Baking a pin into the tarball would bind every consumer of a
+  single published artifact to the publisher's account and provider slugs — the decision belongs in
+  the consumer's repo, which is where it now happens (see the Added entry above). `resolveOpenCodeModel`
+  is removed from `scripts/lib/convert.mjs`'s module surface.
+
+### Added
+
+- **`models.mjs` — central model-policy resolver.** New script staged at `.arcus/bin/models.mjs`.
+  Resolves the story's frozen `model_policy` first, then the `models` key of `.arcus/config.json`,
+  then the built-in `inherit` default. Four
+  response shapes: `{dispatch:false}` (inherit mode), `{model:"<str>"}` (flat), `{models:{…}}` (tiered,
+  all four host columns), and null dispatch. Subcommands: `resolve`, `show`, `show --policy-only`.
+  **Deliberately no built-in presets or model IDs**: which model backs `heavy`/`medium`/`light` on
+  which host (GitHub Copilot, Amazon Bedrock, a direct Anthropic key, or a mix) is a `tiers` object
+  the operator writes in `.arcus/config.json` — never data this module ships and has to keep from
+  going stale across provider releases.
+
+- **Bootstrap first-run hint.** When `.arcus/config.json` is absent, `bootstrap.sh` emits an
+  `[ARCUS]` hint pointing at `models.mjs show` and the new docs page.
+
+- **A story is pinned to the policy it started with.** `scaffold.sh` snapshots the effective policy
+  into `session-checkpoint.json` as `model_policy` (in all three modes, unlike `stop_after`, which is
+  gated-only), and every dispatch for that story resolves against the frozen copy. This is the same
+  treatment `stop_after` gets and for the same reason: a story is a unit of work, and its execution
+  parameters should not shift underneath it. Without the freeze, editing `.arcus/config.json`
+  mid-story would silently change models between stages — planning on one model, implementing on
+  another, with nothing recording that it happened.
+
+  New: `checkpoint.sh set-model-policy <STORY_ID> <MODEL_POLICY_JSON>` and an optional 6th `init`
+  positional; an optional `model_policy` property in `session-checkpoint.schema.json` whose `flat`
+  accepts a bare string or a host-keyed object.
+
+- **Policy drift is visible, never silent.** The freeze is a genuine second source of truth, so when
+  a frozen policy and a live `.arcus/config.json` `models` block disagree, the resolver warns on
+  stderr and names `checkpoint.sh set-model-policy` as the fix. Behaviour is unchanged — the frozen
+  policy still wins — but a mid-story config edit that has no effect never has no effect *quietly*.
+  A checkpoint that is absent, or carries no `model_policy` (the legacy shape, and every story-less
+  dispatch), falls through silently; only one that exists and cannot be parsed warns.
+
+- **`site/guide/model-policy.md`** — new onboarding page covering inherit mode, three modes,
+  stage overrides, the freeze, and the three response signals / `models` map.
+
+### Removed
+
+- **`TIER_TO_MODEL` from `arcus-opencode`'s `convert.mjs`.** Removed as part of the model-policy
+  centralisation; replaced by `resolveOpenCodeModel()` which reads from `models.mjs` bindings.
 
 - **`arcus-controller`'s Execution Pipeline section now uses per-stage headings instead of a compact table.**
   The stage/protocol reference map in `skills/arcus-controller/SKILL.md` is now a sequence of
@@ -41,6 +140,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Fixed
+
+- **`verify-dist` could never pass.** The dist verifier rebuilds the stripped public tree, overlays
+  the withheld test harness, and runs the full suite against it — but the overlay listed only
+  `tests` and `package.json`, while `tests/unit/unit.mjs` also imports `scripts/token-report.mjs`,
+  a dev-only tool with no rule in `build-dist.mjs`'s `SHIP` list. Every run therefore failed on a
+  missing module that said nothing about the dist's actual integrity, which in turn masked any real
+  stripped-tree regression behind a permanently-red gate. `scripts/token-report.mjs` is now part of
+  the `HARNESS` overlay. The overlay is deliberately kept file-narrow rather than shipping all of
+  `scripts/`: overlaying the whole directory would let a shipped skill or agent reference a withheld
+  dev script and still resolve here, which is exactly the failure class this verifier exists to catch.
 
 - **The `SessionStart` hook silently no-oped on Copilot CLI — root cause found and fixed.**
   Previously documented as "unexplained," this was neither a schema difference nor a

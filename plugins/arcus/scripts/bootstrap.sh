@@ -141,6 +141,12 @@ if [ ! -f "$BIN_DIR/checkpoint.sh" ]; then
     exit 1
 fi
 
+if [ ! -f "$BIN_DIR/models.mjs" ]; then
+    echo "[ERROR] bootstrap.sh: models.mjs missing from $BIN_DIR." >&2
+    echo "        ARCUS_HOME=$ARCUS_HOME — check that its scripts/ directory is populated." >&2
+    exit 1
+fi
+
 # Record the plugin home so skills can locate bundled resources (templates,
 # references, agent specs) if they ever need an absolute path. The version is
 # stamped too: `.arcus/bin` is a COPY, so without it there is no way to tell a
@@ -158,3 +164,6 @@ if ! grep -q "^\.arcus" "$WORKSPACE_ROOT/.gitignore" 2>/dev/null; then
 fi
 
 echo "[ARCUS] Ready. Helper scripts staged at .arcus/bin/ (ARCUS_HOME=$ARCUS_HOME)."
+if [ ! -f "$WORKSPACE_ROOT/.arcus/config.json" ]; then
+  echo "[ARCUS] Model policy: run 'node .arcus/bin/models.mjs show' to inspect, or see /guide/model-policy to configure." >&2
+fi

@@ -38,7 +38,32 @@ ARCUS is invoked with **natural-language triggers** (no slash commands). Example
 
 ## Models
 
-Agent model tiers resolve to GitHub Copilot models by default (`claude-opus-4.8` / `claude-sonnet-4.6` / `claude-haiku-4.5`). The canonical mapping lives in the bundled `model-strategy` skill; Amazon Bedrock is documented as an alternative provider.
+**By default, ARCUS runs entirely on your OpenCode session's default model.** The bundled agents ship
+with no `model:` key and nothing needs configuring.
+
+To run different pipeline stages on different models, add a `models` block to `.arcus/config.json` in
+your repo — the same policy file every ARCUS host reads:
+
+```json
+{
+  "models": {
+    "mode": "tiered",
+    "tiers": {
+      "heavy":  { "opencode": "github-copilot/claude-opus-4.8" },
+      "medium": { "opencode": "github-copilot/claude-sonnet-4.6" },
+      "light":  { "opencode": "github-copilot/claude-haiku-4.5" }
+    }
+  }
+}
+```
+
+The plugin resolves this at load and writes the matching model into each staged agent under
+`.opencode/agents/`, so a policy edit takes effect on your next session. Resolution is fail-open: a
+malformed policy, or one with no `opencode` entry, logs a warning and leaves the agents on the
+session default. The model identifiers are yours to supply — ARCUS ships no presets for any provider.
+
+See the [model policy guide](https://arcus.opsimplify.com/guide/model-policy) for the full precedence
+ladder and config shape.
 
 ## License
 

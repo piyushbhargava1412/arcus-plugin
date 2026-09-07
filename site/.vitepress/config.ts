@@ -21,6 +21,7 @@ export default withMermaid({
           { text: 'Introduction', link: '/guide/introduction' },
           { text: 'Quickstart', link: '/guide/quickstart' },
           { text: 'How it works', link: '/guide/how-it-works' },
+          { text: 'Model Policy', link: '/guide/model-policy' },
           { text: 'Meet the ARCUS Team 🧑‍💻', link: '/comic/' }
         ]
       },

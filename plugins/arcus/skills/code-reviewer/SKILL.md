@@ -157,9 +157,19 @@ and an explicit instruction to read it in `offset`/`limit` pages of ≤ 1500 lin
 is a deliberate margin under `Read`'s 2000-line truncation. Either branch also carries the relevant
 spec section, not the full conversation. Specialists **keep** permission to open source files directly
 when a hunk needs surrounding context — the diff is the starting payload, not a prohibition;
-`history-context-reviewer` keeps its `Bash`/git access for blame/log lookups. Resolve each model **and
-each agent's dispatch target** via the `arcus:model-strategy` skill (see its **Agent Resolution**
-section — an agent is addressed by the host's registered subagent type, never as `arcus:<name>`).
+`history-context-reviewer` keeps its `Bash`/git access for blame/log lookups. For each specialist,
+resolve the dispatch model — **no `--host`** — then dispatch per **Agent Resolution** in
+`arcus:model-strategy`:
+```
+node .arcus/bin/models.mjs resolve --complexity <X> --stage <agent-basename> --checkpoint .arcus/specs/<STORY_ID>/session-checkpoint.json
+```
+Branch on the three signals:
+
+| Signal in the JSON | What the caller does |
+|---|---|
+| `"dispatch": false` | Send the dispatch with **no model parameter at all** |
+| `"model"` present | Use that string **verbatim** as the model parameter |
+| `"models"` present | Pick the key for your host (`claude`/`copilot`/`vscode`/`opencode`); use that value **verbatim** |
 
 | Reviewer | Agent | Complexity | Effort | Scope |
 |----------|-------|------------|--------|-------|

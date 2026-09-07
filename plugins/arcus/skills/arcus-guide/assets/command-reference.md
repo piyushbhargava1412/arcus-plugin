@@ -71,6 +71,42 @@ never add a fourth or reorder the existing three.
 - **Never hard-fails.** Malformed JSON, a non-array `stop_after`, unknown keys, or duplicates log a
   warning and fall back / drop the bad entries — they never abort scaffolding.
 
+### `models`: Model policy
+
+The optional `models` key in `.arcus/config.json` lets you tier model selection across the
+pipeline — or force a single model for a whole run — without touching any skill or agent file.
+When the key is absent (or the file is missing entirely), ARCUS inherits the session's own model
+for every dispatch.
+
+**Tiered config (host-free shape, portable across all four hosts):**
+
+```json
+{ "models": { "mode": "tiered", "tiers": {
+  "heavy":  { "claude": "opus",   "copilot": "claude-opus-4.8",   "vscode": "Claude Opus 4.6 (copilot)",   "opencode": "github-copilot/claude-opus-4.8" },
+  "medium": { "claude": "sonnet", "copilot": "claude-sonnet-4.6", "vscode": "Claude Sonnet 4.6 (copilot)", "opencode": "github-copilot/claude-sonnet-4.6" },
+  "light":  { "claude": "haiku",  "copilot": "claude-haiku-4.5",  "vscode": "Claude Haiku 4.5 (copilot)",  "opencode": "github-copilot/claude-haiku-4.5" }
+} } }
+```
+
+The `tiers` object is entirely yours to write — ARCUS ships no built-in model identifiers or presets. One row per complexity level, one entry per host you actually use.
+
+**Flat config (one model id for all dispatches):**
+
+```json
+{ "models": { "mode": "flat", "flat": "<your-model-id>" } }
+```
+
+Replace `"<your-model-id>"` with an id from your host's own model picker. ARCUS passes it verbatim
+to every subagent dispatch. No model ids are enumerated here — they differ per host and go stale.
+
+**Shared behaviour:**
+
+- **All three modes.** Unlike `stop_after` (which is `gated`-only), the `models` block is read at
+  scaffold time in `gated`, `intelligent`, and `afk` alike.
+- **Never hard-fails.** Unknown keys, malformed JSON, or an unusable value log a warning and fall
+  back to the `inherit` default — they never abort scaffolding.
+- **Inspect what applies:** `node .arcus/bin/models.mjs show`
+
 ---
 
 ## ⏭️ Resume Phrases

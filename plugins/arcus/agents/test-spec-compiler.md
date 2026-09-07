@@ -7,7 +7,7 @@ description: >
 layer: capability
 user-invocable: false
 tools: Read, Grep, Glob, Write, Skill
-model: sonnet
+model: inherit
 color: green
 ---
 

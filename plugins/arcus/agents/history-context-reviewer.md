@@ -10,7 +10,7 @@ layer: capability
 user-invocable: false
 tools: Read, Grep, Glob, Bash
 disallowedTools: Edit, Write, MultiEdit
-model: sonnet
+model: inherit
 color: magenta
 ---
 

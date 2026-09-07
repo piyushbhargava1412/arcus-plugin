@@ -32,7 +32,11 @@ When activated, follow the **Execution Pipeline** below.
 
 - **Subagent Isolation**: Each stage dispatches a fresh subagent with scoped context.
 - **Parallelization**: Stages that share no dependency run in parallel (Stage 2a, 2b, and 2c).
-- **Model Strategy**: Resolve model tier via the `arcus:model-strategy` skill for each subagent.
+- **Model Strategy**: Resolve complexity for each subagent dispatch by running
+  `node .arcus/bin/models.mjs resolve --complexity <heavy|medium|light> [--stage <agent-basename>]`.
+  `--checkpoint` is omitted here — `repo-agentifier` has no `STORY_ID`, so the resolver falls
+  through to `.arcus/config.json` (or the inherit default), which is the correct behaviour. Obey the `dispatch`
+  flag from the JSON output.
 - **Dispatch by name**: Stages dispatch the discovery **agents** (`repo-overview-discovery`,
   `flow-discovery`, `test-pattern-discovery`, `design-pattern-discovery`), each resolved per
   **Agent Resolution** in `arcus:model-strategy` —
@@ -141,7 +145,8 @@ Resolve `ARCUS_HOME` from `.arcus/env` before evaluating either route above.
 1. Ensure `.context/` directory exists.
 2. Dispatch the `repo-overview-discovery` agent (resolve the dispatch target per **Agent Resolution** in `arcus:model-strategy`):
    - **Description**: `"Context: repo-overview-discovery"`
-   - **Model**: Resolve complexity `heavy` via the `arcus:model-strategy` skill
+   - **Model**: Run `node .arcus/bin/models.mjs resolve --complexity heavy --stage repo-overview-discovery`
+     (`--checkpoint` omitted — no `STORY_ID`); obey the `dispatch` flag from the output.
 3. **Verify**: Confirm both `.context/repo_scope.md` and `.context/repo_map.md` exist and are non-empty.
    - If missing: Report `[ERROR] Stage 1 failed: missing output files` and STOP.
 4. **Output**: `[Stage 1] Repository context: complete (repo_scope.md, repo_map.md)`
@@ -151,8 +156,9 @@ Resolve `ARCUS_HOME` from `.arcus/env` before evaluating either route above.
 After Stage 1 completes successfully, read `.context/repo_scope.md` and `.context/repo_map.md`.
 
 Dispatch **all three** agents below in parallel **by name**, passing each the `repo_scope.md` and
-`repo_map.md` content as context, with the given description and model tier (resolved via
-`arcus:model-strategy`), then run its verify check.
+`repo_map.md` content as context, with the given description and model (resolved by running
+`node .arcus/bin/models.mjs resolve --complexity <complexity> --stage <agent-basename>`;
+omit `--checkpoint` — no `STORY_ID` here), then run its verify check. Obey the `dispatch` flag from the output.
 
 | # | Agent (dispatch by name) | Description | Model | Verify output | On miss |
 |---|--------------------------|-------------|-------|---------------|---------|

@@ -89,6 +89,9 @@ _extract="$_SCRIPT_DIR/extract_story_id.sh"
 _checkpoint="$_SCRIPT_DIR/checkpoint.sh"
 [ -f "$_checkpoint" ] || _checkpoint="${ARCUS_HOME:-}/scripts/checkpoint.sh"
 
+_models="$_SCRIPT_DIR/models.mjs"
+[ -f "$_models" ] || _models="${ARCUS_HOME:-}/scripts/models.mjs"
+
 # Source the shared branch-name library (same convention).
 _lib="$_SCRIPT_DIR/lib/branch_name.sh"
 [ -f "$_lib" ] || _lib="${ARCUS_HOME:-}/scripts/lib/branch_name.sh"
@@ -250,6 +253,22 @@ if [ "$MODE" = "gated" ] && [ -f "$CONFIG_FILE" ]; then
     esac
 fi
 
+# Snapshot the model policy at scaffold time so a mid-story config edit cannot
+# change a running story. Unlike stop_after, this runs in ALL THREE modes
+# (gated, afk, intelligent) — model selection is independent of gate discipline.
+# SF-2 soft-fail: [WARN] on stderr, fall back to {"mode":"inherit"}, exit 0,
+# never [ERROR]. Delegates to models.mjs show --policy-only (no inline node -e).
+MODEL_POLICY_JSON="$(node "$_models" show --policy-only || true)"
+case "$MODEL_POLICY_JSON" in
+    \{*)
+        # Non-empty, JSON-shaped output — accept as-is.
+        ;;
+    *)
+        echo "[WARN] scaffold.sh: could not load model policy; using {\"mode\":\"inherit\"}" >&2
+        MODEL_POLICY_JSON='{"mode":"inherit"}'
+        ;;
+esac
+
 # Scaffold the workspace folder.
 WORKSPACE_DIR=".arcus/specs/$STORY_ID"
 mkdir -p "$WORKSPACE_DIR"
@@ -272,7 +291,7 @@ fi
 # `init` is a no-op when the checkpoint already exists — it prints the stored
 # document instead of writing ours — so capture the result rather than assuming
 # our computed fields were persisted.
-INIT_OUT="$(bash "$_checkpoint" init "$STORY_ID" "$BRANCH_NAME" "$BASE_BRANCH" "$MODE" "$STOP_AFTER")"
+INIT_OUT="$(bash "$_checkpoint" init "$STORY_ID" "$BRANCH_NAME" "$BASE_BRANCH" "$MODE" "$STOP_AFTER" "$MODEL_POLICY_JSON")"
 printf '%s\n' "$INIT_OUT"
 
 if printf '%s\n' "$INIT_OUT" | grep -q '^CHECKPOINT_EXISTS: true'; then

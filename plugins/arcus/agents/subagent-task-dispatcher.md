@@ -9,7 +9,7 @@ layer: orchestrator
 user-invocable: false
 tools: Read, Grep, Glob, Bash, Task, Skill
 disallowedTools: AskUserQuestion, Edit, Write, MultiEdit
-model: sonnet
+model: inherit
 color: orange
 ---
 
@@ -72,10 +72,19 @@ Use the template at `"$ARCUS_HOME"/agent-resources/subagent-task-dispatcher/asse
 
 Resolve the task's model before dispatching:
 1. Read the `complexity` field from the task definition (e.g., `heavy`, `medium`, `light`). If missing, default to `medium`.
-2. Look up the complexity-to-model mapping in the `arcus:model-strategy` skill to get the model tier.
-3. Look up the tier-to-platform mapping in the same file to get the platform model string.
+2. Run the resolver — **no `--host`**:
+   ```
+   node .arcus/bin/models.mjs resolve --complexity <heavy|medium|light> [--stage <agent-basename>] --checkpoint .arcus/specs/<STORY_ID>/session-checkpoint.json
+   ```
+3. Parse the one-line JSON it prints to stdout and branch on these three signals:
 
-Invoke the subagent using the platform's spawner, passing the resolved model string:
+| Signal in the JSON | What the caller does |
+|---|---|
+| `"dispatch": false` | Send the dispatch with **no model parameter at all** |
+| `"model"` present | Use that string **verbatim** as the model parameter |
+| `"models"` present | Pick the key for your host (`claude`/`copilot`/`vscode`/`opencode`); use that value **verbatim** |
+
+Invoke the subagent using the platform's spawner:
 - **GitHub Copilot CLI**: the **`task`** tool (`agent_type` + `model`)
 - **VS Code Copilot Chat**: `runSubagent`
 - **Claude Code**: the **`Agent`** tool (alias `Task`)
@@ -83,7 +92,7 @@ Invoke the subagent using the platform's spawner, passing the resolved model str
 With:
 - **prompt**: The constructed prompt from Step 2
 - **description**: `"Task N: <short task title>"`
-- **model**: The resolved platform model string (Claude Code: `"opus"`/`"sonnet"`/`"haiku"`; Copilot CLI: a slug id, e.g. `"claude-sonnet-4.6"`; VS Code: e.g. `"Claude Sonnet 4.6 (copilot)"`). Passing this is what makes a `light` task run on `haiku` and a `medium` task on `sonnet` instead of the session default — omitting it forfeits the savings. **On Copilot CLI it is the only signal that works**: Copilot CLI does not resolve tier words — it warns visibly and falls back to the session model; a valid slug is honoured. Passing the model slug at dispatch is mandatory to achieve tier selection on Copilot CLI.
+- **model**: Populated iff the resolver signals `dispatch: true`; omitted entirely iff `dispatch: false`; on `models`, index your own host key.
 
 ### Step 4: Handle Response
 
@@ -126,7 +135,7 @@ Otherwise, dispatch a fresh subagent:
   - `test_command` — this task's TDD verify command.
   - `acceptance_criteria` — the task's DoD from `plan.md`.
 - **Description**: `"Refactor: Task N"`
-- **Model**: Resolve complexity `medium` via the `arcus:model-strategy` skill
+- **Model**: Run the resolver from Step 3 with `--complexity medium --stage simplify-and-verify`. Populate the dispatch model parameter iff `dispatch: true`; omit it entirely iff `dispatch: false`; on `models`, index your own host key.
 
 Handle the return status:
 | Status | Meaning | Action |
@@ -161,7 +170,7 @@ its binary FAIL conflicts with the holistic stage's "one or two warnings is stil
      (FILES_MODIFIED, TESTS_PASSING, NOTES), and the instruction to read and follow the
      `spec-compliance-reviewer` agent (resolve the dispatch target per **Agent Resolution** in `arcus:model-strategy`) in per-task mode for Task N.
    - **Description**: `"Review: spec-compliance Task N"`
-   - **Model**: Resolve complexity `medium` via the `arcus:model-strategy` skill
+   - **Model**: Run the resolver from Step 3 with `--complexity medium --stage spec-compliance-reviewer`. Populate the dispatch model parameter iff `dispatch: true`; omit it entirely iff `dispatch: false`; on `models`, index your own host key.
 2. Read the VERDICT:
    - `PASS` → proceed to Step 8 (Commit)
    - `FAIL` → re-dispatch the implementer subagent **once** with the ISSUES list as additional
@@ -197,7 +206,7 @@ After reviews pass (or retry limit reached):
 - **Implementation retries**: Max 2 retries per task (Step 4 BLOCKED/verification failures)
 - **Spec-check retry**: Max 1 retry for the per-task spec check (Step 7)
 - Each retry includes the error/issue output from the previous attempt
-- **Escalation rule**: If implementation fails after 2 retries at the current complexity, promote complexity one level (light → medium → heavy), re-resolve the model via the `arcus:model-strategy` skill, and re-dispatch with the higher-tier model. Max 1 escalation per task. On a spawner that ignores the `model` parameter (e.g. a legacy dispatch tool with no per-call model override), escalation falls back to the session model instead of actually running on the higher tier.
+- **Escalation rule**: If implementation fails after 2 retries at the current complexity, promote complexity one level (light → medium → heavy), re-run the resolver from Step 3 with the escalated complexity value, and re-dispatch per the three-signal branch. Max 1 escalation per task. On a spawner that ignores the `model` parameter (e.g. a legacy dispatch tool with no per-call model override), escalation falls back to the session model instead of actually running on the higher tier.
 - If implementation fails after escalation: mark as BLOCKED, stop pipeline
 - If the spec check fails after its retry: commit with `[spec: unresolved]` tag and carry the ISSUES forward to the holistic `code-reviewer`; continue pipeline
 - **Refactor gate**: No retry — `REVERTED` is not a failure state; mutations are rolled back and the gate exits cleanly. Proceed to spec-check regardless.

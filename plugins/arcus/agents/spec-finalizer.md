@@ -8,7 +8,7 @@ description: >
 layer: capability
 user-invocable: false
 tools: Read, Grep, Glob, Write
-model: opus
+model: inherit
 color: indigo
 ---
 

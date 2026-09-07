@@ -7,7 +7,7 @@ description: >
 layer: capability
 user-invocable: false
 tools: Read, Grep, Glob, Bash, Write
-model: haiku
+model: inherit
 color: blue
 ---
 

@@ -8,7 +8,7 @@ description: >
 layer: capability
 user-invocable: false
 tools: Read, Grep, Glob, Write
-model: sonnet
+model: inherit
 color: cyan
 metadata:
   version: "1.0.0"

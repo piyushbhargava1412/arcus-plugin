@@ -9,6 +9,6 @@ phase-boundary handoff behavior lives in
    - **Agent**: `test-spec-compiler`, resolved per **Agent Resolution** in `arcus:model-strategy`.
    - **Prompt**: "Story ID: `<STORY_ID>`. Produce `.arcus/specs/<STORY_ID>/test-plan.md`."
    - **Description**: "TestPlan: test-spec-compiler"
-   - **Model**: resolve complexity `medium` via the `arcus:model-strategy` skill.
+   - **Model**: `node .arcus/bin/models.mjs resolve --complexity medium --stage test-spec-compiler --checkpoint .arcus/specs/<STORY_ID>/session-checkpoint.json`
    - Verify the file exists, then `.arcus/bin/checkpoint.sh complete <STORY_ID> test_plan`.
 2. **Output**: run `node .arcus/bin/arcus-controller.mjs counts --test-plan .arcus/specs/<STORY_ID>/test-plan.md`, emit `[TestPlan] Complete: <N> test cases`, then follow the **Phase-Boundary Gate Protocol** in [`phase-boundary-gate-protocol.md`](phase-boundary-gate-protocol.md) for the `test_plan` phase-group key. If it does not gate, continue into Implementation.

@@ -94,7 +94,7 @@ Surfaces only Brainstorm open questions; no phase-boundary gates. Trigger: `arcu
 
 Never stops — open questions are recorded but never surfaced. Trigger: `forge path/to/story.md`, `afk path/to/story.md`, `run afk on path/to/story.md`, or `arcus path/to/story.md --afk`.
 
-For a detailed comparison of all three modes, see [Three Modes, One Pipeline](/concepts/modes). For a detailed breakdown of each pipeline stage, see [Pipeline Concepts](/concepts/pipeline).
+For a detailed comparison of all three modes, see [Three Modes, One Pipeline](/concepts/modes). For a detailed breakdown of each pipeline stage, see [Pipeline Concepts](/concepts/pipeline). To configure which model each agent dispatch uses, see [Model Policy](/guide/model-policy).
 
 ## Quick Start Checklist
 

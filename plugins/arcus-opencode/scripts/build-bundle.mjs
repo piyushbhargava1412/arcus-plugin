@@ -37,19 +37,41 @@ import {
   parseAgentFrontmatter,
   stripArcusNamespace,
   transformMarkdownFilesInPlace,
-  TIER_TO_MODEL,
   COLOR_TO_HEX,
   FRONTMATTER_RE,
 } from "./lib/convert.mjs"
 
-/** Render an OpenCode-dialect frontmatter + body for one ARCUS agent. */
+// ==============================================================================
+// Model pinning is NOT a build-time concern.
+//
+// The bundled agents deliberately ship with NO `model:` line. Which model an
+// ARCUS agent runs on is decided at PLUGIN LOAD TIME in the target repo, by
+// src/index.ts, from that repo's own model policy (`.arcus/config.json`
+// `models`, `ARCUS_MODEL_*` env vars — the same six-rank ladder every other host
+// uses, via the bundled scripts/models.mjs). Baking a pin into the tarball would
+// pin every consumer of a single published artifact to the publisher's account
+// and provider slugs.
+//
+// Unpinned bundle + unset policy = OpenCode's own session default model. That is
+// the promise, and it holds without any build configuration.
+// ==============================================================================
+
+/**
+ * Render an OpenCode-dialect frontmatter + body for one ARCUS agent.
+ *
+ * Never emits a `model:` line: see the Model pinning note above. The authoring
+ * frontmatter's `model:` field (the `inherit` sentinel, or a legacy tier word)
+ * is read and discarded here — the runtime plugin owns that decision.
+ *
+ * @param {string} name  Agent basename.
+ * @param {string} raw   Raw Claude-dialect agent markdown.
+ */
 function convertAgent(name, raw) {
   const fmMatch = FRONTMATTER_RE.exec(raw)
   if (!fmMatch) throw new Error(`agent ${name}: no frontmatter`)
   const fields = parseAgentFrontmatter(fmMatch[1])
   const body = stripArcusNamespace(fmMatch[2])
 
-  const model = TIER_TO_MODEL[fields.model] || fields.model
   const perms = buildPermission(fields)
   const description = stripArcusNamespace(fields.description || "")
 
@@ -59,7 +81,6 @@ function convertAgent(name, raw) {
   out.push(`description: ${description}`)
   out.push("mode: subagent")
   out.push("hidden: true") // ARCUS agents are model-only, never user-facing.
-  if (model) out.push(`model: ${model}`)
   // OpenCode color must be #hex or a theme name; map Claude words, else omit.
   // Hex MUST be quoted — bare `#...` after `:` is a YAML comment → null value.
   const color = fields.color
@@ -181,9 +202,15 @@ async function main() {
 
   console.log(
     `[build] bundled: ${skills} skills, ${agents} agents ` +
-      `(+ scripts, agent-resources, schemas, LICENSE, NOTICE) → ${bundled}`,
+      `(+ scripts, agent-resources, schemas, LICENSE, NOTICE) → ${bundled} ` +
+      `[no model pins — resolved at plugin load from the target repo's model policy]`,
   )
 }
+
+// `convertAgent` is exported for the unit suite. `main()` stays unconditional --
+// see the header of ./lib/convert.mjs for why an `import.meta.url` entrypoint
+// guard is unsafe here (symlinked paths would silently no-op the build).
+export { convertAgent }
 
 main().catch((err) => {
   console.error("[build] failed:", err)

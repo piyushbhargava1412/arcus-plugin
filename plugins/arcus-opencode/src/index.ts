@@ -3,6 +3,7 @@ import { cp, mkdir, readdir, readFile, writeFile } from "node:fs/promises"
 import { existsSync } from "node:fs"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
+import { loadModelPinner, pinStagedAgents } from "./model-pin.mjs"
 
 /**
  * ARCUS OpenCode plugin (distribution model A: npm bundle-and-stage).
@@ -28,7 +29,9 @@ import { fileURLToPath } from "node:url"
  * skill/agent discovery is its own confirmation.
  *
  * The `arcus:<name>` namespace transform and OpenCode agent-dialect conversion are
- * baked into `bundled/` at build time, so runtime is a plain copy.
+ * baked into `bundled/` at build time. Model selection is the one thing that is
+ * NOT baked: bundled agents ship with no `model:` line, and this plugin resolves
+ * the target repo's own model policy at load time (see `loadModelPinner`).
  */
 
 // Resolve the package's own root (…/arcus-opencode), independent of CWD.
@@ -38,6 +41,11 @@ const BUNDLED = join(PKG_ROOT, "bundled")
 // Content trees staged from bundled/ into the target repo's .opencode/.
 // (ARCUS ships no commands; the tree is skipped gracefully if absent.)
 const STAGED_TREES = ["skills", "agents"] as const
+
+// The host-agnostic model-policy resolver, shipped inside bundled/scripts/.
+// Imported from the package's OWN payload (never the target repo's .arcus/bin),
+// so model resolution has no ordering dependency on bootstrap.sh having run.
+const MODELS_MJS = join(BUNDLED, "scripts", "models.mjs")
 
 const LOG_SERVICE = "arcus-opencode"
 
@@ -129,6 +137,8 @@ export const ArcusOpencode: Plugin = async ({ directory, worktree, $, client }) 
       await mkdir(targetOpencode, { recursive: true })
       const counts: Record<string, number> = {}
       for (const tree of STAGED_TREES) counts[tree] = await stageTree(tree, targetOpencode)
+      const pin = await loadModelPinner(MODELS_MJS, repoRoot, log)
+      if (pin) counts.pinned = await pinStagedAgents(join(targetOpencode, "agents"), pin, log)
       await ensureGitignore(repoRoot)
       await log("info", "staged bundled content into target .opencode/", counts)
       // Stage .arcus/bin + .arcus/env at load time (awaited), not on a later event.

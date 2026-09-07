@@ -6,7 +6,7 @@
 #              (pending | in_progress | awaiting_handoff | complete | needs_rework)
 #              to support human-gated, resumable, multi-session workflows.
 # USAGE:
-#   scripts/checkpoint.sh init       <STORY_ID> [<BRANCH_NAME>] [<BASE_BRANCH>] [<MODE>] [<STOP_AFTER>]
+#   scripts/checkpoint.sh init       <STORY_ID> [<BRANCH_NAME>] [<BASE_BRANCH>] [<MODE>] [<STOP_AFTER>] [<MODEL_POLICY_JSON>]
 #   scripts/checkpoint.sh read       <STORY_ID>
 #   scripts/checkpoint.sh complete   <STORY_ID> <stage>
 #   scripts/checkpoint.sh set-status <STORY_ID> <stage> <status>
@@ -15,6 +15,7 @@
 #   scripts/checkpoint.sh set-branch <STORY_ID> <branch> <base>
 #   scripts/checkpoint.sh set-tasks  <STORY_ID> <N>             # seed/prune task_1..task_N slots
 #   scripts/checkpoint.sh set-cursor <STORY_ID> <COMMENT_ID>    # highest ingested comment id
+#   scripts/checkpoint.sh set-model-policy <STORY_ID> <MODEL_POLICY_JSON>
 #   scripts/checkpoint.sh set-issue  <STORY_ID> <ISSUE_NUMBER>
 #   scripts/checkpoint.sh await-handoff <STORY_ID>              # -> current_status AWAITING_HANDOFF
 #   scripts/checkpoint.sh fail       <STORY_ID> <stage> <reason>
@@ -38,7 +39,7 @@ ACTION="$1"
 STORY_ID="$2"
 
 if [ -z "$ACTION" ] || [ -z "$STORY_ID" ]; then
-    echo "[ERROR] Usage: checkpoint.sh <init|read|complete|set-status|reopen|set-mode|set-branch|set-tasks|set-cursor|set-issue|await-handoff|fail> <STORY_ID> [args]" >&2
+    echo "[ERROR] Usage: checkpoint.sh <init|read|complete|set-status|reopen|set-mode|set-branch|set-tasks|set-cursor|set-issue|set-model-policy|await-handoff|fail> <STORY_ID> [args]" >&2
     exit 1
 fi
 
@@ -121,6 +122,15 @@ run_mutation() {
             case "set-mode": {
                 const [mode] = rest;
                 cp.mode = mode;
+                break;
+            }
+            case "set-model-policy": {
+                const [policyJson] = rest;
+                try {
+                    cp.model_policy = JSON.parse(policyJson);
+                } catch (e) {
+                    process.stderr.write(`[WARN] Invalid MODEL_POLICY_JSON: ${e.message}. Policy unchanged.\n`);
+                }
                 break;
             }
             case "set-branch": {
@@ -229,13 +239,14 @@ case "$ACTION" in
         BASE_BRANCH="${4:-main}"
         MODE="${5:-gated}"
         STOP_AFTER="${6:-}"
+        MODEL_POLICY_RAW="${7:-}"
 
         # Up-front validation, mirroring set-mode's existing explicit-comparison
         # shape (not the grep-based VALID_STATUSES check) so an unusual MODE value
         # can't be misread as a grep pattern — ahead of any filesystem work,
         # including the already-exists short-circuit below.
         if [ "$MODE" != "afk" ] && [ "$MODE" != "intelligent" ] && [ "$MODE" != "gated" ]; then
-            echo "[ERROR] Usage: checkpoint.sh init <STORY_ID> [<BRANCH_NAME>] [<BASE_BRANCH>] [<afk|intelligent|gated>] [<STOP_AFTER>]" >&2
+            echo "[ERROR] Usage: checkpoint.sh init <STORY_ID> [<BRANCH_NAME>] [<BASE_BRANCH>] [<afk|intelligent|gated>] [<STOP_AFTER>] [<MODEL_POLICY_JSON>]" >&2
             exit 1
         fi
 
@@ -263,6 +274,23 @@ case "$ACTION" in
             console.log(JSON.stringify(uniq));
         ' "$STOP_AFTER")
 
+        # Convert MODEL_POLICY_RAW into a validated JSON object literal, using
+        # process.argv to avoid injection — same discipline as STOP_AFTER_JSON.
+        # Invalid JSON → [WARN] on stderr + fall back to the default {"mode":"inherit"}.
+        MODEL_POLICY_JSON=$(node -e '
+            const raw = process.argv[1] || "";
+            const defaultPolicy = {"mode":"inherit"};
+            let result = defaultPolicy;
+            if (raw) {
+                try {
+                    result = JSON.parse(raw);
+                } catch (e) {
+                    process.stderr.write("[WARN] Invalid MODEL_POLICY_JSON: " + e.message + ". Using default {\"mode\":\"inherit\"}\n");
+                }
+            }
+            console.log(JSON.stringify(result));
+        ' "$MODEL_POLICY_RAW")
+
         cat <<EOF > "$CHECKPOINT_FILE"
 {
   "story_id": "$STORY_ID",
@@ -275,6 +303,7 @@ case "$ACTION" in
   "current_stage": "scaffold",
   "review_round": 0,
   "stop_after": $STOP_AFTER_JSON,
+  "model_policy": $MODEL_POLICY_JSON,
   "stages": {
     "scaffold": "pending",
     "context_pack": "pending",
@@ -386,6 +415,16 @@ EOF
         echo "ISSUE_SET: $NUM"
         ;;
 
+    set-model-policy)
+        POLICY="$3"
+        if [ -z "$POLICY" ]; then
+            echo "[ERROR] Usage: checkpoint.sh set-model-policy <STORY_ID> <MODEL_POLICY_JSON>" >&2
+            exit 1
+        fi
+        run_mutation set-model-policy "$POLICY"
+        echo "MODEL_POLICY_SET"
+        ;;
+
     await-handoff)
         run_mutation await-handoff
         echo "AWAITING_HANDOFF"
@@ -403,7 +442,7 @@ EOF
         ;;
 
     *)
-        echo "[ERROR] Unknown action: $ACTION. Use init|read|complete|set-status|reopen|set-mode|set-branch|set-tasks|set-cursor|set-issue|await-handoff|fail." >&2
+        echo "[ERROR] Unknown action: $ACTION. Use init|read|complete|set-status|reopen|set-mode|set-branch|set-tasks|set-cursor|set-issue|set-model-policy|await-handoff|fail." >&2
         exit 1
         ;;
 esac

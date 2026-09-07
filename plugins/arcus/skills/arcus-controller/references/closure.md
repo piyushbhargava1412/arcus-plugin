@@ -8,7 +8,7 @@ they are not restated below.
    - **Agent**: `pull-request-builder`, resolved per **Agent Resolution** in `arcus:model-strategy`.
    - **Prompt**: "Story ID: `<STORY_ID>`. Produce `.arcus/specs/<STORY_ID>/PR_DESCRIPTION.md`."
    - **Description**: "Closure: pull-request-builder"
-   - **Model**: resolve complexity `light` via the `arcus:model-strategy` skill.
+   - **Model**: `node .arcus/bin/models.mjs resolve --complexity light --stage pull-request-builder --checkpoint .arcus/specs/<STORY_ID>/session-checkpoint.json`
    - Verify the file exists.
 2. **Create PR**: run `.arcus/bin/pr.sh <STORY_ID>`.
 3. **Mark complete**: `.arcus/bin/checkpoint.sh complete <STORY_ID> closure`.

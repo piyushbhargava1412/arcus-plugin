@@ -10,7 +10,7 @@ is handled by `.arcus/bin/arcus-controller.mjs`.
    - **Agent**: `context-pack-builder`, resolved per **Agent Resolution** in `arcus:model-strategy`.
    - **Prompt**: "Story: `<STORY>`. Repo context: `<repo_context>`. Write the context pack to `<context_pack_path>`."
    - **Description**: "Brainstorm: context-pack-builder"
-   - **Model**: resolve complexity `medium` via the `arcus:model-strategy` skill.
+   - **Model**: `node .arcus/bin/models.mjs resolve --complexity medium --stage context-pack-builder --checkpoint .arcus/specs/<STORY_ID>/session-checkpoint.json`
    - It produces a `context_pack` describing the story-relevant slice of the repository, resolved to
      the workspace file `.arcus/specs/<STORY_ID>/context-pack.md`.
    - `context-pack.md` exists → `.arcus/bin/checkpoint.sh complete <STORY_ID> context_pack`. Mark
@@ -19,7 +19,7 @@ is handled by `.arcus/bin/arcus-controller.mjs`.
    - **Agent**: `spec-finalizer`, resolved per **Agent Resolution** in `arcus:model-strategy`.
    - **Prompt**: "Story: `<STORY>`. Context pack: `<context_pack_path>`. Write the grounded spec to `<spec_grounding_path>`." — appending, only when the caller supplied one, "The user has answered the previously emitted Open Questions; `answers`: `<answers>`."
    - **Description**: "Brainstorm: spec-finalizer"
-   - **Model**: resolve complexity `heavy` via the `arcus:model-strategy` skill.
+   - **Model**: `node .arcus/bin/models.mjs resolve --complexity heavy --stage spec-finalizer --checkpoint .arcus/specs/<STORY_ID>/session-checkpoint.json`
    - It analyzes the story for completeness and resolves every ambiguity, producing a
      `spec_grounding`, resolved to the workspace file `.arcus/specs/<STORY_ID>/grounded-spec.md`.
    - `grounded-spec.md` exists → run `node .arcus/bin/arcus-controller.mjs questions --artifact .arcus/specs/<STORY_ID>/grounded-spec.md`, then follow the **Open-Questions Protocol** in [`open-questions-protocol.md`](open-questions-protocol.md). **Only if that
@@ -31,7 +31,7 @@ is handled by `.arcus/bin/arcus-controller.mjs`.
    - **Agent**: `implementation-planner`, resolved per **Agent Resolution** in `arcus:model-strategy`.
    - **Prompt**: "Story ID: `<STORY_ID>`. Write the plan to `.arcus/specs/<STORY_ID>/plan.md`."
    - **Description**: "Brainstorm: implementation-planner"
-   - **Model**: resolve complexity `heavy` via the `arcus:model-strategy` skill.
+   - **Model**: `node .arcus/bin/models.mjs resolve --complexity heavy --stage implementation-planner --checkpoint .arcus/specs/<STORY_ID>/session-checkpoint.json`
    - Verify `plan.md` exists, then run `node .arcus/bin/arcus-controller.mjs questions --artifact .arcus/specs/<STORY_ID>/plan.md`, then follow the **Open-Questions Protocol** in [`open-questions-protocol.md`](open-questions-protocol.md). **Only if
      it returns without halting** may you run `.arcus/bin/checkpoint.sh complete <STORY_ID> plan`.
 4. **Record the task count**: run `.arcus/bin/checkpoint.sh set-tasks <STORY_ID> <N>` (N = `### Task`

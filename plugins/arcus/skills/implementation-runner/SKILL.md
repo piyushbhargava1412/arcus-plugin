@@ -125,14 +125,6 @@ the heading order.
 
 ### Step 5: Loop over tasks
 
-Reference the model strategy once: load `arcus:model-strategy` for complexity→model resolution. Each
-task's `complexity` resolves to a model tier that the dispatcher passes as the subagent `model`
-override (Copilot CLI: the `task` tool; VS Code: `runSubagent`; **Claude Code: the `Agent` tool** —
-`light`→`haiku`, `medium`→`sonnet`, `heavy`→`opus`), so mechanical tasks run on cheaper tiers. Only
-the **main orchestration thread** (this loop) is fixed to the session model and cannot switch
-mid-session; the per-task override applies to the dispatched subagents. `complexity` also guides the
-dispatcher's escalation and reviewer model picks.)
-
 **Task list (best-effort, host-provided).** If your host exposes a structured task-list tool, seed
 it with one entry per parsed task (Step 4) before the loop starts, using each task's short
 description as the entry text. This capability is not reliably available on every host today; if
@@ -144,8 +136,20 @@ For each task **in order**, skipping any whose checkpoint status is already `com
 
 1. `<BIN>/checkpoint.sh set-status <STORY_ID> task_<N> in_progress` — if a task list was seeded,
    mark this entry in_progress too.
-2. **Dispatch the `subagent-task-dispatcher` agent** for that task (resolve the dispatch target per **Agent Resolution** in `arcus:model-strategy`) — do **not**
-   reimplement per-task dispatch. Pass it:
+2. **Dispatch the `subagent-task-dispatcher` agent** for that task — do **not** reimplement
+   per-task dispatch. First, resolve the dispatch model — **no `--host`**:
+   ```
+   node .arcus/bin/models.mjs resolve --complexity <COMPLEXITY> --stage subagent-task-dispatcher --checkpoint .arcus/specs/<STORY_ID>/session-checkpoint.json
+   ```
+   Branch on the three signals:
+
+   | Signal in the JSON | What the caller does |
+   |---|---|
+   | `"dispatch": false` | Send the dispatch with **no model parameter at all** |
+   | `"model"` present | Use that string **verbatim** as the model parameter |
+   | `"models"` present | Pick the key for your host (`claude`/`copilot`/`vscode`/`opencode`); use that value **verbatim** |
+
+   Pass it:
    - `STORY_ID`
    - `TASK_N`
    - `COMPLEXITY` = the task's `complexity` field, default `medium`

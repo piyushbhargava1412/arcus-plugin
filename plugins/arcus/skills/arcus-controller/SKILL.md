@@ -113,6 +113,7 @@ After it has run, `.arcus/bin/` is authoritative and `.arcus/env` carries `ARCUS
 | `.arcus/bin/pr.sh <story-id>`                                                                      | Push + create PR (or update if one already exists for the branch) | Closure                                                                                                 |
 | `.arcus/bin/checkpoint.sh <action> <story-id> [args]`                                              | Manage state                                                      | init / read / complete / set-status / reopen / set-mode / set-branch / set-tasks / await-handoff / fail |
 | `.arcus/bin/arcus-controller.mjs <command>`                                                        | Deterministic controller helper                                   | Canonical checkpoint walk, question parsing, milestone counts, gate membership, loopback cap            |
+| `.arcus/bin/models.mjs <resolve\|show>`                                                            | Model resolution helper                                           | Resolve a model string for a given complexity/stage from the policy; show the active policy             |
 
 Stage status values: `pending | in_progress | awaiting_handoff | complete | needs_rework`.
 Top-level `current_status` values: `IN_PROGRESS | AWAITING_HANDOFF | COMPLETE | FAILED`.
@@ -149,6 +150,8 @@ Commands:
 | `node .arcus/bin/arcus-controller.mjs counts --plan <path> --grounded-spec <path> --test-plan <path>` | Count milestone metrics                                               |
 | `node .arcus/bin/arcus-controller.mjs gate --mode <mode> --stop-after <csv> --phase-group <key>`      | Evaluate whether a phase-boundary gate fires                          |
 | `node .arcus/bin/arcus-controller.mjs loopback --review-round <N>`                                    | Enforce the loopback cap                                              |
+| `node .arcus/bin/models.mjs resolve --complexity <complexity> [--stage <name>] --checkpoint <path>`   | Resolve a model string for a complexity/stage from the checkpoint policy |
+| `node .arcus/bin/models.mjs show [--checkpoint <path>]`                                               | Print the active model policy as JSON or human-readable text            |
 
 If the helper cannot be read or run, fail the stage — do **not** reconstruct the state machine from
 memory.

@@ -27,5 +27,11 @@ Resolve `ARCUS_HOME` from `.arcus/env` before evaluating either route above.
 
 ## Behaviour
 
+Before dispatching, resolve the model by running
+`node .arcus/bin/models.mjs resolve --complexity medium --stage context-drift-sync`.
+`--checkpoint` is omitted here — `context-drift-sync` (when invoked standalone) has no `STORY_ID`,
+so the resolver falls through to config/default rank, which is the correct behaviour. Obey the
+`dispatch` flag from the output.
+
 Dispatch the `context-drift-sync` agent (resolve the dispatch target per **Agent Resolution** in `arcus:model-strategy`) with `sync_scope=full-sweep`, `apply_mode=confirm`,
 `commit_label=context`, and relay its assessment. No checkpoint, no handoff.

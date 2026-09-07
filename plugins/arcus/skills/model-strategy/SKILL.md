@@ -3,8 +3,8 @@ name: model-strategy
 description: >
   Shared reference for complexity classification and complexity-to-model resolution used by
   all ARCUS skills. Loaded by name (the `arcus:model-strategy` skill) when an
-  orchestrator or sub-skill needs to resolve a `heavy`/`medium`/`light` complexity to a model tier
-  and platform model string. Not invoked directly by users.
+  orchestrator or sub-skill needs to classify work as `heavy`/`medium`/`light` and turn that
+  classification into a dispatch decision via the `models.mjs` resolver. Not invoked directly by users.
 layer: substrate
 standalone: false
 user-invocable: false
@@ -12,7 +12,9 @@ user-invocable: false
 
 # Model-Tiered Strategy
 
-Single source of truth for complexity classification and model selection across all AFK skills.
+Single source of truth for complexity classification across all AFK skills. Classification is the
+part a model does; the complexity-to-model data is **not in this file** — `.arcus/bin/models.mjs`
+owns the tier words, the per-host bindings and every override.
 
 ## Complexity Levels
 
@@ -22,36 +24,14 @@ Single source of truth for complexity classification and model selection across 
 | medium | Standard implementation, moderate reasoning, pattern-following |
 | light | Simple changes, template filling, single-file edits following existing patterns |
 
-## Complexity-to-Model Mapping
-
-| Complexity | Model Tier |
-| --- | --- |
-| heavy | opus |
-| medium | sonnet |
-| light | haiku |
-
-**Default**: a task or test case missing the `complexity` field is treated as `medium`. This mapping can be overridden for a run (e.g. "all Opus for a quality sprint") by editing this table only — no plan regeneration needed.
-
-## Tier-to-Platform Model String Mapping
-
-The dispatcher resolves the tier to a platform-specific string. **Copilot CLI and VS Code are different surfaces with different model-string formats** — do not treat them as one column:
-
-| Model Tier | GitHub Copilot CLI (slug id) | VS Code Copilot Chat | Claude Code CLI | OpenCode (provider/model-id) |
-| --- | --- | --- | --- | --- |
-| opus | `claude-opus-4.8` | "Claude Opus 4.6 (copilot)" | "opus" | `github-copilot/claude-opus-4.8` |
-| sonnet | `claude-sonnet-4.6` | "Claude Sonnet 4.6 (copilot)" | "sonnet" | `github-copilot/claude-sonnet-4.6` |
-| haiku | `claude-haiku-4.5` | "Claude Haiku 4.5 (copilot)" | "haiku" | `github-copilot/claude-haiku-4.5` |
-
-**Update this table** when new model versions are released. Pass the resolved string as the per-dispatch `model`: **Copilot CLI**'s `task` tool takes a **slug id** — mandatory here, since Copilot CLI does not resolve tier words (it warns visibly and falls back; a valid slug is honoured), and also accepts `reasoning_effort`/`context_tier`; **VS Code**'s `runSubagent` takes `"Model Name (Vendor)"`; **Claude Code**'s `Agent` takes `"opus"`/`"sonnet"`/`"haiku"` and also honours tier words in frontmatter. **OpenCode** has no per-dispatch `model` — it is pinned per agent in `model:` frontmatter at build time (default provider GitHub Copilot; Amazon Bedrock alternative and full per-host mechanics in [Running Across Hosts](/concepts/cross-host)).
+**Default**: a task or test case missing the `complexity` field is treated as `medium`. Overriding a
+whole run (e.g. "all one model for a quality sprint") is a **policy** change — see *Configuring model
+policy* — never an edit to this skill.
 
 ## Dispatch Requirement (MUST)
 
-Resolving a tier from the tables above is **not optional prose** — it is a checkpoint every dispatch
-call must pass before it is sent. **Omitting the resolved `model` (or, on OpenCode, relying on the
-per-agent frontmatter pin without having checked it matches the intended tier) is itself a failure
-mode**, exactly like skipping a required input: the dispatch silently falls back to whatever model
-the calling session happens to be running on, defeating the entire cost/quality tiering this skill
-exists to enforce, with no visible error.
+Run the resolver, then do **exactly** what it returns. This is not optional prose — it is a
+checkpoint every dispatch call must pass before it is sent.
 
 Before sending **any** subagent/agent dispatch call, on whichever dispatch mechanism your host
 provides:
@@ -59,17 +39,75 @@ provides:
 1. Classify the work's complexity (`heavy` / `medium` / `light`) per **Complexity Levels** and
    **Classification Guardrails**, or read it off **Static Stage Assignments** if it is a fixed
    orchestrator-level stage.
-2. Resolve that complexity to a platform-specific model string per **Tier-to-Platform Model String
-   Mapping** for the host you are actually running on.
-3. Populate the dispatch call's model-selection parameter with that resolved string (Copilot CLI:
-   `model`; Claude Code: `model` on `Agent`; VS Code: the model argument to `runSubagent`) —
-   **before** issuing the call, not as a follow-up correction.
+2. Run the resolver **in this turn**, for this dispatch:
+
+   ```bash
+   node .arcus/bin/models.mjs resolve --complexity <heavy|medium|light> [--stage <agent-name>] \
+        --checkpoint .arcus/specs/<STORY_ID>/session-checkpoint.json
+   ```
+
+3. Branch on the **shape** of the JSON it prints — never on `mode`, which is provenance only:
+
+   | Signal in the JSON | What the caller does |
+   | --- | --- |
+   | `"dispatch": false` | Send the dispatch with **no model parameter at all** |
+   | `"model"` present | Use that string **verbatim** as the model parameter |
+   | `"models"` present | Pick the key for the host you are running on; use that value **verbatim** |
+
+   If `"models"` carries no key for your host: **warn and omit the model parameter.** At this layer
+   omitting is the conservative act — the session model is a known quantity — and reaching for a
+   neighbouring column is a guess.
+
 4. If effort is also relevant (review specialists, time-sensitive stages), resolve and set it too
    per **Effort Resolution** in the same pass.
 
-A dispatch call that reaches step 3 without a resolved model string populated is malformed and must
-not be sent. If you catch yourself about to omit it "just this once," that is the failure mode this
-section names — stop and resolve it first.
+**The failure mode this section names is *guessing*.** Recalling an identifier from memory, reusing
+one you saw earlier in the session or in another file, adapting one you "know" is current, or
+skipping step 2 because the answer looks obvious — each produces a string with no provenance, which
+either fails loudly on an unknown id or, worse, silently bills a run to a model nobody chose. A
+dispatch whose model parameter did not come out of this turn's resolver run is malformed and must
+not be sent. If you catch yourself about to fill it in from memory "just this once," that is the
+failure mode this section names — stop and run the resolver first.
+
+## Host Dispatch Mechanics
+
+Where the resolved value goes, and what **shape** each host's identifiers take. These are formats,
+never values — every value comes from the resolver:
+
+| Host | Where the value goes | Identifier format |
+| --- | --- | --- |
+| Copilot CLI | `model` on the `task` tool (which also takes `reasoning_effort` / `context_tier`) | `<model-slug>` |
+| VS Code | the model argument to `runSubagent` | `"<Model Name> (<vendor>)"` |
+| Claude Code | `model` on `Agent` | `<tier-word>` |
+| OpenCode | no per-dispatch parameter — pinned per agent in `model:` frontmatter at build time | `<provider>/<model-id>` |
+
+Copilot CLI is the one host where the parameter is **mandatory whenever the resolver returns a
+value**: it does not resolve tier words, it warns visibly and falls back. Copilot CLI and VS Code are
+different surfaces with different identifier formats — do not treat them as one key. On OpenCode an
+inheriting policy omits the frontmatter line entirely rather than emitting a placeholder. Full
+per-host mechanics live in [Running Across Hosts](/concepts/cross-host).
+
+## Configuring model policy
+
+The policy is data, not prose, and out of the box it **inherits**: every dispatch runs on the
+session's own model and `resolve` answers `"dispatch": false`. To tier a run, spell out the tiers
+you want (host↔model mapping is entirely user-supplied — there is no built-in preset); to force one
+model across a sprint, set a flat policy.
+
+`.arcus/bin/models.mjs` reads two places, highest first: the `model_policy` frozen into the story's
+session checkpoint at scaffold time (which pins a story to one policy for its whole run), then the
+`models` block of `.arcus/config.json`, then the inherit default. There are deliberately no env-var
+overrides and no `--model` flag. If a mid-story `.arcus/config.json` edit disagrees with the frozen
+policy, the resolver warns and the **frozen policy still wins** — adopt the new one with
+`checkpoint.sh set-model-policy`. Inspect what actually applies:
+
+```bash
+node .arcus/bin/models.mjs show
+```
+
+`show` prints the effective mode, its source, the bindings, and — per host — how to discover the
+identifiers that host accepts. That discovery step is why no model-version table needs to live here.
+A policy change takes effect on the next dispatch: no plan regeneration, no edit to this skill.
 
 ## Effort Resolution
 
@@ -92,7 +130,10 @@ ARCUS agents live at `agents/<name>.md` and always run as **isolated subagents**
 
 ## Static Stage Assignments
 
-Fixed complexity for orchestrator-level stages (does not vary per story):
+Fixed complexity for orchestrator-level stages (does not vary per story). **This table is
+documentation.** The binding copy is `STAGE_COMPLEXITY` in `.arcus/bin/models.mjs`, which `resolve
+--stage <name>` reads; a unit test holds the two in bijection, so read either and get the same
+answer.
 
 | Stage Subagent | Complexity | Rationale |
 | --- | --- | --- |
@@ -100,12 +141,16 @@ Fixed complexity for orchestrator-level stages (does not vary per story):
 | spec-finalizer | heavy | Multi-source synthesis, ambiguity resolution |
 | implementation-planner | heavy | Architectural decomposition, task design |
 | test-spec-compiler | medium | Pattern-following matrix generation |
+| subagent-task-dispatcher | medium | Per-task context scoping and protocol execution |
+| simplify-and-verify | medium | Convention-guided mutation behind a test gate |
 | spec-compliance-reviewer | medium | Checklist verification against spec |
 | code-quality-reviewer | medium | Pattern matching against conventions |
-| code-reviewer | heavy | Holistic review coordination, dedupe + judge |
+| code-reviewer (skill, not an agent — advisory) | heavy | Holistic review coordination, dedupe + judge |
 | security-reviewer | medium | Vulnerability detection in changed code |
 | performance-reviewer | medium | Hot-path / resource regression detection |
 | history-context-reviewer | medium | Git-history correlation over changed lines |
+| review-consolidator | medium | Dedupe + severity calibration over specialist findings |
+| context-drift-sync | medium | Diff-driven drift assessment over shared artifacts |
 | pull-request-builder | light | Template fill + summary |
 | repo-overview-discovery | heavy | Full repo scan, multi-area coordination |
 | flow-discovery | heavy | Code path tracing across multiple layers |
@@ -130,3 +175,4 @@ Heuristics for the implementation-planner and test-spec-compiler when assessing 
 - Is a straightforward assertion against a single method → **light eligible**
 - Requires mocking multiple dependencies or simulating failure scenarios → **medium**
 - Validates architectural constraints or cross-cutting behavior → **heavy**
+</content>

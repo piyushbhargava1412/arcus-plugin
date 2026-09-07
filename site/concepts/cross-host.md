@@ -44,7 +44,7 @@ developed against, **none of them were visible**.
 | `tools:` (allowlist) | **enforced** | **enforced** | translated to `permission:` | enforced |
 | `disallowedTools:` | honoured (camelCase **only**) | inferred inert (unmeasured) | translated to `permission: deny` | — |
 | `disallowed-tools:` (kebab) | **silently ignored** | silently ignored | read with fallback by the adapter | — |
-| `model:` tier word | **enforced** | **does not resolve tier words** — warns visibly and falls back; a valid slug is honoured | pinned per agent at build time | via `runSubagent` `model` param |
+| `model:` | always **`inherit`** — no model key emitted; per-dispatch `models.mjs resolve` is the binding | always **`inherit`** — no model key passed; a valid slug at the call site is honoured | always **`inherit`** — the bundle ships no model key; the plugin writes one at load time from *your* repo's policy | via `runSubagent` `model` param, resolved at dispatch |
 | `disable-model-invocation:` | ignored on agents, **honoured on skills** | **honoured on both** — removes the item entirely | — | — |
 | `layer:` | inert | inert | inert | inert |
 
@@ -53,6 +53,10 @@ Orchestrated dispatch **is** model invocation — the identical tool call from t
 so the flag cannot mean "orchestrator-only". Setting it made all 16 ARCUS agents undispatchable on
 Copilot CLI and made `model-strategy` unloadable on *both* hosts. Express the intent with
 `user-invocable: false` plus an orchestration-scoped `description:` instead.
+:::
+
+::: info Cross-host story continuity
+A story scaffolded on Claude Code, continued on Copilot CLI, and finished on OpenCode reads the same frozen model policy and each host picks its own column — no configuration change, no flag, no rescaffold. The resolver emits a host-keyed map; each session reads that map from the story's checkpoint and uses its own key verbatim. See [Model Policy](/guide/model-policy) for the resolver mechanics.
 :::
 
 ## Addressing an agent
@@ -65,7 +69,7 @@ works on both:
 | **Agent** (`agents/<name>.md`) | `arcus-plugin:<name>` | `arcus-plugin:<name>` |
 | **Skill** (`skills/<name>/SKILL.md`) | `arcus-plugin:<name>` | `<name>` (bare) |
 
-A **skill has no single literal that is correct on both** — `arcus-plugin:model-strategy` is an
+A **skill has no single literal that is correct on both hosts** — `arcus-plugin:model-strategy` is an
 *error* on Copilot CLI. This is why ARCUS prose writes `arcus:<name>`: a host-neutral reference
 token that lets the test harness validate every cross-reference against one spelling.
 
@@ -143,11 +147,30 @@ silently fallen back to route 2 as having lost its read-only guarantees.
 
 ## OpenCode is a build-time translation
 
-OpenCode does not read ARCUS's authoring format directly. `plugins/arcus-opencode` bundles a
-converted copy: `arcus:` prefixes are stripped, tier words are resolved to `provider/model-id` and
-pinned per agent, and `tools:` / `disallowedTools:` become a `permission:` block.
+OpenCode does not read ARCUS's authoring format directly. `plugins/arcus-opencode` bundles a converted copy: `arcus:` prefixes are stripped and `tools:` / `disallowedTools:` become a `permission:` block. Model selection is the one thing that is *not* baked in — see below.
 
-The default provider column is **GitHub Copilot** (enterprise license, flat cost). An **Amazon Bedrock** alternative (anthropic via `AWS_BEARER_TOKEN_BEDROCK`) resolves opus → `amazon-bedrock/anthropic.claude-opus-4-8`, sonnet → `amazon-bedrock/anthropic.claude-sonnet-4-6`, haiku → `amazon-bedrock/anthropic.claude-haiku-4-5-20251001-v1:0` (prefix a region inference profile, e.g. `eu.`/`global.`, if your account requires one).
+### Models: resolved at plugin load, not at build time
+
+OpenCode bakes an agent's model into its markdown frontmatter, so there is no per-dispatch hook to
+consult the way Claude Code and Copilot CLI have. **Plugin load in your repo is the equivalent
+moment.** The published tarball ships every agent with no `model:` key; then, at load, the plugin
+runs the same host-agnostic resolver every other host uses against *your* repo's policy, and writes
+the resolved `provider/model-id` into each staged agent under `.opencode/agents/`.
+
+That means OpenCode reads the **same `.arcus/config.json` `models` block** as every other host —
+no separate mechanism, no build flag, no republished package.
+
+- **No policy configured?** Every agent resolves to inherit, no `model:` key is written, and ARCUS
+  runs on your OpenCode session's default model. That is the baseline promise, and it needs no setup.
+- **Want tiering?** Add a `tiers` object with your `opencode` column to `.arcus/config.json` — see
+  [Model Policy](/guide/model-policy) for the shape. It takes effect on the next session, because the
+  pins are rewritten on every plugin load.
+- Resolution is **fail-open**: a malformed policy, or a policy naming other hosts but not `opencode`,
+  leaves the agent on the session default and logs a warning rather than breaking the session.
+- An agent whose complexity ARCUS doesn't recognise is deliberately left **unpinned** rather than
+  defaulted, so a heavy agent can never quietly end up on the light model.
+
+For a **Bedrock backend** (`AWS_BEARER_TOKEN_BEDROCK`), write your own `tiers` object with Bedrock model IDs in the `opencode` column. ARCUS ships no built-in Bedrock (or any other) preset; the model IDs for your account are yours to supply.
 
 ::: warning An absent permission key means *allowed*
 This is the OpenCode-shaped version of the same silent failure. The adapter therefore emits the
@@ -169,5 +192,6 @@ payload shapes) and `cd`s there before doing anything else.
 
 ## Related
 
+- [Model Policy](/guide/model-policy) — configuring which model each dispatch uses, and the resolver's cross-host column map
 - [The Capability Library](/concepts/capability-library) — the surface × tier model these fields hang off
 - [How ARCUS Works](/guide/how-it-works) — location independence and the bootstrap chain

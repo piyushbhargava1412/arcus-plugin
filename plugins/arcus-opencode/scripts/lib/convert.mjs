@@ -44,14 +44,6 @@ async function transformMarkdownFilesInPlace(dir) {
   }
 }
 
-// Tier word -> OpenCode provider/model-id (default provider: GitHub Copilot).
-// Canonical mapping is documented in plugins/arcus/skills/model-strategy.
-const TIER_TO_MODEL = {
-  opus: "github-copilot/claude-opus-4.8",
-  sonnet: "github-copilot/claude-sonnet-4.6",
-  haiku: "github-copilot/claude-haiku-4.5",
-}
-
 // ARCUS uses Claude color words; OpenCode `color` accepts only a #hex value or a
 // theme name (primary|secondary|accent|success|warning|error|info). Map the
 // Claude words to hex to preserve the authored intent.
@@ -202,7 +194,6 @@ export {
   parseAgentFrontmatter,
   stripArcusNamespace,
   transformMarkdownFilesInPlace,
-  TIER_TO_MODEL,
   COLOR_TO_HEX,
   FRONTMATTER_RE,
   NO_PERMISSION_EQUIVALENT,
