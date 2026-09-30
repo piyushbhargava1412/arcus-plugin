@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed — BREAKING (6.0.0): lean is the default profile
 
 ARCUS used to cost 4–5× the tokens and wall-time of a plain agentic CLI session for the same story.
-The token benchmark (`scripts/bench/before.json`) put one story at **$13.83 over 318 turns**: 28% on
+A `token-report.mjs` measurement of 5.0.0 on Claude Code put one story at **$13.83 over 318 turns**: 28% on
 the five-specialist review, 23% on main-thread orchestration, about $2.9 on the per-task
 dispatcher/refactor/spec-check loop, and $2.8 on brainstorm plus test plan. Most of that spend
 bought ceremony, not quality. 6.0 makes the cheap path the default and keeps the old pipeline as an
