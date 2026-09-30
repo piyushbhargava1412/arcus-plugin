@@ -1,6 +1,6 @@
 # The ARCUS Pipeline
 
-Understanding ARCUS's full Spec → Code → Pull Request stage map
+Understanding ARCUS's lean-by-default and full thorough Spec → Code → Pull Request stage maps
 
 <style>
 .pipeline-stage-table th,
@@ -25,27 +25,40 @@ for how the pipeline's stages are assembled from reusable, plug-n-play building 
 
 ## The Pipeline at a Glance
 
-ARCUS transforms a written user story into a reviewed, test-backed pull request through a sequence of
-stages, tracked in the session checkpoint by these ordered **stage keys**:
+ARCUS's default **lean** profile transforms a written user story through these ordered **stage keys**:
+
+```
+scaffold → plan → branch → task_1..N → code_review → context_sync → closure
+```
+
+Lean stages:
+
+1. **Scaffold → Plan** — `arcus-controller.mjs start` scaffolds and one `planner` writes
+   `plan.md` (Context, Decisions, Out of Scope, Open Questions, Dialogue Answers, and Tasks with
+   inline `- Test:` bullets).
+2. **Implementation** — creates the branch and implements each task; small plans use in-thread TDD,
+   otherwise one compact subagent works per task.
+3. **Code Review** — `gate.mjs run` runs configured or detected typecheck/lint/test/build checks,
+   scans secrets, classifies risk, and one `change-reviewer` writes the verdict.
+4. **Context Sync** — runs `context-drift-sync` only when `gate.mjs drift` detects structural drift.
+5. **Closure** — the controller writes the PR description and runs `pr.sh`.
+
+### Thorough profile (opt-in)
+
+The full 5.x pipeline is available with `--thorough` or `"profile": "thorough"` in
+`.arcus/config.json`. Its ordered keys are:
 
 ```
 scaffold → context_pack → spec_finalizer → plan → test_plan → branch → task_1..N → code_review → context_sync → closure
 ```
 
-The ten stages group into **six human-facing phases**:
-
-1. **Brainstorm** — Scaffold the workspace, build the context pack, finalize the spec, and produce
-   the implementation plan (`scaffold`, `context_pack`, `spec_finalizer`, `plan`) — **the only place
-   the pipeline stops for you**, and only if a stage raises open questions
-2. **Test Plan** — Design the verification matrix (`test_plan`)
-3. **Implementation** — Create the branch, then implement & verify each task (`branch`, `task_1..N`)
-4. **Code Review** — Two-tier holistic gate over the whole branch diff (`code_review`)
-5. **Context Sync** — Reconcile the shared `.context/` artifacts that the approved diff materially drifted (`context_sync`; automatic continuation)
-6. **Closure** — Create the pull request (`closure`)
+The detailed stage tables below document this **thorough** profile; they retain its context pack,
+grounded spec, test plan, per-task dispatcher and checks, specialist review/consolidation, and
+pull-request-builder closure.
 
 ```mermaid
 flowchart LR
-  S1["Brainstorm<br/><code>scaffold · context_pack · spec_finalizer · plan</code>"]
+  S1["Brainstorm<br/><code>scaffold · context_pack · spec_finalizer · plan</code><br/>(thorough)"]
   S1 --> S2["Test Plan<br/><code>test_plan</code>"]
   S2 --> S3["Implementation<br/><code>branch · task_1..N</code>"]
   S3 --> S4["Code Review<br/><code>code_review</code>"]
@@ -54,9 +67,10 @@ flowchart LR
   S4 -. "changes_requested (max 3 rounds)" .-> S3
 ```
 
-Stages produce specific artifacts. The pipeline's pausing behavior depends on mode (see [Three Modes, One Pipeline](/concepts/modes)): in **gated** mode, it pauses for open questions during Brainstorm and optionally at phase boundaries; in **intelligent** mode, only for Brainstorm questions; in **afk** mode, never. The rows below note each stage's handoff gate, where the orchestrator presents the just-finished stage's output. Within Brainstorm the
-`scaffold`, `context_pack`, `spec_finalizer`, and `plan` stages run back-to-back — `arcus-controller`
-runs context-pack-builder → spec-finalizer → implementation-planner directly — before any questions
+Stages produce specific artifacts. The pipeline's pausing behavior depends on mode (see [Profiles and Modes](/concepts/modes)): in **gated** mode, lean stops after `plan` by default and thorough can pause at its phase boundaries; in **intelligent** mode, only questions surface; in **afk** mode, nothing stops. The rows below document the thorough profile:
+In thorough Brainstorm, the `scaffold`, `context_pack`, `spec_finalizer`, and `plan` stages run
+back-to-back — `arcus-controller` runs context-pack-builder → spec-finalizer → implementation-planner
+directly — before any questions
 are surfaced.
 The Code Review stage can loop back to Implementation up to 3 times if changes are requested.
 
@@ -542,7 +556,7 @@ If Code Review returns `changes_requested`:
 
 ---
 
-## Quick Stage Reference
+## Thorough Profile: Quick Stage Reference
 
 | Phase | Stage key(s) | Entry / resume phrase | Exit condition |
 |-------|--------------|-----------------------------|----------------|

@@ -1,221 +1,148 @@
 ---
 name: arcus-controller
 description: >
-  The single orchestrator that drives a story from spec to pull
-  request, in one of three modes: `afk` (never stops), `intelligent` (stops only for a genuine
-  open question — this is cloud's default behavior), or `gated` (intelligent's question gate
-  plus configurable phase-boundary stops). It is state-driven: it reads the session checkpoint
-  and runs every remaining stage in the same canonical order. All three modes run every stage
-  back-to-back to the pull request; they differ only in whether, and where, the pipeline pauses
-  for a human. Output is milestone-only. Activates on "arcus <STORY>" (default), "plan <STORY>"
-  → gated; "arcus <STORY> --intelligent" → intelligent; "forge <STORY>", "afk <STORY>", "run afk
-  on <STORY>", or "arcus <STORY> --afk" → afk; "resume <STORY>" → continue from the first
-  incomplete stage in whatever mode the checkpoint persists.
+  The single orchestrator that drives a story from spec to pull request. Two profiles: `lean`
+  (default — one planner, a coding loop, a deterministic gate plus one reviewer, then the PR: the
+  fewest hops that still yield tested commits and a clean PR) and `thorough` (`--thorough` — the full context-pack, spec,
+  test-plan and five-specialist review pipeline). Three modes, orthogonal to profile: `afk` (never
+  stops), `intelligent` (stops only for a genuine open question — cloud's default), `gated` (plus
+  configurable phase-boundary stops). State-driven from the session checkpoint; milestone-only
+  output. Activates on "arcus <STORY>" (default), "plan <STORY>" → gated; "arcus <STORY>
+  --intelligent" → intelligent; "forge <STORY>", "afk <STORY>", "run afk on <STORY>", or "arcus
+  <STORY> --afk" → afk; add "--thorough" to any of these for the full pipeline; "resume <STORY>" →
+  continue from the first incomplete stage in the persisted mode and profile.
 layer: orchestrator
 standalone: false
 argument-hint: <STORY>
 ---
 
-# Overview
+# ARCUS Controller
 
-This is the **single orchestrator** that drives a story from spec to pull request. All three modes
-run the **same canonical stage sequence**; only the gating differs:
-
-- **afk**: open questions are recorded but never surfaced, so nothing ever stops.
-- **intelligent**: Brainstorm open questions are surfaced **once, as a batch**, then the run
-  continues straight through. No phase-boundary gates fire.
-- **gated** (default): everything `intelligent` does, **plus** developer-configurable
-  phase-boundary gates based on the checkpoint's `stop_after` set. New `gated` stories default to
-  all three boundaries unless `.arcus/config.json` narrows or disables them.
+Drives one story from spec to PR. The next action is **always a pure function of the checkpoint**,
+never of conversation memory. Deterministic work is delegated to `.arcus/bin/*` helpers. If a helper
+cannot run, fail the stage rather than improvising its logic.
 
 ## Activation
 
-The activation trigger fixes the mode, which is then **persisted on the checkpoint** and read back
-on resume (never re-inferred):
+| User says | Mode | Profile |
+|---|---|---|
+| "arcus <STORY>", "plan <STORY>" | `gated` | `lean` |
+| "arcus <STORY> --intelligent" | `intelligent` | `lean` |
+| "forge <STORY>", "afk <STORY>", "run afk on <STORY>", "arcus <STORY> --afk" | `afk` | `lean` |
+| any of the above + "--thorough" | as above | `thorough` |
+| "resume <STORY>" | persisted | persisted |
 
-| User says | Mode | Checkpoint value | Action |
-|-----------|------|------------------|--------|
-| "arcus <STORY>" (default), "plan <STORY>" | gated | `gated` | Begin at Stage 0 (or resume from the checkpoint). |
-| "arcus <STORY> --intelligent" | intelligent | `intelligent` | Begin at Stage 0 (or resume from the checkpoint). |
-| "forge <STORY>", "afk <STORY>", "run afk on <STORY>", "arcus <STORY> --afk" | afk | `afk` | Begin at Stage 0 (or resume from the checkpoint). |
-| "resume <STORY>" | persisted | — | Continue from the first incomplete stage in the checkpoint's mode (does not change the mode). |
+Mode and profile are fixed at scaffold and **persisted on the checkpoint** (profile may also come
+from `.arcus/config.json` → `profile`). They are never re-inferred on resume. A checkpoint with no
+`profile` field predates profiles and runs as `thorough`. If `<STORY>` is omitted and exactly one
+story is in progress under `.arcus/specs/`, use it; otherwise ask.
 
-If `<STORY>` is omitted and exactly one in-progress story exists under `.arcus/specs/`, use it;
-otherwise ask which story.
+## Output: milestones only
 
-## Owned state
-
-The controller owns:
-
-- the session checkpoint (stage keys enumerated below)
-- the planned/realized branch name
-- the loopback cap (`review_round` max 3)
-
-The next action is a pure function of the checkpoint. Read it first, never reason from conversation
-memory, and always check top-level `current_status` before the per-stage walk.
-
-## Output Discipline
-
-Emit milestone lines only — no filler ("Let me…", "Now I'll…", "Perfect!"). The stream is the same
-across all three modes; only the Brainstorm question batch and `gated` phase-boundary gates differ.
-
+No filler. Emit only these lines:
 ```text
-[Story] <STORY_ID> (<mode>)
-[Brainstorm] Complete: <N> tasks, <M> decisions
+[Story] <STORY_ID> (<mode>, <profile>)
+[Plan] Complete: <N> tasks, <M> decisions, <T> test cases        (lean)
+[Brainstorm] Complete: <N> tasks, <M> decisions                  (thorough)
+[TestPlan] Complete: <N> test cases                              (thorough)
+[Questions] …                                                    (open-questions protocol)
 [Gate] <Phase group> complete — say "resume <STORY_ID>" to continue.
-[TestPlan] Complete: <N> test cases
-[Code] Complete: <N> files changed, <M> tests passing
-[Review] <verdict>: <C> critical, <W> warning, <S> suggestion
-[Context] <K artifacts updated, J skipped — or "no material drift">
+[Code] Complete: <N> tasks, <M> files changed
+[Review] <verdict>: critical <C>, warning <W>, suggestion <S>
+[Context] <K artifacts updated — or "no material drift">
 [Complete] PR deployed: <link>
 ```
 
-If Brainstorm raises no open questions and `stop_after` is absent or empty, the run never pauses at
-all: there is nothing to stop for.
+## Stage 0 (every run, including resumes)
 
-## Canonical Pipeline
+1. `bash "$ARCUS_HOME"/scripts/locate.sh` from the repo root. It re-stages `.arcus/bin/` and writes
+   `.arcus/env`. If `ARCUS_HOME` is unset, use the plugin root that holds this skill: the directory two
+   levels above this `SKILL.md`. Never guess another install path, because it may be a different version.
+2. `node .arcus/bin/arcus-controller.mjs start <story.md|STORY_ID> --mode <afk|intelligent|gated> [--thorough]`
+   (on `resume`, pass only the id). This one call scaffolds, or no-ops on an existing checkpoint,
+   completes `scaffold`, and returns JSON with `storyId`, `mode`, `profile`, `stopAfter`, the branch
+   fields, and the next `decision`. Always pass `--mode` explicitly on a fresh start: a cloud run
+   must never default into `gated`. `branchMode: adopted` means the worktree's branch *is* the story
+   branch (`branch` is pre-completed). `existing` means this is a resume.
+3. Emit `[Story]`, then act on `decision.kind`:
+   - `run_stage` → run that stage (table below), then continue with the next stage in order.
+   - `await_questions` → re-emit the `[Questions]` block ([`references/open-questions-protocol.md`](references/open-questions-protocol.md)) and stop.
+   - `loopback` → [`references/loopback-protocol.md`](references/loopback-protocol.md).
+   - `stop_failed` → report `stage`/`reason` and stop. `complete` → report it and stop.
 
-Run stages strictly in this order, skipping any whose checkpoint status is already `complete`.
+Within one run, do not call `decide` between stages; just follow the stage list below. Only on a later
+resume where you need the decision again, use
+`node .arcus/bin/arcus-controller.mjs decide --checkpoint .arcus/specs/<STORY_ID>/session-checkpoint.json`.
+The full rules are in [`references/resumption-protocol.md`](references/resumption-protocol.md).
 
-| #  | Stage key(s)       | Phase group    | Owner                                           |
-|----|--------------------|----------------|-------------------------------------------------|
-| 1  | `scaffold`         | Scaffold       | `scaffold.sh`                                   |
-| 2  | `context_pack`     | Brainstorm     | `arcus:context-pack-builder`                    |
-| 3  | `spec_finalizer`   | Brainstorm     | `arcus:spec-finalizer`                          |
-| 4  | `plan`             | Brainstorm     | `arcus:implementation-planner`                  |
-| 5  | `test_plan`        | Test Plan      | `arcus:test-spec-compiler`                      |
-| 6  | `branch`           | Implementation | `branch.sh` (via `arcus:implementation-runner`) |
-| 7  | `task_1`..`task_N` | Implementation | `arcus:implementation-runner`                   |
-| 8  | `code_review`      | Code Review    | `arcus:code-reviewer`                           |
-| 9  | `context_sync`     | Closure        | `arcus:context-drift-sync`                      |
-| 10 | `closure`          | Closure        | `arcus:pull-request-builder` + `pr.sh`          |
+## Stages
 
-## Helper Scripts
+Run in order, skipping any already `complete`. `scaffold` is done by `start`. Read a stage's file
+only when you reach it. **Follow only the list for the checkpoint's `profile`.**
 
-Call these via shell for deterministic operations. They are staged into the active workspace at
-`.arcus/bin/`.
+### Lean (`profile: lean`)
 
-**Stage 0 of every run, before any other script: re-stage them.** Run
-`bash "$ARCUS_HOME"/scripts/locate.sh` from the repo root — or, if `ARCUS_HOME` is unset, the same
-script from wherever the plugin is installed. It finds the newest install, runs the bootstrap, and
-prints the resolved `ARCUS_HOME`.
+1. `plan`: [`references/lean-plan.md`](references/lean-plan.md). It dispatches the `planner` agent.
+2. `branch`, `task_1..N`: [`references/lean-loop.md`](references/lean-loop.md), in-thread. Then emit
+   `[Code]` and run the phase-boundary gate for `implementation`.
+3. `code_review`: [`references/lean-review.md`](references/lean-review.md). It runs `gate.mjs` and
+   dispatches the `change-reviewer` agent.
+4. `context_sync`, `closure`: [`references/lean-closure.md`](references/lean-closure.md).
 
-After it has run, `.arcus/bin/` is authoritative and `.arcus/env` carries `ARCUS_HOME` +
-`ARCUS_VERSION`.
+In lean, **never** invoke the `arcus:implementation-runner` or `arcus:code-reviewer` skills. **Never**
+dispatch `subagent-task-dispatcher`, `simplify-and-verify`, `review-consolidator`,
+`context-pack-builder`, `spec-finalizer`, `implementation-planner`, `test-spec-compiler` or
+`pull-request-builder`. Those are the thorough path, and each one multiplies cost.
 
-| Script                                                                                             | Usage                                                             | Purpose                                                                                                 |
-|----------------------------------------------------------------------------------------------------|-------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------|
-| `"$ARCUS_HOME"/scripts/locate.sh`                                                                  | Prints the resolved `ARCUS_HOME`                                  | **Run first, every run.** Finds the newest install, re-stages `.arcus/bin/`, writes `.arcus/env`        |
-| `.arcus/bin/extract_story_id.sh <story.md>`                                                        | Outputs `STORY_ID: xxx`                                           | Extract story identifier                                                                                |
-| `.arcus/bin/scaffold.sh <story.md> [--mode afk] [--use-current-branch\|--new-branch] [--base <b>]` | Creates folder + `story.md` + inits checkpoint                    | Workspace scaffold; records the **planned** branch and echoes `BRANCH_MODE: new\|adopted\|existing`     |
-| `.arcus/bin/branch.sh <story-id>`                                                                  | Creates the git branch from the planned name                      | Deferred branch realization                                                                             |
-| `.arcus/bin/commit.sh <story-id> <message>`                                                        | Stages + commits                                                  | Conventional commit                                                                                     |
-| `.arcus/bin/pr.sh <story-id>`                                                                      | Push + create PR (or update if one already exists for the branch) | Closure                                                                                                 |
-| `.arcus/bin/checkpoint.sh <action> <story-id> [args]`                                              | Manage state                                                      | init / read / complete / set-status / reopen / set-mode / set-branch / set-tasks / await-handoff / fail |
-| `.arcus/bin/arcus-controller.mjs <command>`                                                        | Deterministic controller helper                                   | Canonical checkpoint walk, question parsing, milestone counts, gate membership, loopback cap            |
-| `.arcus/bin/models.mjs <resolve\|show>`                                                            | Model resolution helper                                           | Resolve a model string for a given complexity/stage from the policy; show the active policy             |
+### Thorough (`profile: thorough`)
 
-Stage status values: `pending | in_progress | awaiting_handoff | complete | needs_rework`.
-Top-level `current_status` values: `IN_PROGRESS | AWAITING_HANDOFF | COMPLETE | FAILED`.
+1. `context_pack`, `spec_finalizer`, `plan`: [`references/brainstorm.md`](references/brainstorm.md).
+2. `test_plan`: [`references/test-plan.md`](references/test-plan.md).
+3. `branch`, `task_1..N`: read and follow the `arcus:implementation-runner` skill in-thread with
+   `STORY_ID`. Then emit `[Code]` and run the phase-boundary gate for `implementation`.
+4. `code_review`: read and follow the `arcus:code-reviewer` skill in-thread.
+5. `context_sync`: [`references/context-sync.md`](references/context-sync.md).
+6. `closure`: [`references/closure.md`](references/closure.md).
 
-> **Dispatching an ARCUS agent.** Agents live at `$ARCUS_HOME/agents/<name>.md` and always run as
-> isolated subagents. Use the **first** that your host offers: (1) a **registered subagent type**
-> ending in `<name>` — Claude Code and GitHub Copilot CLI both expose these as `arcus-plugin:<name>`,
-> and the host then enforces the agent's `tools:` frontmatter; (2) otherwise a **generic subagent**
-> whose prompt opens *"Read and follow the agent spec at `$ARCUS_HOME/agents/<name>.md`"*, on hosts
-> with no registry — there the tool restrictions are only advisory. Full rule:
-> `arcus:model-strategy` § Agent Resolution.
->
-> **Route (2) constraint**: expand `$ARCUS_HOME` to its absolute path before embedding it in the
-> child's prompt — never hand a subagent the literal `$ARCUS_HOME` string.
+### After Code Review (both profiles)
 
-## Deterministic controller runtime
+Code Review writes `review.md` and returns `VERDICT:`. Run
+`.arcus/bin/checkpoint.sh complete <STORY_ID> code_review` and emit `[Review]`.
+- `approved`: run the phase-boundary gate for `code_review`, then Context Sync.
+- `changes_requested`: [`references/loopback-protocol.md`](references/loopback-protocol.md),
+  automatically, with no confirmation, up to the profile's round cap (lean 2, thorough 3).
 
-The bulky, mechanical controller logic is no longer prose-only. Treat
-`.arcus/bin/arcus-controller.mjs` as authoritative for:
+The phase-boundary gate is [`references/phase-boundary-gate-protocol.md`](references/phase-boundary-gate-protocol.md).
 
-- resume/current-status precedence
-- artifact reconciliation onto stale `pending` / `in_progress` stages
-- open-question parsing (`## Open Questions` / `## Dialogue Answers`)
-- milestone counts (`tasks`, `decisions`, `testCases`)
-- phase-boundary membership checks
-- loopback cap checks
+## Dispatching an agent
 
-Commands:
+Agents live at `$ARCUS_HOME/agents/<name>.md` and always run as isolated subagents. Prefer the host's
+registered type `arcus-plugin:<name>` (Claude Code, Copilot CLI). Otherwise, use a generic subagent whose
+prompt opens *"Read and follow the agent spec at `<absolute ARCUS_HOME>/agents/<name>.md`"*. Never
+pass a literal `$ARCUS_HOME`. Before every dispatch, run
+`node .arcus/bin/models.mjs resolve --complexity <c> --stage <name> --checkpoint <checkpoint>`:
+`dispatch:false` → omit the model parameter; `model` → use it verbatim; `models` → use your host's key.
+Details are in `arcus:model-strategy` § Agent Resolution.
 
-| Command                                                                                               | Purpose                                                               |
-|-------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------|
-| `node .arcus/bin/arcus-controller.mjs decide --checkpoint <path>`                                     | Decide the next controller action from checkpoint + sibling artifacts |
-| `node .arcus/bin/arcus-controller.mjs questions --artifact <path>`                                    | Parse questions + unanswered ids from an artifact                     |
-| `node .arcus/bin/arcus-controller.mjs counts --plan <path> --grounded-spec <path> --test-plan <path>` | Count milestone metrics                                               |
-| `node .arcus/bin/arcus-controller.mjs gate --mode <mode> --stop-after <csv> --phase-group <key>`      | Evaluate whether a phase-boundary gate fires                          |
-| `node .arcus/bin/arcus-controller.mjs loopback --review-round <N>`                                    | Enforce the loopback cap                                              |
-| `node .arcus/bin/models.mjs resolve --complexity <complexity> [--stage <name>] --checkpoint <path>`   | Resolve a model string for a complexity/stage from the checkpoint policy |
-| `node .arcus/bin/models.mjs show [--checkpoint <path>]`                                               | Print the active model policy as JSON or human-readable text            |
+Pass artifacts **by path**, never by pasting them. Subagents return status lines, not reports.
 
-If the helper cannot be read or run, fail the stage — do **not** reconstruct the state machine from
-memory.
+## Helpers (`.arcus/bin/`)
 
-## Execution Pipeline
+| Script | Use |
+|---|---|
+| `arcus-controller.mjs start\|decide\|questions\|counts\|gate\|loopback` | state machine, question parsing, milestone counts, gate membership, loopback cap |
+| `checkpoint.sh complete\|set-status\|set-tasks\|reopen\|await-handoff\|fail\|read <STORY_ID> …` | checkpoint mutations |
+| `gate.mjs run\|drift --story <STORY_ID>` | lean deterministic review gate / context-drift check |
+| `branch.sh`, `commit.sh`, `pr.sh <STORY_ID>` | branch realization, commits, PR open/update |
+| `models.mjs resolve\|show` | model policy |
 
-Stage instructions live either in `references/` or explained inline. Stage refs assume the **Dispatching an ARCUS agent** block above and call the `.mjs` helper where the work is purely deterministic.
+Stage statuses: `pending | in_progress | awaiting_handoff | complete | needs_rework`. Top-level
+`current_status`: `IN_PROGRESS | AWAITING_HANDOFF | COMPLETE | FAILED`.
 
-### Stage 0: Scaffold
+## Errors
 
-Read [`references/stage-0-scaffold.md`](references/stage-0-scaffold.md) and follow it in this thread.
-
-### Brainstorm (context-pack-builder, spec-finalizer, implementation-planner)
-
-Read [`references/brainstorm.md`](references/brainstorm.md) and follow it in this thread.
-
-### Test Plan (test-spec-compiler)
-
-Read [`references/test-plan.md`](references/test-plan.md) and follow it in this thread.
-
-### Implementation (TDD implementation-runner)
-
-Do **not** re-implement the per-task TDD loop, branch realization, or loopback here.
-
-1. **Read and follow the `arcus:implementation-runner` skill** in-thread, passing `STORY_ID` and the
-   persisted `mode` through unchanged.
-2. **Output**: emit `[Code] Complete: <N> files changed, <M> tests passing`, then follow
-   [`references/phase-boundary-gate-protocol.md`](references/phase-boundary-gate-protocol.md) for the
-   `implementation` phase-group key — once, here, never per task and never after `branch`.
-
-### Code Review (validation through specialist reviewers)
-
-1. **Run the review** — `code-reviewer` is a coordinator, so read and follow the
-   `arcus:code-reviewer` skill in-thread (Story ID: `<STORY_ID>`, output
-   `.arcus/specs/<STORY_ID>/review.md`). It writes `review.md` and returns
-   `VERDICT: approved | changes_requested`.
-2. Verify `review.md` exists, capture the verdict + counts (`critical`, `warning`, `suggestion`),
-   then `.arcus/bin/checkpoint.sh complete <STORY_ID> code_review`.
-3. **Decide on the verdict**:
-    - **approved**: emit `[Review] approved: …`, then follow
-      [`references/phase-boundary-gate-protocol.md`](references/phase-boundary-gate-protocol.md) for
-      the `code_review` phase-group key.
-    - **changes_requested**: emit `[Review] changes_requested: …`, then follow
-      [`references/loopback-protocol.md`](references/loopback-protocol.md) automatically, bounded by
-      the review-round cap. No confirmation: the findings are the reviewer's, the fix-tasks are
-      mechanical, and a human who disagrees reviews the result at the PR.
-
-### Context Sync (detects drift and reconciles)
-
-Read [`references/context-sync.md`](references/context-sync.md) and follow it in this thread.
-
-### Closure (open pull request)
-
-Read [`references/closure.md`](references/closure.md) and follow it in this thread.
-
-## Error Handling
-
-- If a helper script fails (non-zero exit): retry once. If it still fails, run
-  `.arcus/bin/checkpoint.sh fail <STORY_ID> <stage> "<reason>"`, output `[ERROR] <stage>: <reason>`,
-  and stop.
-- If a stage/protocol instruction file under `references/` cannot be read: run
-  `.arcus/bin/checkpoint.sh fail <STORY_ID> <stage> "stage instructions missing"`, then stop with
-  `[ERROR] <stage>: stage instructions missing`. Never reconstruct the stage from memory.
-- If a stage's required output file is missing after its subagent returns: run
-  `.arcus/bin/checkpoint.sh fail <STORY_ID> <stage> "produced no output"`, then stop with
-  `[ERROR] <stage>: <agent> produced no output`.
-- Do **not** advance into the next stage if the current stage's required artifacts are missing.
+- A helper exits non-zero: retry once. If it fails again, run
+  `.arcus/bin/checkpoint.sh fail <STORY_ID> <stage> "<reason>"`, emit `[ERROR] <stage>: <reason>`, and stop.
+- A stage's instruction file is unreadable, or its required artifact is missing after the stage ran:
+  `fail` the stage the same way. Never reconstruct a stage from memory, and never advance past a
+  missing artifact.

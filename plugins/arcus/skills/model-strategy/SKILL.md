@@ -156,6 +156,8 @@ answer.
 | flow-discovery | heavy | Code path tracing across multiple layers |
 | test-pattern-discovery | medium | Pattern extraction, template-following |
 | design-pattern-discovery | heavy | Source-wide convention + anti-pattern synthesis |
+| planner | heavy | Lean profile: grounding, decisions and task design in one pass |
+| change-reviewer | medium | Lean profile: single holistic review + verdict over a gated diff |
 
 ## Classification Guardrails
 

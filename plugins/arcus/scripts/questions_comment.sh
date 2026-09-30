@@ -94,13 +94,15 @@ function parseOpen(md) {
 }
 const answeredIds = new Set();
 const questions = [];
-for (const [file, heading] of [["grounded-spec.md","Dialogue Answers"],["plan.md","Design Dialogue Answers"]]) {
+// plan.md carries "Design Dialogue Answers" (thorough) or "Dialogue Answers" (lean planner).
+for (const [file, headings] of [["grounded-spec.md",["Dialogue Answers"]],["plan.md",["Design Dialogue Answers","Dialogue Answers"]]]) {
   const p = path.join(dir, file);
   if (!fs.existsSync(p)) continue;
   const md = fs.readFileSync(p, "utf8");
   for (const q of parseOpen(md)) questions.push(q);
   // Any id mentioned anywhere in the answers section counts as answered.
-  for (const m of section(md, heading).matchAll(/\b([A-Z]{2}-\d+)\b/g)) answeredIds.add(m[1]);
+  for (const heading of headings)
+    for (const m of section(md, heading).matchAll(/\b([A-Z]{2}-\d+)\b/g)) answeredIds.add(m[1]);
 }
 const open = questions.filter(q => !answeredIds.has(q.id));
 if (!open.length) { process.stdout.write("0"); process.exit(0); }

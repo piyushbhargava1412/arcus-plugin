@@ -14,7 +14,7 @@ Fold them in exactly as the Open-Questions Protocol specifies:
 1. Re-dispatch the stage that is `awaiting_handoff`, passing the contents of `inbox.md` verbatim as its `answers` input.
 2. That skill maps each reply fragment to a question id, records the mapping in its `## Dialogue Answers` section with the user's **verbatim** wording, and does NOT re-derive the ambiguity list it already resolved.
 3. Only once every open question is answered may that stage be marked `complete`.
-4. Then continue forward through the remaining **Brainstorm** stages.
+4. Then continue forward through the remaining pre-implementation stages (lean: none after `plan`; `--thorough`: the rest of Brainstorm).
 
 Then continue the pipeline as far as it will go, all the way to the pull request.
 

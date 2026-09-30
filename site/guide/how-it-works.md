@@ -59,13 +59,18 @@ Skills reference other ARCUS skills **by name**, not by path:
 
 The agent runtime resolves these names to the appropriate skill within the plugin, maintaining portability across installation locations.
 
-## Three Modes: gated, intelligent, afk
+## Two Profiles, Three Modes: lean, thorough × gated, intelligent, afk
 
 ARCUS is a **three-tier capability library** — atomic capabilities, thin coordinators, and one
 stateful `arcus:arcus-controller` orchestrator that owns the pipeline (checkpoint, branch, stage
-gates). See [The Capability Library](/concepts/capability-library) for the full breakdown. That one
-orchestrator runs the same pipeline in three modes — all using the same stage keys and the same
-helper scripts. For a detailed comparison, see [Three Modes, One Pipeline](/concepts/modes).
+gates). See [The Capability Library](/concepts/capability-library) for the full breakdown.
+
+The default **lean** profile uses `scaffold → plan → branch → task_1..N → code_review →
+context_sync → closure`: one planner, compact implementation, a deterministic `gate.mjs run`, and
+one `change-reviewer`. The **thorough** profile is the full 5.x pipeline, opt-in with `--thorough`
+or `"profile": "thorough"` in `.arcus/config.json`. Both profiles use the same three modes —
+`gated`, `intelligent`, and `afk` — which control pausing, not the amount of ceremony. For the
+detailed comparison, see [Profiles and Modes](/concepts/modes).
 
 All three modes reuse the same `arcus:implementation-runner` loop driver for the Implementation stage, the
 same helper scripts, and the same checkpoint stage keys
@@ -76,14 +81,16 @@ same helper scripts, and the same checkpoint stage keys
 
 ## Workspace Structure
 
-Each story execution creates a working area under `.arcus/specs/[STORY-ID]/` in your repository:
+Each story execution creates a working area under `.arcus/specs/[STORY-ID]/` in your repository.
+Lean stories contain `plan.md`, while thorough stories additionally contain the context pack,
+grounded spec, and test plan:
 
 - `session-checkpoint.json` — Resumable per-stage execution state (ordered stage keys + the planned/realized branch fields)
 - `story.md` — Canonical copy of the input story
-- `context-pack.md` — Compact, token-efficient context bundle
-- `grounded-spec.md` — Grounded story decisions (written by spec-finalizer)
-- `plan.md` — Design deliberation plus the atomic task list (written by implementation-planner)
-- `test-plan.md` — Generated verification matrix
+- `context-pack.md` — Compact, token-efficient context bundle (thorough)
+- `grounded-spec.md` — Grounded story decisions (thorough)
+- `plan.md` — Lean planner output, or thorough design deliberation plus task list
+- `test-plan.md` — Generated verification matrix (thorough)
 - `review.md` — Holistic code-review report
 - `PR_DESCRIPTION.md` — Final pull request body
 

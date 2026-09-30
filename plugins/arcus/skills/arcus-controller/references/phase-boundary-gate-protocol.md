@@ -8,15 +8,17 @@ three named boundaries the checkpoint's `stop_after` set retains.
 Use `node .arcus/bin/arcus-controller.mjs gate --mode <mode> --stop-after <csv> --phase-group <key>`
 as the authoritative membership test once you have loaded `mode` + `stop_after` from the checkpoint.
 
-It applies at **exactly three transitions**, and nowhere else:
+It applies only at the transitions below, and nowhere else. Lean stories have `plan`,
+`implementation` and `code_review`. Thorough stories have `test_plan`, `implementation` and `code_review`.
 
 | Transition | Phase-group key | Call site |
 |---|---|---|
-| Test Plan → Implementation | `test_plan` | [`test-plan.md`](test-plan.md) step 2 |
+| Plan → Implementation (lean) | `plan` | [`lean-plan.md`](lean-plan.md) step 5 |
+| Test Plan → Implementation (thorough) | `test_plan` | [`test-plan.md`](test-plan.md) step 2 |
 | Implementation → Code Review | `implementation` | `SKILL.md` → **Implementation** |
 | Code Review (`approved`) → Context Sync | `code_review` | `SKILL.md` → **Code Review** |
 
-Run this at each of the three transitions:
+Run this at each of those transitions:
 
 1. **Membership test — is this boundary gated?** Read `stop_after` from the checkpoint
    (`.arcus/bin/checkpoint.sh read <STORY_ID>`), never from `.arcus/config.json` — that file is
@@ -25,7 +27,7 @@ Run this at each of the three transitions:
    set: order is ignored, duplicates collapse, and an absent/empty list means no phase-boundary gate
    ever fires, even in `gated` mode.
 2. **Raise the gate — in exactly this order**, then stop:
-   1. Ensure the just-finished **checkpoint stage** is already `complete`. For `test_plan` and
+   1. Ensure the just-finished **checkpoint stage** is already `complete`. For `plan`, `test_plan` and
       `code_review` that is done in the stage instructions; for `implementation` there is no extra
       call here because `arcus:implementation-runner` already marked `branch` and every `task_i`
       complete.
@@ -49,7 +51,7 @@ This is the deliberate inverse of the Open-Questions Protocol:
 | Call to use | `set-status <stage> awaiting_handoff` | `await-handoff` (top-level only) |
 | Waiting on | an answer that still changes the artifact | a human look at finished work |
 
-**Constraint — live transitions only.** This protocol is invoked only from the three call sites
+**Constraint — live transitions only.** This protocol is invoked only from the call sites
 above, immediately after the controller itself finished that phase group in the **current** run. It is
 never evaluated by the Resumption Protocol's stage walk, and never fires for a stage that was already
 `complete` when the run started.

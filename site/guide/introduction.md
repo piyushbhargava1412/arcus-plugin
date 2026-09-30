@@ -1,12 +1,16 @@
 # Introduction
 
-**ARCUS (Any Repository Can Use Spec-driven development)** is an agentic SDLC factory that transforms written user stories into reviewed, test-backed pull requests. Delivered as an installable agent-skills plugin for GitHub Copilot, Claude Code, VS Code, and OpenCode, ARCUS orchestrates a complete Spec → Code → Pull Request pipeline through one stateful orchestrator in three modes: gated (with optional phase gates), intelligent (cloud's default), and afk (hands-off).
+**ARCUS (Any Repository Can Use Spec-driven development)** is an agentic SDLC factory that transforms written user stories into reviewed, test-backed pull requests. Delivered as an installable agent-skills plugin for GitHub Copilot, Claude Code, VS Code, and OpenCode, ARCUS orchestrates a Spec → Code → Pull Request pipeline through one stateful orchestrator. Its default **lean** profile is orthogonal to the three modes (gated, intelligent, and afk); the full 5.x pipeline remains available as the opt-in **thorough** profile.
 
 ## What is ARCUS?
 
-ARCUS is your AI-powered software development lifecycle factory. It takes a user story written in markdown and runs it through a six-phase pipeline (`Brainstorm → Test Plan → Implementation → Code Review → Context Sync → Closure`, spanning ten ordered stages) that produces production-ready code, complete with tests and code review, ending with an opened pull request.
+ARCUS is your AI-powered software development lifecycle factory. By default it takes a markdown story
+through `scaffold → plan → branch → task_1..N → code_review → context_sync → closure`, producing
+tested, reviewed code and an opened pull request. Add `--thorough` to use the complete 5.x
+Brainstorm/Test Plan pipeline and its specialist review ceremony.
 
-The system is built around a repository-agentifier and a single stateful orchestrator that runs the pipeline in three modes:
+The system is built around a repository-agentifier and a single stateful orchestrator with two
+profiles (lean and thorough) and three modes:
 
 ### `repo-agentifier`
 
@@ -32,9 +36,8 @@ orchestrator runs the same pipeline in **three modes**:
 
 ### Gated (default) — `arcus-controller`
 
-The **default, user-driven** mode. Start with `arcus <STORY>`. The
-`arcus-controller` orchestrator surfaces any Brainstorm open questions (all at once), and can also
-pause at optional phase boundaries per `.arcus/config.json` (defaults to pausing after Test Plan, Implementation, and Code Review). Answer the questions and it runs to the pull request. You can:
+The default, user-driven mode. Start with `arcus <STORY>`. In lean, the default stop is after
+`plan`; in thorough, it remains after `test_plan`, `implementation`, and `code_review`. You can:
 
 - Answer the open questions in your own words, all in one go
 - Configure phase-boundary gates via `.arcus/config.json`

@@ -1,8 +1,22 @@
-# Three Modes, One Pipeline
+# Profiles and Modes, One Pipeline
 
-ARCUS runs the same [stage pipeline](/concepts/pipeline) in one of **three modes**. All three are
+ARCUS has two orthogonal profiles and **three modes**. All are
 driven by the single stateful `arcus:arcus-controller` orchestrator, which owns the session
 checkpoint, branch, and stage gates.
+
+## Profiles
+
+- **`lean` (default)** — `scaffold → plan → branch → task_1..N → code_review → context_sync →
+  closure`. One `planner` writes `plan.md`; implementation is in-thread for small plans or uses one
+  compact subagent per task. `gate.mjs run` performs deterministic checks and one `change-reviewer`
+  gives the holistic verdict. Context sync is conditional on structural drift, and the PR description
+  is written in-thread.
+- **`thorough`** — the full 5.x pipeline, opt-in with `--thorough` on any trigger or
+  `"profile": "thorough"` in `.arcus/config.json`. It retains context pack, grounded spec, test plan,
+  per-task dispatcher and checks, specialist review/consolidation, and pull-request-builder closure.
+
+A checkpoint without `profile` resumes as `thorough` for 5.x compatibility. In gated mode, lean
+stops after `plan`; thorough keeps the `test_plan`, `implementation`, and `code_review` stops.
 
 ---
 
@@ -15,8 +29,9 @@ capabilities into the pipeline it runs in every mode.
 
 ## The Three Modes
 
-- **`gated` (default, local)** — everything `intelligent` does, **plus** configurable
-  phase-boundary stops. Trigger it with `arcus <STORY>` (the default) or `plan <STORY>`. It surfaces
+- **`gated` (default mode, local)** — everything `intelligent` does, **plus** configurable
+  phase-boundary stops. Trigger it with `arcus <STORY>` (the default) or `plan <STORY>`. In lean,
+  the default stop is after `plan`; with `--thorough`, it surfaces
   any clarification questions the Brainstorm stages raised — **all of them at once, in a single
   turn** — and can *also* pause between phase groups (Test Plan → Implementation → Code Review →
   Context Sync), per the checkpoint's `stop_after` list. See
@@ -32,17 +47,17 @@ capabilities into the pipeline it runs in every mode.
   stops. Trigger it with the AFK phrases (`afk <STORY>`, `forge <STORY>`, `run afk on <STORY>`, or
   `arcus <STORY> --afk`).
 
-Every mode runs the same canonical stage sequence straight through to the pull request. The
-difference between them is entirely in **whether, and where, the pipeline pauses for a human**:
+Within either profile, every mode reaches the pull request. The difference between modes is entirely
+in **whether, and where, the pipeline pauses for a human**:
 
 | Mode | Pauses for open questions? | Pauses at phase boundaries? |
 |------|:---:|:---:|
 | `afk` | No (recorded, never shown) | No |
 | `intelligent` | Yes, as one batch | No |
-| `gated` | Yes, as one batch | Yes, per `stop_after` (optional; defaults to all three) |
+| `gated` | Yes, as one batch | Lean: after `plan` by default; thorough: per `stop_after` (defaults to all three) |
 
-So the two axes that matter are the spec/approach questions (Brainstorm) and, for `gated` only, the
-phase boundaries. The finished diff always lands at the same place: a pull request.
+So the two axes that matter are the profile (lean/thorough) and the mode (how it pauses). The
+finished diff always lands at the same place: a pull request.
 
 ::: tip The capabilities themselves have no mode
 `spec-finalizer` and `implementation-planner` never talk to you. On **every** run, in **all three**
@@ -73,9 +88,18 @@ All three modes produce the same milestone-only output — verbosity never varie
 
 ---
 
-## `.arcus/config.json`: Narrowing the Gated Stops
+## `.arcus/config.json`: Profile and Gated Stops
 
-`gated` mode's phase-boundary gates default to pausing after **all three** transitions —
+Set the profile independently of mode:
+
+```json
+{ "profile": "thorough" }
+```
+
+Use `--thorough` to opt in for one trigger without changing the repository default. The old
+checkpoint shape (without `profile`) is treated as thorough when resumed.
+
+For thorough stories, `gated` mode's phase-boundary gates default to pausing after **all three** transitions —
 Test Plan → Implementation, Implementation → Code Review, and Code Review → Context Sync. If you
 want fewer stops, create an optional, developer-authored `.arcus/config.json` at the repo root
 **before** scaffolding a `gated` story:
@@ -147,7 +171,8 @@ graph TD
     style CI fill:#e1f0ff
 ```
 
-**When in doubt:** Use **Gated Mode** (default, safe)
+**When in doubt:** Use **lean + gated** (the default, safe path). Add `--thorough` when you need the
+full 5.x ceremony.
 
 ---
 
@@ -224,8 +249,8 @@ Start the pipeline in gated mode:
 arcus story.md
 ```
 
-No flags needed — gated is the default. (`plan <STORY>` remains a supported alias for `gated`
-mode — see [The Three Modes](#the-three-modes) above.)
+No flags needed — lean + gated is the default. (`plan <STORY>` remains a supported alias for
+gated mode.) Append `--thorough` to use the full 5.x pipeline.
 
 **What happens:**
 - `arcus:arcus-controller` runs Scaffold then Brainstorm (its capabilities run as subagents)
@@ -407,10 +432,9 @@ resolved once, at scaffold time.
 ### Assuming Every `gated` Run Pauses at Every Phase Boundary
 **Problem:** Expecting a phase-boundary pause after Test Plan, but none configured
 **Result:** The pipeline runs straight through — surprising if you expected a stop
-**Fix:** `gated`'s phase gates default to all three transitions, but an absent or narrowed
-`.arcus/config.json` (or a legacy checkpoint predating this field) can mean zero phase-boundary
-gates while question-gating still applies. Check `.arcus/config.json` before scaffolding if you want
-specific stops.
+**Fix:** In lean, the default gated stop is after `plan`; thorough defaults to all three phase
+transitions. A narrowed `.arcus/config.json` (or a legacy checkpoint predating this field) can
+change the thorough stops. Check the profile and config before scaffolding.
 
 ---
 
@@ -439,4 +463,5 @@ for intelligent, `run afk on story.md` for AFK), ask yourself:
 - Low-to-medium risk change
 - I've used ARCUS successfully here before
 
-**When in doubt:** Use **Gated Mode** (default, safe)
+**When in doubt:** Use **lean + gated** (default, safe). Choose thorough only when its extra
+artifacts and review ceremony are useful.

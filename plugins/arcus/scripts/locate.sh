@@ -57,7 +57,7 @@ fi
 RESOLVED="$(node -e '
 const fs = require("fs"), path = require("path"), os = require("os");
 const roots = [
-  path.join(os.homedir(), ".copilot/installed-plugins"), // <marketplace>/<plugin>
+  path.join(process.env.COPILOT_HOME || path.join(os.homedir(), ".copilot"), "installed-plugins"), // <marketplace>/<plugin>
   path.join(os.homedir(), ".claude/plugins/cache"),      // <marketplace>/<plugin>/<version>
   path.join(os.homedir(), ".agents/plugins"),
 ];

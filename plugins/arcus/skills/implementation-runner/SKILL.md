@@ -14,6 +14,12 @@ argument-hint: <STORY>
 
 # Implementation Runner (Gated Loop Driver)
 
+> **Profile switch — read first. STOP here if the profile is lean.** Read `profile` from
+> `.arcus/specs/<STORY_ID>/session-checkpoint.json`. If it is `lean`, do **not** follow anything in
+> this file, and dispatch none of the agents it names. Open `lean-loop.md` in the `arcus-controller` skill's
+> reference directory (next to its `SKILL.md`) and follow that instead. A missing `profile` means
+> `thorough`: continue below.
+
 ## Overview
 
 This skill is the **single, canonical implementation loop** for the ARCUS Implementation

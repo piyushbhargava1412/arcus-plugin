@@ -41,7 +41,7 @@ layout: page
   <template #scene>
     <svg class="scene" viewBox="0 0 200 120" role="img" aria-label="Lucie, the Lead"><path d="M0 100 Q50 90 100 98 T200 96 L200 120 L0 120 Z" fill="#2a160c"/><CastIcon name="lucie" x="52" y="6" width="96" height="96" /></svg>
   </template>
-  <template #talk><TalkBubble who="Lucie">I run the board — every ticket, every checkpoint, gated or AFK. I'm the only one who sees the whole roadmap.</TalkBubble></template>
+  <template #talk><TalkBubble who="Lucie">I run the board — every ticket, every checkpoint, lean or thorough, gated or AFK. I'm the only one who sees the whole roadmap.</TalkBubble></template>
 </ComicPanel>
 
 <ComicPanel :span="4">
@@ -49,7 +49,7 @@ layout: page
   <template #scene>
     <svg class="scene" viewBox="0 0 200 120" role="img" aria-label="Angelina, the Architect"><path d="M0 100 Q50 90 100 98 T200 96 L200 120 L0 120 Z" fill="#2a160c"/><CastIcon name="angelina" x="52" y="6" width="96" height="96" /></svg>
   </template>
-  <template #talk><TalkBubble who="Angelina">I read the codebase, ground every ambiguity in your story, and hand back a spec and a plan worth building.</TalkBubble></template>
+  <template #talk><TalkBubble who="Angelina">In thorough mode I read the codebase, ground every ambiguity, and hand back a whole stack of artifacts. In lean mode, the planner hands back one compact plan worth building.</TalkBubble></template>
 </ComicPanel>
 
 <ComicPanel :span="4">
@@ -326,7 +326,7 @@ layout: page
 
 </ComicStrip>
 
-<ComicChapter no="CH. 1" cmd="Angelina grounds the spec · Gate A">The brainstorm</ComicChapter>
+<ComicChapter no="CH. 1" cmd="Angelina grounds the spec · thorough profile · Gate A">The thorough brainstorm</ComicChapter>
 
 <ComicStrip>
 
@@ -344,7 +344,7 @@ layout: page
     </svg>
   </template>
   <template #talk>
-    <TalkBubble who="Lucie">"<code>plan story.md</code>" and it's on the board — Angelina takes it from here.</TalkBubble>
+    <TalkBubble who="Lucie">"<code>arcus story.md</code>" and it's on the board — the lean planner takes it from here. Add <code>--thorough</code> when you want the old full pipeline.</TalkBubble>
   </template>
 </ComicPanel>
 
@@ -413,7 +413,7 @@ layout: page
 
 </ComicStrip>
 
-<ComicChapter no="INTERLUDE" cmd="three modes, one Lucie — gated / intelligent / AFK">Lucie's three modes</ComicChapter>
+<ComicChapter no="INTERLUDE" cmd="two profiles, three modes — lean by default · --thorough when you need it">Lucie's profiles and modes</ComicChapter>
 
 <ComicStrip>
 
@@ -428,7 +428,7 @@ layout: page
     </svg>
   </template>
   <template #talk>
-    <TalkBubble who="Lucie"><strong>Gated</strong> is my default. I stop for Angelina's open questions, and I also pause at phase boundaries — transitions between major stages. Hand you the whole decision list at once, then stop again if a gate fires. Best for careful control and a story with any TBD in it.</TalkBubble>
+    <TalkBubble who="Lucie"><strong>Lean + gated</strong> is my default. I stop after the planner's <code>plan.md</code>, then build, run Benny's deterministic gate, and send one reviewer. Add <code>--thorough</code> when you want the full 5.x ceremony and its phase gates.</TalkBubble>
   </template>
 </ComicPanel>
 
@@ -443,7 +443,7 @@ layout: page
     </svg>
   </template>
   <template #talk>
-    <TalkBubble who="Lucie"><strong>Intelligent</strong> is my cloud mode. I stop once for Angelina's open questions if she has any — just like gated — but I skip the phase-boundary gates. Run unattended from CI, stop for decisions only, no waits on human gates.</TalkBubble>
+    <TalkBubble who="Lucie"><strong>Intelligent</strong> is my cloud mode. The profile still decides lean or thorough; this mode only decides where I pause. I skip phase-boundary gates and run unattended from CI.</TalkBubble>
   </template>
 </ComicPanel>
 
@@ -458,7 +458,7 @@ layout: page
     </svg>
   </template>
   <template #talk>
-    <TalkBubble who="Lucie"><strong>Autonomous (AFK)</strong> is the same me, no brakes. Trigger with <code>forge</code>, <code>afk</code>, <code>run afk on &lt;STORY&gt;</code>, or <code>arcus &lt;STORY&gt; --afk</code> — every stage runs back-to-back, every gate auto-confirms, milestones only. Only for a spec I already trust.</TalkBubble>
+    <TalkBubble who="Lucie"><strong>Autonomous (AFK)</strong> is the same me, no brakes. Trigger with <code>forge</code>, <code>afk</code>, <code>run afk on &lt;STORY&gt;</code>, or <code>arcus &lt;STORY&gt; --afk</code> — whichever profile you chose runs back-to-back, milestones only.</TalkBubble>
   </template>
 </ComicPanel>
 
@@ -466,8 +466,8 @@ layout: page
 
 <ComicStrip>
 
-<FactCard :span="12" tip="-.4deg" tease="Can Lucie change speed mid-story — switch between gated, intelligent, and AFK partway through?">
-  <strong>No.</strong> Mode is set once, at the very start, and persists through every stage — you cannot switch from one mode to another mid-run. All three are still the <em>same</em> Lucie underneath; they only differ in where she pauses and when gates fire. When in doubt, the house rule is simple: start gated.
+<FactCard :span="12" tip="-.4deg" tease="Can Lucie change profile or mode mid-story?">
+  <strong>No.</strong> Mode and profile are set at the start and persist through every stage. The profile chooses lean or thorough; the mode chooses where Lucie pauses. When in doubt, start with lean + gated.
 </FactCard>
 
 </ComicStrip>
@@ -544,7 +544,7 @@ layout: page
     </svg>
   </template>
   <template #talk>
-    <TalkBubble who="Diana">Lucie parses every <code>### Task N:</code> heading and sends each one to a fresh copy of me: implementation, tests, my own tidy-up pass, and one lightweight advisory spec check. None of us can see each other's code — which is exactly why quality isn't judged per ticket.</TalkBubble>
+    <TalkBubble who="Diana">Lucie parses every <code>### Task N:</code> heading. Small lean plans get TDD in-thread; larger ones send one compact copy of me per task. Thorough mode adds the old dispatcher, tidy-up pass, and advisory spec check.</TalkBubble>
   </template>
 </ComicPanel>
 
@@ -625,8 +625,8 @@ layout: page
     <span class="chip good">notebook sync → PR</span>
   </div>
   <template #talk>
-    <TalkBubble who="Steffi">No review round resets forever. This one is <strong>bounded to 3 rounds.</strong> Still failing on round 3, and it stops for a human — not because we gave up, but because a review loop that never ends helps nobody.</TalkBubble>
-    <TalkBubble who="Lucie" :right="true">And if you disagree with a finding? You can override the verdict and proceed anyway. Findings get three severities — <code>critical</code> blocks, <code>warning</code> is real but survivable, <code>suggestion</code> never blocks.</TalkBubble>
+    <TalkBubble who="Steffi">No review round resets forever. Lean is <strong>bounded to 2 rounds</strong>; thorough keeps 3. Still failing at the cap, and it stops for a human — a loop that never ends helps nobody.</TalkBubble>
+    <TalkBubble who="Lucie" :right="true">Lean starts with Benny's deterministic gate, then sends one <code>change-reviewer</code>. Security and performance specialists join only when risk flags them; thorough keeps the five-specialist review.</TalkBubble>
   </template>
 </ComicPanel>
 
@@ -652,7 +652,7 @@ layout: page
     </svg>
   </template>
   <template #talk>
-    <TalkBubble who="Angelina">I assess the <em>approved</em> diff and update only the notebook pages it materially touched — facts-only, diff-driven, no full rewrite. <code>design-and-coding-patterns.md</code> is static by design: it moves only when a pattern truly recurs, ≥3 places, or gets superseded.</TalkBubble>
+    <TalkBubble who="Angelina">I assess the <em>approved</em> diff. Lean asks Benny's drift check first and syncs only on structural change; thorough updates only the notebook pages materially touched. No full rewrite.</TalkBubble>
   </template>
 </ComicPanel>
 
@@ -671,7 +671,7 @@ layout: page
     </svg>
   </template>
   <template #talk>
-    <TalkBubble who="Lucie">Notebook sync moves straight into Closure — no gate, no asking. I run the final suite, synthesize the PR body from the story, the grounded spec, the plan, and every review round, then push and open it for real.</TalkBubble>
+    <TalkBubble who="Lucie">Notebook sync moves straight into Closure. Lean writes the PR body in-thread and runs <code>pr.sh</code>; thorough synthesizes it with the pull-request-builder.</TalkBubble>
   </template>
 </ComicPanel>
 

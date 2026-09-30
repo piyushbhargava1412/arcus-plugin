@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { basename, dirname, join } from 'node:path';
@@ -18,6 +19,33 @@ export const CANONICAL_PIPELINE = [
   { key: 'context_sync', phaseGroup: 'closure', owner: 'arcus:context-drift-sync' },
   { key: 'closure', phaseGroup: 'closure', owner: 'arcus:pull-request-builder' },
 ];
+
+export const PROFILES = {
+  lean: {
+    beforeTasks: ['scaffold', 'plan', 'branch'],
+    afterTasks: ['code_review', 'context_sync', 'closure'],
+    maxReviewRounds: 2,
+  },
+  thorough: {
+    beforeTasks: ['scaffold', 'context_pack', 'spec_finalizer', 'plan', 'test_plan', 'branch'],
+    afterTasks: ['code_review', 'context_sync', 'closure'],
+    maxReviewRounds: 3,
+  },
+};
+
+const LEAN_OWNERS = {
+  plan: 'arcus:planner',
+  branch: 'arcus-controller references/lean-loop.md (in-thread)',
+  code_review: 'arcus-controller references/lean-review.md (in-thread)',
+  context_sync: 'arcus-controller references/lean-closure.md (gate.mjs drift)',
+  closure: 'arcus-controller references/lean-closure.md (in-thread) + pr.sh',
+};
+
+// A checkpoint written before profiles existed has no `profile` field; it was
+// scaffolded with the full stage set, so it resumes as thorough.
+export function profileOf(checkpoint = {}) {
+  return checkpoint.profile === 'lean' ? 'lean' : 'thorough';
+}
 
 const ARTIFACT_FILES = {
   context_pack: 'context-pack.md',
@@ -42,27 +70,26 @@ function sortTaskStages(keys) {
     .sort((a, b) => Number(a.slice(5)) - Number(b.slice(5)));
 }
 
-function stageOrder(stages = {}) {
+export function stageOrder(stages = {}, profile = 'thorough') {
   const tasks = sortTaskStages(Object.keys(stages));
-  const beforeTasks = ['scaffold', 'context_pack', 'spec_finalizer', 'plan', 'test_plan', 'branch'];
-  const afterTasks = ['code_review', 'context_sync', 'closure'];
-  return [...beforeTasks, ...tasks, ...afterTasks].filter((key) => key in stages || beforeTasks.includes(key) || afterTasks.includes(key));
+  const { beforeTasks, afterTasks } = PROFILES[profile] || PROFILES.thorough;
+  return [...beforeTasks, ...tasks, ...afterTasks];
 }
 
-function firstIncompleteStage(stages = {}) {
-  for (const key of stageOrder(stages)) {
+function firstIncompleteStage(stages = {}, profile) {
+  for (const key of stageOrder(stages, profile)) {
     if (stages[key] !== 'complete') return key;
   }
   return null;
 }
 
-function allStagesComplete(stages = {}) {
-  const order = stageOrder(stages);
+function allStagesComplete(stages = {}, profile) {
+  const order = stageOrder(stages, profile);
   return order.length > 0 && order.every((key) => stages[key] === 'complete');
 }
 
 function advanceCurrentStage(checkpoint) {
-  const next = firstIncompleteStage(checkpoint.stages);
+  const next = firstIncompleteStage(checkpoint.stages, profileOf(checkpoint));
   if (next) {
     checkpoint.current_stage = next;
     checkpoint.current_status = 'IN_PROGRESS';
@@ -89,6 +116,11 @@ export function countPlanTasks(text = '') {
 
 export function countResolvedDecisions(text = '') {
   return (text.match(/\*\*Decision\*\*:/g) || []).length;
+}
+
+// Lean plan.md carries its test cases inline, one `- Test:` bullet each.
+export function countInlineTestCases(text = '') {
+  return (text.match(/^\s*-\s*Test:/gm) || []).length;
 }
 
 export function countTestCases(text = '') {
@@ -212,8 +244,9 @@ function artifactTextForStage(stage, artifacts = {}) {
   }
 }
 
-function ownerForStage(stage) {
-  if (/^task_\d+$/.test(stage)) return 'arcus:implementation-runner';
+function ownerForStage(stage, profile = 'thorough') {
+  if (/^task_\d+$/.test(stage)) return profile === 'lean' ? LEAN_OWNERS.branch : 'arcus:implementation-runner';
+  if (profile === 'lean' && LEAN_OWNERS[stage]) return LEAN_OWNERS[stage];
   return CANONICAL_PIPELINE.find((entry) => entry.key === stage)?.owner || null;
 }
 
@@ -262,8 +295,9 @@ export function shouldGatePhaseBoundary({ mode, stopAfter = [], phaseGroup }) {
   return new Set(stopAfter || []).has(phaseGroup);
 }
 
-export function shouldAutoLoop(reviewRound) {
-  return Number(reviewRound) < 3;
+export function shouldAutoLoop(reviewRound, profile = 'thorough') {
+  const cap = (PROFILES[profile] || PROFILES.thorough).maxReviewRounds;
+  return Number(reviewRound) < cap;
 }
 
 export function decideNextAction({ checkpoint, artifacts = {} }) {
@@ -273,6 +307,7 @@ export function decideNextAction({ checkpoint, artifacts = {} }) {
 
   let working = clone(checkpoint);
   const reconciledStages = [];
+  const profile = profileOf(working);
 
   switch (working.current_status) {
     case 'FAILED':
@@ -313,7 +348,7 @@ export function decideNextAction({ checkpoint, artifacts = {} }) {
   working = reconciled.checkpoint;
   reconciledStages.push(...reconciled.reconciledStages);
 
-  if (allStagesComplete(working.stages)) {
+  if (allStagesComplete(working.stages, profile)) {
     working.current_status = 'COMPLETE';
     return {
       kind: 'complete',
@@ -323,7 +358,7 @@ export function decideNextAction({ checkpoint, artifacts = {} }) {
     };
   }
 
-  const stage = firstIncompleteStage(working.stages);
+  const stage = firstIncompleteStage(working.stages, profile);
   if (!stage) {
     return {
       kind: 'complete',
@@ -340,7 +375,8 @@ export function decideNextAction({ checkpoint, artifacts = {} }) {
       mode: working.mode,
       stage,
       reviewRound: Number(working.review_round || 0),
-      autoLoop: shouldAutoLoop(working.review_round || 0),
+      profile,
+      autoLoop: shouldAutoLoop(working.review_round || 0, profile),
       reconciledStages,
     };
   }
@@ -349,8 +385,9 @@ export function decideNextAction({ checkpoint, artifacts = {} }) {
     kind: 'run_stage',
     storyId: working.story_id,
     mode: working.mode,
+    profile,
     stage,
-    owner: ownerForStage(stage),
+    owner: ownerForStage(stage, profile),
     reconciledStages,
   };
 }
@@ -387,10 +424,51 @@ async function loadArtifacts(args) {
   };
 }
 
+function scaffoldAndDecide(rawArgs) {
+  const scriptDir = dirname(__filename);
+  const scaffold = join(scriptDir, 'scaffold.sh');
+  const result = spawnSync('bash', [scaffold, ...rawArgs], { encoding: 'utf8' });
+  if (result.status !== 0) {
+    throw new Error(`scaffold.sh failed: ${(result.stderr || result.stdout || '').trim()}`);
+  }
+  const field = (name) => (result.stdout.match(new RegExp(`^${name}: (.*)$`, 'm')) || [])[1] || null;
+  return {
+    storyId: field('STORY_ID'),
+    branchName: field('BRANCH_NAME'),
+    baseBranch: field('BASE_BRANCH'),
+    branchMode: field('BRANCH_MODE'),
+    workspaceDir: field('WORKSPACE_DIR'),
+    warnings: (result.stderr || '').split('\n').filter((line) => line.startsWith('[WARN]')),
+  };
+}
+
 async function runCli(argv) {
   const args = parseArgs(argv);
 
   switch (args._) {
+    case 'start': {
+      // Stage 0 in one call: scaffold (or no-op on resume) + decide.
+      const rawArgs = argv.slice(1);
+      if (!rawArgs[0] || rawArgs[0].startsWith('--')) throw new Error('start requires <story.md|STORY_ID>');
+      const scaffolded = scaffoldAndDecide(rawArgs);
+      const checkpointPath = join(scaffolded.workspaceDir, 'session-checkpoint.json');
+      let checkpoint = JSON.parse(await readFile(checkpointPath, 'utf8'));
+      if (checkpoint.stages?.scaffold !== 'complete') {
+        const done = spawnSync('bash', [join(dirname(__filename), 'checkpoint.sh'), 'complete', scaffolded.storyId, 'scaffold'], { encoding: 'utf8' });
+        if (done.status !== 0) throw new Error(`checkpoint.sh complete scaffold failed: ${done.stderr.trim()}`);
+        checkpoint = JSON.parse(await readFile(checkpointPath, 'utf8'));
+      }
+      const artifacts = await loadArtifacts({ checkpoint: checkpointPath });
+      console.log(JSON.stringify({
+        ...scaffolded,
+        checkpoint: checkpointPath,
+        mode: checkpoint.mode,
+        profile: profileOf(checkpoint),
+        stopAfter: checkpoint.stop_after || [],
+        decision: decideNextAction({ checkpoint, artifacts }),
+      }, null, 2));
+      return;
+    }
     case 'decide': {
       if (!args.checkpoint) throw new Error('decide requires --checkpoint <path>');
       const checkpoint = JSON.parse(await readFile(args.checkpoint, 'utf8'));
@@ -411,14 +489,22 @@ async function runCli(argv) {
       const plan = await readTextIfExists(args.plan);
       const groundedSpec = await readTextIfExists(args.groundedSpec);
       const testPlan = await readTextIfExists(args.testPlan);
+      // Lean: no grounded-spec/test-plan — decisions and tests live in plan.md.
       console.log(JSON.stringify({
         tasks: countPlanTasks(plan),
-        decisions: countResolvedDecisions(groundedSpec),
-        testCases: countTestCases(testPlan),
+        decisions: countResolvedDecisions(groundedSpec || plan),
+        testCases: testPlan ? countTestCases(testPlan) : countInlineTestCases(plan),
       }, null, 2));
       return;
     }
     case 'gate': {
+      // `gate run|drift` belongs to gate.mjs. Models conflate the two helpers,
+      // so forward it rather than answering a phase-membership question nobody asked.
+      if (argv[1] === 'run' || argv[1] === 'drift') {
+        const fwd = spawnSync('node', [join(dirname(__filename), 'gate.mjs'), ...argv.slice(1)], { stdio: 'inherit' });
+        process.exitCode = fwd.status ?? 1;
+        return;
+      }
       console.log(JSON.stringify({
         gate: shouldGatePhaseBoundary({
           mode: args.mode,
@@ -433,7 +519,7 @@ async function runCli(argv) {
     }
     case 'loopback': {
       console.log(JSON.stringify({
-        autoLoop: shouldAutoLoop(Number(args.reviewRound || 0)),
+        autoLoop: shouldAutoLoop(Number(args.reviewRound || 0), args.profile || 'thorough'),
       }, null, 2));
       return;
     }

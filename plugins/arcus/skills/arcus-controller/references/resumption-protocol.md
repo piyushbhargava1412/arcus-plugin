@@ -3,7 +3,8 @@
 When a checkpoint already exists, the deterministic state machine is authoritative in
 `.arcus/bin/arcus-controller.mjs`.
 
-1. Run `bash "$ARCUS_HOME"/scripts/locate.sh` first — a resume is exactly when a stale `.arcus/bin/`
+1. Run `bash "$ARCUS_HOME"/scripts/locate.sh`, then `node .arcus/bin/arcus-controller.mjs start <STORY_ID>`
+   (it no-ops the scaffold on an existing checkpoint and returns the `decision`, so steps 2–3 come for free). Run it first — a resume is exactly when a stale `.arcus/bin/`
    from an earlier session (or an earlier host) is most likely.
 2. Read the checkpoint with `.arcus/bin/checkpoint.sh read <STORY_ID>`. Read the **persisted `mode`**
    from the checkpoint (`afk`/`intelligent`/`gated`) and use it directly; do **not** re-infer the mode
@@ -26,8 +27,8 @@ When a checkpoint already exists, the deterministic state machine is authoritati
    - `complete` → report that the story is already complete and do nothing further
    - `await_questions` → re-emit the batched `[Questions]` block and **stop**
    - `loopback` → re-enter Implementation on the review findings, bounded by the Loopback Protocol
-   - `run_stage` → read the relevant existing artifacts (`context-pack.md`, `grounded-spec.md`,
-     `plan.md`, `test-plan.md`, `review.md`) to restore context, then run that stage
+   - `run_stage` → read only the artifacts that exist and that stage needs (lean: `plan.md`,
+     `review.md`; thorough adds `context-pack.md`, `grounded-spec.md`, `test-plan.md`), then run it
 
 The helper's reconciliation rule is load-bearing: a run can die between writing an artifact and
 recording it, leaving a stage `pending` whose output is already on disk. The next resume must not redo

@@ -15,7 +15,8 @@ tested, and structured — written once and reused by every stage of the pipelin
 The guiding principle is **scan once, scope per story, sync on drift**:
 
 - **Scan once** — `repo-agentifier` builds the shared snapshot a single time per repository.
-- **Scope per story** — each story pulls only the slice of the snapshot it needs into a context pack.
+- **Scope per story** — thorough stories pull only the slice they need into a context pack; lean
+  reads the repository context directly while the planner writes one compact plan.
 - **Sync on drift** — after a change merges, only the artifacts the diff *materially* changed are
   surgically updated — never a full rescan.
 
@@ -58,7 +59,7 @@ The `.context/` artifacts are the source of truth; two root files make them disc
 flowchart TD
   A["repo-agentifier<br/><code>scan once</code>"] --> B[".context/ snapshot<br/>repo_scope · repo_map · flows · testing-patterns · design-and-coding-patterns"]
   B --> C["AGENTS.md + CLAUDE.md<br/><code>navigation index</code>"]
-  B --> D["context-pack-builder<br/><code>scope per story</code>"]
+  B --> D["planner (lean) / context-pack-builder (thorough)<br/><code>scope per story</code>"]
   D --> E["Planning · Implementation · Review<br/><code>consume the slice</code>"]
   E --> F["context-drift-sync<br/><code>sync on drift</code>"]
   F -->|"material drift only"| B
@@ -69,9 +70,9 @@ flowchart TD
 
 There are two ways the snapshot stays current; choosing the right one matters:
 
-- **Trust-sync (default).** After each approved change, `context-drift-sync` assesses the branch diff
-  and surgically updates only the artifacts it *materially* changed — facts-only, diff-driven, no full
-  rescan. This is the normal, per-story maintenance path and keeps token cost low.
+- **Trust-sync.** In thorough, after each approved change, `context-drift-sync` assesses the branch
+  diff and surgically updates only the artifacts it *materially* changed. In lean, `gate.mjs drift`
+  first checks for structural drift and sync runs only when it fires.
 - **Re-agentify (rare).** Re-run `repo-agentifier` from scratch only after a **major restructure** or
   **tech-stack change**, when incremental drift sync would be chasing too many moving parts. This
   rebuilds the entire snapshot and regenerates `AGENTS.md`.

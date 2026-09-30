@@ -6,7 +6,7 @@
 #              (pending | in_progress | awaiting_handoff | complete | needs_rework)
 #              to support human-gated, resumable, multi-session workflows.
 # USAGE:
-#   scripts/checkpoint.sh init       <STORY_ID> [<BRANCH_NAME>] [<BASE_BRANCH>] [<MODE>] [<STOP_AFTER>] [<MODEL_POLICY_JSON>]
+#   scripts/checkpoint.sh init       <STORY_ID> [<BRANCH_NAME>] [<BASE_BRANCH>] [<MODE>] [<STOP_AFTER>] [<MODEL_POLICY_JSON>] [<PROFILE>]
 #   scripts/checkpoint.sh read       <STORY_ID>
 #   scripts/checkpoint.sh complete   <STORY_ID> <stage>
 #   scripts/checkpoint.sh set-status <STORY_ID> <stage> <status>
@@ -21,6 +21,9 @@
 #   scripts/checkpoint.sh fail       <STORY_ID> <stage> <reason>
 #
 # Stage status values: pending | in_progress | awaiting_handoff | complete | needs_rework
+# Profiles: lean (default; scaffold → plan → branch → tasks → code_review → context_sync → closure)
+#           | thorough (adds context_pack, spec_finalizer, test_plan). A checkpoint with no
+#           `profile` field predates profiles and is read as thorough.
 # Modes: afk (autonomous, auto-confirm) | intelligent (stops only on open questions; cloud behavior) | gated (intelligent + configurable phase-boundary gates; local default). Note: set-mode does not backfill stop_after—a story scaffolded afk/intelligent then switched to gated yields zero phase gates by design (SF-5).
 # current_status values: IN_PROGRESS | AWAITING_HANDOFF | COMPLETE | FAILED
 #   (AWAITING_INPUT is reserved for the async/cloud channel; no local code path sets it yet.)
@@ -240,13 +243,18 @@ case "$ACTION" in
         MODE="${5:-gated}"
         STOP_AFTER="${6:-}"
         MODEL_POLICY_RAW="${7:-}"
+        PROFILE="${8:-lean}"
 
         # Up-front validation, mirroring set-mode's existing explicit-comparison
         # shape (not the grep-based VALID_STATUSES check) so an unusual MODE value
         # can't be misread as a grep pattern — ahead of any filesystem work,
         # including the already-exists short-circuit below.
         if [ "$MODE" != "afk" ] && [ "$MODE" != "intelligent" ] && [ "$MODE" != "gated" ]; then
-            echo "[ERROR] Usage: checkpoint.sh init <STORY_ID> [<BRANCH_NAME>] [<BASE_BRANCH>] [<afk|intelligent|gated>] [<STOP_AFTER>] [<MODEL_POLICY_JSON>]" >&2
+            echo "[ERROR] Usage: checkpoint.sh init <STORY_ID> [<BRANCH_NAME>] [<BASE_BRANCH>] [<afk|intelligent|gated>] [<STOP_AFTER>] [<MODEL_POLICY_JSON>] [<lean|thorough>]" >&2
+            exit 1
+        fi
+        if [ "$PROFILE" != "lean" ] && [ "$PROFILE" != "thorough" ]; then
+            echo "[ERROR] Invalid profile '$PROFILE'. Valid: lean|thorough" >&2
             exit 1
         fi
 
@@ -291,6 +299,17 @@ case "$ACTION" in
             console.log(JSON.stringify(result));
         ' "$MODEL_POLICY_RAW")
 
+        if [ "$PROFILE" = "thorough" ]; then
+            PRE_TASK_STAGES='    "scaffold": "pending",
+    "context_pack": "pending",
+    "spec_finalizer": "pending",
+    "plan": "pending",
+    "test_plan": "pending",'
+        else
+            PRE_TASK_STAGES='    "scaffold": "pending",
+    "plan": "pending",'
+        fi
+
         cat <<EOF > "$CHECKPOINT_FILE"
 {
   "story_id": "$STORY_ID",
@@ -299,17 +318,14 @@ case "$ACTION" in
   "workflow": "arcus",
   "schema_version": 2,
   "mode": "$MODE",
+  "profile": "$PROFILE",
   "current_status": "IN_PROGRESS",
   "current_stage": "scaffold",
   "review_round": 0,
   "stop_after": $STOP_AFTER_JSON,
   "model_policy": $MODEL_POLICY_JSON,
   "stages": {
-    "scaffold": "pending",
-    "context_pack": "pending",
-    "spec_finalizer": "pending",
-    "plan": "pending",
-    "test_plan": "pending",
+$PRE_TASK_STAGES
     "branch": "pending",
     "code_review": "pending",
     "context_sync": "pending",

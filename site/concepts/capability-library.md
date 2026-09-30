@@ -35,7 +35,7 @@ ARCUS skills **and agents** fall into exactly three tiers, distinguished by **ho
 
 | Tier | What it is | State ownership | Examples |
 |------|------------|-----------------|----------|
-| **Capability** | An atomic, stateless, **plug-n-play** unit: given its declared inputs, it produces **one** output. No checkpoint, no branch ops, no ARCUS-specific paths. | None — pure input → output | `context-pack-builder`, `spec-finalizer`, `implementation-planner`, `test-spec-compiler`, `pull-request-builder`, the specialist reviewers (`security-reviewer`, `performance-reviewer`, `code-quality-reviewer`, `spec-compliance-reviewer`, `history-context-reviewer`), `review-consolidator`, `simplify-and-verify`, `context-drift-sync`, the four repo-context discovery agents (`repo-overview-discovery`, `flow-discovery`, `test-pattern-discovery`, `design-pattern-discovery`) *(agents)* |
+| **Capability** | An atomic, stateless, **plug-n-play** unit: given its declared inputs, it produces **one** output. No checkpoint, no branch ops, no ARCUS-specific paths. | None — pure input → output | `planner`, `change-reviewer`, `context-pack-builder`, `spec-finalizer`, `implementation-planner`, `test-spec-compiler`, `pull-request-builder`, the specialist reviewers, `review-consolidator`, `simplify-and-verify`, `context-drift-sync`, and the repo-context discovery agents *(agents)* |
 | **Coordinator** | A thin, stateless **sequencer** of capabilities — fan-out/consolidate or chain. Owns no pipeline state. | None — orchestrates capabilities but holds nothing | `code-reviewer`, `repo-agentifier` *(skills)*; `code-simplifier` *(agent)* |
 | **Orchestrator** | The stateful **pipeline driver**. Owns the session checkpoint, branch creation, and stage gates; resolves every path and passes capabilities explicit inputs. | All of it — checkpoint, branch, stage gates | `arcus-controller`, `implementation-runner` *(skills)*; `subagent-task-dispatcher` *(agent)* |
 
@@ -109,10 +109,11 @@ output when used on their own.
 
 ## How the Tiers Fit the Pipeline
 
-In the full pipeline, the **orchestrator** (`arcus-controller`, with the
+In the **thorough** pipeline, the **orchestrator** (`arcus-controller`, with the
 `implementation-runner` and `subagent-task-dispatcher` for the Implementation loop) owns the
 checkpoint and branch, decides which stage runs next, and hands each capability its explicit inputs.
-**Coordinators** like `code-reviewer` group capabilities into a single logical step.
+**Coordinators** like `code-reviewer` group capabilities into a single logical step. In lean,
+`planner` and `change-reviewer` replace the larger planning and review fan-outs.
 **Capabilities** do the actual work — finalizing the spec, planning the implementation, compiling the
 test matrix, reviewing the diff.
 

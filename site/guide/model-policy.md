@@ -1,6 +1,6 @@
 # Model Policy
 
-ARCUS 5.0 introduces a configurable **model policy** that controls which model each agent dispatch uses — without ever asking which host you are on. Out of the box, nothing is configured and every dispatch inherits the calling session's own model.
+ARCUS 6.0 uses a configurable **model policy** that controls which model each agent dispatch uses — without ever asking which host you are on. Out of the box, nothing is configured and every dispatch inherits the calling session's own model.
 
 ## Why `inherit` is the default
 
@@ -105,6 +105,9 @@ The `stages` key pins individual pipeline stages to a specific tier or a literal
 ```
 
 Stage names match the static complexity assignments in `model-strategy/SKILL.md`. A stage value that is itself a tier word (`heavy`, `medium`, `light`) resolves through the effective `tiers` in any mode. Any other string is passed through verbatim as a literal model identifier.
+
+The stage names in this example describe the thorough profile. Lean uses `planner`, per-task
+implementation dispatches, and `change-reviewer` instead.
 
 ### Incremental adoption
 

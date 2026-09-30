@@ -27,11 +27,11 @@ hero:
 
 features:
   - title: "Spec-driven-development (SDD)"
-    details: Provides orchestration of Spec → Code → Pull Request flow through human-gated SDLC phases (Brainstorming, Test Planning, Implementation, Code Review, Closure).
+    details: Provides orchestration of a lean Spec → Code → Pull Request flow through planning, implementation, deterministic gates, review, and closure; the full 5.x phases remain available with --thorough.
   - title: "Context Engineering - the Edge !"
     details: Scans your repository to build the context snapshot (one-time) to make it "AI Ready" and also helps refresh and keep the context always in sync with the evolving code during each SDD cycle.
   - title: "Three Modes (pick your pace)"
-    details: One `arcus-controller` orchestrator, three modes. Use `arcus <STORY>` to start — it runs the pipeline in the mode you configure. See [modes](/concepts/modes) for the full comparison (gated with optional phase gates, intelligent for cloud CI, afk for hands-off).
+    details: One `arcus-controller` orchestrator, lean by default and thorough with `--thorough`, across three modes (gated, intelligent, afk). See [modes](/concepts/modes) for the comparison.
   - title: "Multi-tool (Copilot CLI / Claude Code / VS Code / OpenCode)"
     details: One plugin format serves GitHub Copilot CLI, Claude Code, VS Code, and OpenCode from the same marketplace. Install once, use everywhere.
 ---

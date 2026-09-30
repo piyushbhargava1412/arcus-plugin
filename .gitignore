@@ -58,3 +58,6 @@ plugins/arcus-opencode/NOTICE
 .github/prompts
 .github/skills
 .superpowers
+
+# Benchmark run output (scripts/bench/run-bench.mjs)
+scripts/bench/results/

@@ -53,22 +53,26 @@ arcus path/to/story.md
 
 You can also use `plan path/to/story.md` to explicitly enter the default `gated` mode.
 
-**Default behavior:** ARCUS runs in **gated** mode — the `arcus:arcus-controller`
-orchestrator drives the pipeline and surfaces any Brainstorm open questions (all at once). Answer them
-in your own words and it runs all the way to the pull request; if there are none, it never stops. On a cold resume, `resume <STORY>` continues from the checkpoint. For details on all three modes (gated, intelligent, afk) and their behaviors, see [Three Modes, One Pipeline](/concepts/modes).
+**Default behavior:** ARCUS uses the **lean** profile and stops after `plan` in gated mode. The
+`arcus:arcus-controller` runs a compact plan → build → deterministic gate → one holistic review
+pipeline. Use `--thorough` (or `"profile": "thorough"` in `.arcus/config.json`) for the full 5.x
+pipeline. On a cold resume, `resume <STORY>` continues from the checkpoint. For profiles and the
+three modes (gated, intelligent, afk), see [Three Modes, One Pipeline](/concepts/modes).
 
-The pipeline runs as **six phases** over ten ordered stages:
+The default lean pipeline uses these ordered stages:
 
-1. **Brainstorm** — Scaffolds the workspace and records the *planned* branch `arcus/[STORY-ID]-N` (no git branch yet — or, in a git worktree, adopts the session branch already checked out), then builds context and resolves ambiguities → `grounded-spec.md` + `plan.md` (stages `scaffold`, `context_pack`, `spec_finalizer`, `plan`)
-2. **Test Plan** — Designs test matrix → `test-plan.md` (stage `test_plan`)
-3. **Implementation** — Creates the git branch (skipped if one was adopted), then implements tasks → committed code (stages `branch`, `task_1..N`)
-4. **Code Review** — Two-tier holistic quality check → `review.md` + verdict (stage `code_review`)
-5. **Context Sync** — On approval, reconciles only the `.context/` artifacts the diff materially drifted (no new artifact; rationale in the sync commit), then auto-continues (stage `context_sync`)
-6. **Closure** — Creates pull request (stage `closure`)
+1. **Scaffold → Plan** — one planner writes `plan.md` with decisions, open questions, tasks, and inline tests
+2. **Implementation** — creates the branch and implements `task_1..N` (TDD in-thread for small plans)
+3. **Code Review** — `gate.mjs run` runs repository checks and one `change-reviewer` produces `review.md`
+4. **Context Sync** — runs only when `gate.mjs drift` detects structural drift
+5. **Closure** — writes the PR description in-thread and opens the pull request
 
 ### Choosing Your Mode
 
 ARCUS offers three modes, all driven by the same `arcus:arcus-controller` orchestrator:
+
+The profile is orthogonal to the mode. `lean` is the default; `thorough` is the full pipeline, opt-in
+with `--thorough` or config.
 
 **Gated (Default)** — Best for:
 - First time using ARCUS in this repository
@@ -101,7 +105,7 @@ For a detailed comparison of all three modes, see [Three Modes, One Pipeline](/c
 - [ ] Install ARCUS plugin
 - [ ] Run `generate context` to build `.context/` snapshot
 - [ ] Write your first story in `story.md`
-- [ ] Run `arcus story.md` to start the pipeline in gated mode (default)
+- [ ] Run `arcus story.md` to start the lean pipeline in gated mode (default)
 - [ ] Answer the open questions if ARCUS raises any
 - [ ] Verify the opened pull request
 

@@ -6,6 +6,65 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Changed — BREAKING (6.0.0): lean is the default profile
+
+ARCUS used to cost 4–5× the tokens and wall-time of a plain agentic CLI session for the same story.
+The token benchmark (`scripts/bench/before.json`) put one story at **$13.83 over 318 turns**: 28% on
+the five-specialist review, 23% on main-thread orchestration, about $2.9 on the per-task
+dispatcher/refactor/spec-check loop, and $2.8 on brainstorm plus test plan. Most of that spend
+bought ceremony, not quality. 6.0 makes the cheap path the default and keeps the old pipeline as an
+opt-in.
+
+- **Two profiles, orthogonal to mode.** `lean` (default) runs `scaffold → plan → branch → task_N →
+  code_review → context_sync → closure`. `thorough` (`--thorough`, or `.arcus/config.json`
+  `"profile": "thorough"`) is the unchanged 5.x pipeline. The profile is persisted in the checkpoint.
+  A checkpoint without a `profile` field resumes as `thorough`, so in-flight 5.x stories finish as
+  they started.
+- **One planner instead of four agents.** The new `planner` agent writes a single `plan.md`
+  (Context, Decisions, Open Questions, Tasks with inline `- Test:` bullets). In lean, this replaces
+  `context-pack-builder`, `spec-finalizer`, `implementation-planner` and `test-spec-compiler`, and
+  there is no `context-pack.md`, `grounded-spec.md` or `test-plan.md`.
+- **Implementation in-thread when small.** With ≤3 pending tasks and none `heavy`, the controller
+  implements them itself with TDD. Otherwise it uses one compact general-purpose subagent per task
+  that reads the plan by path. Lean has no dispatcher, no per-task `simplify-and-verify`, and no
+  per-task spec check.
+- **Deterministic gate plus one reviewer.** The new `gate.mjs run` writes a noise-filtered
+  `change.diff` and runs typecheck, lint, test and build, resolved from `.arcus/config.json`
+  `gate.commands` or detected from the manifest. It also scans for secrets and classifies risk. Lint
+  failures are autofixed in-thread and never cost a review round. The new `change-reviewer` agent
+  gives one holistic verdict. `security-reviewer` and `performance-reviewer` join only when the risk
+  classifier flags the diff. The loopback cap is 2 rounds in lean and stays at 3 in thorough.
+- **Conditional context sync.** `gate.mjs drift` checks for manifest, CI, contract, migration, build
+  and top-level-directory changes. `context-drift-sync` runs only when it fires. The PR description
+  is written in-thread, and lean does not use `pull-request-builder`.
+- **One-call Stage 0.** `arcus-controller.mjs start` scaffolds, completes `scaffold`, and returns
+  the first decision as JSON. It replaces the `stage-0-scaffold.md` reference, which is removed.
+- **Lean-path prompt load is down 81%.** It is about 30 KB of skill and agent text, down from about
+  157 KB. The lean loop and lean review live in `arcus-controller/references/`, so a lean run never
+  loads the `implementation-runner` or `code-reviewer` SKILL bodies.
+- **Default gated stop.** It is now after `plan` (lean). It stays at
+  `test_plan,implementation,code_review` for thorough. `plan` is a valid `stop_after` gate name.
+- `scaffold.sh` gains `--profile lean|thorough`, `--thorough` and `--lean`. `checkpoint.sh init`
+  gains an optional 7th positional `PROFILE` (after `MODEL_POLICY_JSON`). `questions_comment.sh` also reads the lean
+  `## Dialogue Answers` heading in `plan.md`. `token-report.mjs` attributes `Plan:` dispatches to
+  `plan`.
+
+**Migration:** add `--thorough` (or set `"profile": "thorough"` in `.arcus/config.json`) to keep the
+5.x behaviour.
+
+
+### Fixed
+- `locate.sh` now probes `$COPILOT_HOME/installed-plugins` instead of always using `~/.copilot`. The
+  controller now resolves an unset `ARCUS_HOME` from its own skill path and no longer guesses an
+  install path, so a session can't stage another installed ARCUS version's scripts.
+
+### Measured (Opus 5.5, joyofenergy-java `Story_WeeklyUsageEndpoint`, `scripts/bench/run-bench.mjs`)
+| Variant | Credits | Wall | Judge |
+|---|--:|--:|--:|
+| vanilla Copilot CLI | 63 (1.00×) | 2.1 min | 9/10 |
+| ARCUS 5.0.0 | 706 (11.2×) | 20.3 min | 10/10 |
+| ARCUS 6.0.0 lean | 108 (1.71×) | 3.0 min | 10/10 |
+
 ### Added
 
 - **OpenCode resolves models from your repo's policy, at plugin load.** OpenCode bakes an agent's

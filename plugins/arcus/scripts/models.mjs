@@ -65,6 +65,10 @@ export const STAGE_COMPLEXITY = {
   'review-consolidator':      'medium',
   'simplify-and-verify':      'medium',
   'subagent-task-dispatcher': 'medium',
+
+  // Lean profile (6.0):
+  'planner':                  'heavy',
+  'change-reviewer':          'medium',
 };
 
 // ---------------------------------------------------------------------------

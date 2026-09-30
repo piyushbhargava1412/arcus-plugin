@@ -19,15 +19,20 @@
 #              decided or written and the echoed branch fields are the STORED
 #              ones — that is a resume, not a scaffold.
 #
+#              Profile (--profile lean|thorough, --thorough, or the optional
+#              .arcus/config.json `profile` key; default lean) picks the stage
+#              set: lean skips context_pack/spec_finalizer/test_plan.
+#
 #              In gated mode, also reads an OPTIONAL, developer-authored
 #              .arcus/config.json at the repo root to narrow the built-in
-#              3-gate stop_after list. This file is never created by scaffold.sh
+#              stop_after list (lean: plan; thorough: test_plan,implementation,code_review). This file is never created by scaffold.sh
 #              (or any other script) and is read only here, only when
 #              MODE = gated. Anything unreadable/malformed/non-array warns and
 #              falls back to the built-in default; unknown or duplicate entries
 #              in an otherwise-valid array warn and are dropped, keeping the
 #              rest. See the STOP_AFTER resolution block below for details.
 # USAGE: scripts/scaffold.sh <STORY_FILE|STORY_ID> [--base <branch>] [--mode <afk|intelligent|gated>]
+#                            [--profile <lean|thorough> | --thorough | --lean]
 #                            [--use-current-branch | --new-branch]
 # ==============================================================================
 
@@ -36,6 +41,7 @@ set -eo pipefail
 ARG1="$1"
 BASE_BRANCH=""
 MODE=""
+PROFILE=""
 # "" = auto-detect (adopt only inside a linked worktree), 1 = always adopt,
 # 0 = never adopt. ARCUS_USE_CURRENT_BRANCH is the env-var equivalent of the
 # --use-current-branch / --new-branch flags, for callers that cannot pass argv.
@@ -52,7 +58,7 @@ case "${ARCUS_USE_CURRENT_BRANCH:-}" in
 esac
 
 if [ -z "$ARG1" ]; then
-    echo "[ERROR] Usage: scaffold.sh <STORY_FILE|STORY_ID> [--base <branch>] [--mode <afk|intelligent|gated>] [--use-current-branch|--new-branch]" >&2
+    echo "[ERROR] Usage: scaffold.sh <STORY_FILE|STORY_ID> [--base <branch>] [--mode <afk|intelligent|gated>] [--profile <lean|thorough>|--thorough|--lean] [--use-current-branch|--new-branch]" >&2
     exit 1
 fi
 
@@ -62,6 +68,9 @@ while [[ $# -gt 0 ]]; do
     case "$1" in
         --base) BASE_BRANCH="$2"; shift 2 ;;
         --mode) MODE="$2"; shift 2 ;;
+        --profile) PROFILE="$2"; shift 2 ;;
+        --thorough) PROFILE="thorough"; shift ;;
+        --lean) PROFILE="lean"; shift ;;
         --use-current-branch) ADOPT=1; shift ;;
         --new-branch) ADOPT=0; shift ;;
         *) shift ;;
@@ -75,6 +84,10 @@ done
 # non-empty, unrecognized value is rejected.
 if [ -n "$MODE" ] && [ "$MODE" != "afk" ] && [ "$MODE" != "intelligent" ] && [ "$MODE" != "gated" ]; then
     echo "[ERROR] Invalid --mode '$MODE'. Valid: afk|intelligent|gated" >&2
+    exit 1
+fi
+if [ -n "$PROFILE" ] && [ "$PROFILE" != "lean" ] && [ "$PROFILE" != "thorough" ]; then
+    echo "[ERROR] Invalid --profile '$PROFILE'. Valid: lean|thorough" >&2
     exit 1
 fi
 
@@ -185,12 +198,36 @@ if [ -z "$MODE" ]; then
     MODE="gated"
 fi
 
+CONFIG_FILE=".arcus/config.json"
+
+# Resolve the profile: flag > .arcus/config.json `profile` > lean. A bad config
+# value warns and falls back (SF-2: an opt-in file never breaks scaffold).
+if [ -z "$PROFILE" ] && [ -f "$CONFIG_FILE" ]; then
+    PROFILE="$(node -e '
+        try {
+            const p = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).profile;
+            if (p === undefined) process.exit(0);
+            if (p === "lean" || p === "thorough") console.log(p); else console.log("BAD");
+        } catch (e) { process.exit(0); }
+    ' "$CONFIG_FILE" || true)"
+    if [ "$PROFILE" = "BAD" ]; then
+        echo "[WARN] .arcus/config.json profile must be \"lean\" or \"thorough\"; using lean." >&2
+        PROFILE=""
+    fi
+fi
+[ -n "$PROFILE" ] || PROFILE="lean"
+
 # Resolve the built-in stop_after default. afk and intelligent never resolve a
 # non-empty list; checkpoint.sh init converts an empty STOP_AFTER into
-# stop_after: [].
+# stop_after: []. Lean stops once, after the plan — the one checkpoint where a
+# human's attention is cheap and high-leverage.
 STOP_AFTER=""
 if [ "$MODE" = "gated" ]; then
-    STOP_AFTER="test_plan,implementation,code_review"
+    if [ "$PROFILE" = "thorough" ]; then
+        STOP_AFTER="test_plan,implementation,code_review"
+    else
+        STOP_AFTER="plan"
+    fi
 fi
 
 # Optionally narrow the gated stop_after set via a developer-authored, pure
@@ -209,12 +246,11 @@ fi
 # Guarded with `|| true` per the repo's best-effort-optional-step convention.
 # The config path flows through process.argv, never string-interpolated into
 # the JS source — matching checkpoint.sh init's STOP_AFTER_JSON pattern.
-CONFIG_FILE=".arcus/config.json"
 if [ "$MODE" = "gated" ] && [ -f "$CONFIG_FILE" ]; then
     CONFIG_RESULT="$(node -e '
         const fs = require("fs");
         const path = process.argv[1];
-        const VALID = ["test_plan", "implementation", "code_review"];
+        const VALID = ["plan", "test_plan", "implementation", "code_review"];
         let result = "MALFORMED";
         try {
             const raw = JSON.parse(fs.readFileSync(path, "utf8"));
@@ -291,7 +327,7 @@ fi
 # `init` is a no-op when the checkpoint already exists — it prints the stored
 # document instead of writing ours — so capture the result rather than assuming
 # our computed fields were persisted.
-INIT_OUT="$(bash "$_checkpoint" init "$STORY_ID" "$BRANCH_NAME" "$BASE_BRANCH" "$MODE" "$STOP_AFTER" "$MODEL_POLICY_JSON")"
+INIT_OUT="$(bash "$_checkpoint" init "$STORY_ID" "$BRANCH_NAME" "$BASE_BRANCH" "$MODE" "$STOP_AFTER" "$MODEL_POLICY_JSON" "$PROFILE")"
 printf '%s\n' "$INIT_OUT"
 
 if printf '%s\n' "$INIT_OUT" | grep -q '^CHECKPOINT_EXISTS: true'; then
@@ -326,4 +362,5 @@ echo "STORY_ID: $STORY_ID"
 echo "BRANCH_NAME: $BRANCH_NAME"
 echo "BASE_BRANCH: $BASE_BRANCH"
 echo "BRANCH_MODE: $BRANCH_MODE"
+echo "PROFILE: $(sed -n 's/.*"profile"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$WORKSPACE_DIR/session-checkpoint.json" | head -1 | grep . || echo thorough)"
 echo "WORKSPACE_DIR: $WORKSPACE_DIR"
